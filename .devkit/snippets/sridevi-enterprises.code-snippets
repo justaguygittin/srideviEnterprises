@@ -1,0 +1,85 @@
+{
+    "HTML Header": {
+        "prefix": "htmlheader",
+        "body": [
+            "<!--",
+            "==========================================================",
+            "Project : Sridevi Enterprises",
+            "File    : ${TM_FILENAME}",
+            "Purpose : ${1:Describe this file}",
+            "",
+            "Author  : Srikar",
+            "==========================================================",
+            "-->",
+            ""
+        ],
+        "description": "HTML file header"
+    },
+    "Python Header": {
+        "prefix": "pyheader",
+        "body": [
+            "\"\"\"",
+            "=========================================================",
+            "Project : Sridevi Enterprises",
+            "File    : ${TM_FILENAME}",
+            "Purpose : ${1:Describe this file}",
+            "",
+            "Author  : Srikar",
+            "=========================================================",
+            "\"\"\"",
+            ""
+        ],
+        "description": "Python file header"
+    },
+    "CSS Header": {
+        "prefix": "cssheader",
+        "body": [
+            "/*",
+            "=========================================================",
+            "Project : Sridevi Enterprises",
+            "File    : ${TM_FILENAME}",
+            "=========================================================",
+            "*/",
+            ""
+        ],
+        "description": "CSS file header"
+    },
+    "TODO Comment": {
+        "prefix": "todo",
+        "body": [
+            "<!-- TODO:",
+            "${1:Replace or update this later.}",
+            "-->"
+        ],
+        "description": "TODO comment"
+    },
+    "Section Divider": {
+        "prefix": "section",
+        "body": [
+            "<!-- =====================================================",
+            "     ${1:SECTION NAME}",
+            "====================================================== -->",
+            ""
+        ],
+        "description": "HTML section divider"
+    },
+    "CSS Section": {
+        "prefix": "csssection",
+        "body": [
+            "/* ======================================================",
+            "   ${1:SECTION NAME}",
+            "====================================================== */",
+            ""
+        ],
+        "description": "CSS section divider"
+    },
+    "Jinja Block": {
+        "prefix": "block",
+        "body": [
+            "{% block ${1:content} %}",
+            "",
+            "{% endblock %}"
+        ],
+        "description": "Jinja block"
+    }
+}

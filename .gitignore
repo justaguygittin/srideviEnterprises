@@ -1,15 +1,33 @@
+# Python
+
 __pycache__/
+
 *.pyc
+
 *.pyo
+
 *.pyd
 
+# Virtual Environment
+
 venv/
+
+# VS Code
+
+.vscode/*.log
+
+# Environment
+
 .env
 
-uploads/
+# Uploads
+
 static/uploads/
 
-.idea/
-.vscode/
+# macOS
 
-*.db
+.DS_Store
+
+# Windows
+
+Thumbs.db

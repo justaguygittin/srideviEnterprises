@@ -1,0 +1,14 @@
+{
+    "recommendations": [
+        "ms-python.python",
+        "ms-python.black-formatter",
+        "charliermarsh.ruff",
+        "ecmel.vscode-html-css",
+        "formulahendry.auto-rename-tag",
+        "christian-kohler.path-intellisense",
+        "eamodio.gitlens",
+        "samuelcolvin.jinjahtml",
+        "usernamehw.errorlens",
+        "PKief.material-icon-theme"
+    ]
+}
