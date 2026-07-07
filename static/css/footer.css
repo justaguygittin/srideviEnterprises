@@ -1,0 +1,76 @@
+/* ======================================================
+Project : Sridevi Enterprises
+File    : footer.css
+====================================================== */
+
+.footer {
+
+    background: #1E4FA3;
+
+    color: #FFFFFF;
+
+    padding: 50px 0 20px;
+
+}
+
+.footer-logo {
+
+    width: 70px;
+
+}
+
+.footer-title {
+
+    font-family: 'Poppins', sans-serif;
+
+    font-weight: 600;
+
+}
+
+.footer-tagline {
+
+    color: #D9D9D9;
+
+}
+
+.footer-links {
+
+    list-style: none;
+
+    padding: 0;
+
+}
+
+.footer-links li {
+
+    margin-bottom: 10px;
+
+}
+
+.footer-links a {
+
+    color: white;
+
+    text-decoration: none;
+
+}
+
+.footer-links a:hover {
+
+    color: #D4AF37;
+
+}
+
+.footer hr {
+
+    border-color: rgba(255, 255, 255, .2);
+
+}
+
+.footer-bottom {
+
+    text-align: center;
+
+    font-size: .9rem;
+
+}

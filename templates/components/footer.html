@@ -1,0 +1,116 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : footer.html
+Purpose : Website footer component.
+
+TODO:
+- Replace placeholder address.
+- Replace placeholder phone.
+- Replace placeholder email.
+- Add Google Maps iframe.
+- Add social media links.
+=========================================================
+-->
+
+<footer class="footer mt-5">
+
+    <div class="container">
+
+        <div class="row gy-4">
+
+            <!-- ==========================
+                 Company
+            =========================== -->
+
+            <div class="col-lg-4">
+
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Sridevi Enterprises Logo"
+                    class="footer-logo">
+
+                <h5 class="footer-title mt-3">
+                    Sridevi Enterprises
+                </h5>
+
+                <p class="footer-tagline">
+                    Furniture • Electronics • Home Appliances
+                </p>
+
+            </div>
+
+            <!-- ==========================
+                 Quick Links
+            =========================== -->
+
+            <div class="col-lg-3">
+
+                <h5>Quick Links</h5>
+
+                <ul class="footer-links">
+
+                    <li><a href="{{ url_for('home') }}">Home</a></li>
+
+                    <li><a href="{{ url_for('products') }}">Products</a></li>
+
+                    <li><a href="#">Categories</a></li>
+
+                    <li><a href="#">Compare</a></li>
+
+                    <li><a href="{{ url_for('contact') }}">Contact</a></li>
+
+                </ul>
+
+            </div>
+
+            <!-- ==========================
+                 Contact
+            =========================== -->
+
+            <div class="col-lg-5">
+
+                <h5>Contact</h5>
+
+                <!-- TODO: Replace with actual address -->
+                <p>
+                    <i class="fa-solid fa-location-dot"></i>
+                    Showroom Address
+                </p>
+
+                <!-- TODO: Replace with actual phone -->
+                <p>
+                    <i class="fa-solid fa-phone"></i>
+                    +91 XXXXX XXXXX
+                </p>
+
+                <!-- TODO: Replace with business email -->
+                <p>
+                    <i class="fa-solid fa-envelope"></i>
+                    info@sridevienterprises.com
+                </p>
+
+                <!-- TODO: Replace with actual working hours -->
+                <p>
+                    <i class="fa-solid fa-clock"></i>
+                    Mon - Sat | 9:00 AM - 8:00 PM
+                </p>
+
+            </div>
+
+        </div>
+
+        <hr>
+
+        <div class="footer-bottom">
+
+            <p class="mb-0">
+
+                © 2026 Sridevi Enterprises™.
+                All Rights Reserved.
+
+            </p>
+
+        </div>
+
+    </div>
+
+</footer>
