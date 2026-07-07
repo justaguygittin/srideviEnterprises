@@ -1,0 +1,106 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : navbar.html
+Purpose : Reusable website navigation component.
+
+Responsibilities:
+- Display company branding.
+- Provide customer navigation.
+- Include reusable search bar.
+- Support responsive Bootstrap navigation.
+
+TODO:
+- Replace logo if updated.
+- Add active page highlighting.
+- Add dynamic categories dropdown.
+=========================================================
+-->
+
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+
+    <div class="container">
+
+        <!-- ==========================
+             Brand
+        =========================== -->
+
+        <a class="navbar-brand d-flex align-items-center" href="{{ url_for('home') }}">
+
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Sridevi Enterprises Logo"
+                class="navbar-logo me-2">
+
+            <div>
+
+                <div class="brand-title">
+                    Sridevi Enterprises
+                </div>
+
+                <small class="brand-tagline">
+                    Furniture • Electronics • Home Appliances
+                </small>
+
+            </div>
+
+        </a>
+
+        <!-- ==========================
+             Mobile Menu Button
+        =========================== -->
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
+            aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+
+            <span class="navbar-toggler-icon"></span>
+
+        </button>
+
+        <!-- ==========================
+             Navigation Links
+        =========================== -->
+
+        <div class="collapse navbar-collapse" id="mainNavbar">
+
+            <ul class="navbar-nav mx-auto">
+
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('home') }}">
+                        Home
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('products') }}">
+                        Products
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        Categories
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        Compare
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('contact') }}">
+                        Contact
+                    </a>
+                </li>
+
+            </ul>
+
+            <!-- Reusable Search Component -->
+
+            {% include "components/searchbar.html" %}
+
+        </div>
+
+    </div>
+
+</nav>

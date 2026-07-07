@@ -1,47 +1,84 @@
 <!--
-==========================================================
+=========================================================
 Project : Sridevi Enterprises
 File    : base.html
-Purpose : Base Template for All Pages
+Purpose : Master layout for all pages.
 
-Author  : Srikar
-==========================================================
+TODO:
+- Add favicon.
+- Add SEO meta tags.
+=========================================================
 -->
 
 <!DOCTYPE html>
-
-<html>
-<!-- =====================================================
-     Header
-====================================================== -->
+<html lang="en">
 
 <head>
 
-    Bootstrap
+    <!-- Character Encoding -->
+    <meta charset="UTF-8">
 
-    Fonts
+    <!-- Mobile Responsive -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    Icons
+    <title>
+        {% block title %}
+        Sridevi Enterprises
+        {% endblock %}
+    </title>
 
-    CSS
+    <!-- Bootstrap -->
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Google Fonts -->
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Font Awesome -->
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+    <!-- Global CSS -->
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}">
 
 </head>
 
 <body>
 
-    Navbar
+    {% include 'components/navbar.html' %}
 
-    Flash Messages
+    {% include 'components/flash_messages.html' %}
 
-    {% block content %}
+    <main>
 
-    {% endblock %}
+        {% block content %}
+        {% endblock %}
 
-    Footer
+    </main>
 
-    Bootstrap JS
+    {% include 'components/footer.html' %}
 
-    Common JS
+    <!-- Bootstrap JS -->
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js">
+    </script>
+
+    <!-- Common JavaScript -->
+
+    <script src="{{ url_for('static', filename='js/main.js') }}">
+    </script>
 
 </body>
 
