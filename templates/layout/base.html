@@ -53,6 +53,10 @@ TODO:
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}">
 
+    <!-- Page Specific CSS -->
+    {% block page_css %}
+    {% endblock %}
+
 </head>
 
 <body>

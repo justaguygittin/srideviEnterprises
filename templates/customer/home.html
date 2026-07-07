@@ -1,4 +1,19 @@
+<!--
+==========================================================
+Project : Sridevi Enterprises
+File    : home.html
+Purpose : creating Hero Page
+
+Author  : Srikar
+==========================================================
+-->
 {% extends "layout/base.html" %}
+
+{% block page_css %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+
+{% endblock %}
 
 {% block title %}
 Home
@@ -6,15 +21,6 @@ Home
 
 {% block content %}
 
-<div class="container py-5">
-
-    <h1>Homepage Working ✅</h1>
-
-    <p>
-        If you can see the navbar and this message,
-        the template inheritance works.
-    </p>
-
-</div>
+{% include "components/hero.html" %}
 
 {% endblock %}

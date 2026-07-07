@@ -1,0 +1,86 @@
+<!--
+==========================================================
+Project : Sridevi Enterprises
+File    : hero.html
+Purpose : Creating the hero page
+
+
+Author  : Srikar
+==========================================================
+-->
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : hero.html
+Purpose : Homepage hero section.
+
+TODO:
+- Replace placeholder video with showroom video.
+- Replace placeholder logo if updated.
+=========================================================
+-->
+
+<section class="hero-section">
+
+    <!-- Background Fallback -->
+
+    <div class="hero-background"></div>
+
+    <!-- Background Video -->
+
+    <video class="hero-video" autoplay muted loop playsinline>
+
+        <!-- TODO: Replace with actual showroom video -->
+        <source src="{{ url_for('static', filename='videos/hero.mp4') }}" type="video/mp4">
+
+    </video>
+
+    <!-- Dark Overlay -->
+
+    <div class="hero-overlay"></div>
+
+    <!-- Hero Content -->
+
+    <div class="container hero-content">
+
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Sridevi Enterprises" class="hero-logo">
+
+        <h1 class="hero-title">
+
+            Sridevi Enterprises
+
+        </h1>
+
+        <p class="hero-tagline">
+
+            Furniture • Electronics • Home Appliances
+
+        </p>
+
+        <p class="hero-description">
+
+            Quality Products for Every Home
+
+        </p>
+
+        <div class="hero-buttons">
+
+            <a href="{{ url_for('products') }}" class="btn btn-primary btn-lg">
+
+                <i class="fa-solid fa-store me-2"></i>
+                Browse Products
+
+            </a>
+
+            <a href="{{ url_for('contact') }}" class="btn btn-outline-light btn-lg">
+
+                <i class="fa-solid fa-phone me-2"></i>
+                Contact Us
+
+            </a>
+
+        </div>
+
+    </div>
+
+</section>
