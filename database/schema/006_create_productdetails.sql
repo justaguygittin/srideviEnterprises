@@ -1,0 +1,6 @@
+CREATE TABLE ProductDetails (
+    DetailID INT AUTO_INCREMENT PRIMARY KEY,
+    ProductID INT NOT NULL,
+    Property VARCHAR(100) NOT NULL,
+    PropertyValue VARCHAR(255) NOT NULL
+);

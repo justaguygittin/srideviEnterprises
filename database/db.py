@@ -1,9 +1,78 @@
+"""
+=========================================================
+Project : Sridevi Enterprises
+File    : db.py
+Purpose : Database helper functions.
+
+Author  : Srikar
+=========================================================
+"""
+
 import mysql.connector
+from config import Config
+
 
 def get_connection():
+    """
+    Create and return a database connection.
+    """
+
     return mysql.connector.connect(
-        host="localhost",
-        user="YOUR_DB_USER",
-        password="YOUR_DB_PASSWORD",
-        database="gsrikari_Sridevi_Enterprises"
+        host=Config.DB_HOST,
+        port=Config.DB_PORT,
+        user=Config.DB_USER,
+        password=Config.DB_PASSWORD,
+        database=Config.DB_NAME,
     )
+
+
+def fetch_all(query, params=None):
+    """
+    Execute a SELECT query and return all rows.
+    """
+
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute(query, params or ())
+
+    rows = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return rows
+
+
+def fetch_one(query, params=None):
+    """
+    Execute a SELECT query and return one row.
+    """
+
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute(query, params or ())
+
+    row = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return row
+
+
+def execute(query, params=None):
+    """
+    Execute INSERT, UPDATE or DELETE queries.
+    """
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(query, params or ())
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()

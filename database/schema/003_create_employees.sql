@@ -1,0 +1,10 @@
+CREATE TABLE Employees (
+    EmployeeID INT AUTO_INCREMENT PRIMARY KEY,
+    UserID INT,
+    Name VARCHAR(100) NOT NULL,
+    Phone VARCHAR(20),
+    Email VARCHAR(100),
+    Designation VARCHAR(50),
+    CreatedDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (UserID) REFERENCES Users (UserID)
+);
