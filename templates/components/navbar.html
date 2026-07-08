@@ -25,7 +25,7 @@ TODO:
              Brand
         =========================== -->
 
-        <a class="navbar-brand d-flex align-items-center" href="{{ url_for('home') }}">
+        <a class="navbar-brand d-flex align-items-center" href="{{ url_for('customer.home') }}">
 
             <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Sridevi Enterprises Logo"
                 class="navbar-logo me-2">
@@ -64,13 +64,13 @@ TODO:
             <ul class="navbar-nav mx-auto">
 
                 <li class="nav-item">
-                    <a class="nav-link active" href="{{ url_for('home') }}">
+                    <a class="nav-link active" href="{{ url_for('customer.home') }}">
                         Home
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('products') }}">
+                    <a class="nav-link" href="{{ url_for('customer.products') }}">
                         Products
                     </a>
                 </li>
@@ -88,7 +88,7 @@ TODO:
                 </li>
 
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('contact') }}">
+                    <a class="nav-link" href="{{ url_for('customer.contact') }}">
                         Contact
                     </a>
                 </li>

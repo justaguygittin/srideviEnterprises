@@ -1,23 +1,22 @@
-from flask import Flask, render_template
-from typing import Any
 from database.db import get_connection
+from flask import Flask
+
+from routes.customer import customer_bp
+from routes.employee import employee_bp
+from routes.admin import admin_bp
+from routes.api import api_bp
 
 app = Flask(__name__)
 
-
-@app.route("/")
-def home():
-    return render_template("customer/home.html")
-
-
-@app.route("/products")
-def products():
-    return render_template("customer/products.html")
+app.register_blueprint(customer_bp)
+app.register_blueprint(employee_bp)
+app.register_blueprint(admin_bp)
+app.register_blueprint(api_bp)
 
 
-@app.route("/contact")
-def contact():
-    return render_template("customer/contact.html")
+@app.route("/routes")
+def routes():
+    return "<br>".join(str(r) for r in app.url_map.iter_rules())
 
 
 @app.route("/db-test")
