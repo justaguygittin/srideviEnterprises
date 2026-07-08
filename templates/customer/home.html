@@ -13,6 +13,8 @@ Author  : Srikar
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
 
+<link rel="stylesheet" href="{{ url_for('static', filename='css/categories.css') }}">
+
 {% endblock %}
 
 {% block title %}
@@ -22,5 +24,9 @@ Home
 {% block content %}
 
 {% include "components/hero.html" %}
+
+{% include "components/quick_actions.html" %}
+
+{% include "components/categories.html" %}
 
 {% endblock %}

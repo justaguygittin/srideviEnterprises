@@ -15,6 +15,10 @@ File    : home.css
 
     overflow: hidden;
 
+    margin-bottom: 0;
+
+    padding-bottom: 0;
+
 }
 
 /* ===========================================
@@ -253,5 +257,37 @@ File    : home.css
         transform: translateY(0);
 
     }
+
+}
+
+/* ===========================================
+   Quick Actions
+=========================================== */
+
+.quick-actions {
+
+    background: #ffffff;
+
+    padding: 35px 0;
+
+}
+
+.quick-actions-wrapper {
+
+    display: flex;
+
+    justify-content: center;
+
+    gap: 20px;
+
+    flex-wrap: wrap;
+
+}
+
+.quick-actions .btn {
+
+    min-width: 230px;
+
+    padding: 14px 30px;
 
 }

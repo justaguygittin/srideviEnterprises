@@ -1,0 +1,121 @@
+<!--
+==========================================================
+Project : Sridevi Enterprises
+File    : categories.html
+Purpose : Homepage category cards for browsing products.
+
+Author  : Srikar
+
+TODO:
+- Replace placeholder images.
+- Load category count from database.
+- Make cards navigate dynamically.
+=========================================================
+-->
+
+<section class="categories-section">
+
+    <div class="container">
+
+        <!-- Section Heading -->
+
+        <div class="section-heading text-center">
+
+            <h2>Shop by Category</h2>
+
+            <p>
+                Explore our product departments and find the perfect products for your home.
+            </p>
+
+        </div>
+
+        <!-- Category Cards -->
+
+        <div class="row g-4">
+
+            <!-- Furniture -->
+
+            <div class="col-lg-6 col-md-6">
+
+                <a href="{{ url_for('products') }}" class="category-card">
+
+                    <img src="{{ url_for('static', filename='images/categories/furniture.jpg') }}" alt="Furniture">
+
+                    <div class="category-overlay">
+
+                        <h3>Furniture</h3>
+
+                        <p>7 Categories Available</p>
+
+                    </div>
+
+                </a>
+
+            </div>
+
+            <!-- Electronics -->
+
+            <div class="col-lg-6 col-md-6">
+
+                <a href="{{ url_for('products') }}" class="category-card">
+
+                    <img src="{{ url_for('static', filename='images/categories/electronics.jpg') }}" alt="Electronics">
+
+                    <div class="category-overlay">
+
+                        <h3>Electronics & Appliances</h3>
+
+                        <p>11 Categories Available</p>
+
+                    </div>
+
+                </a>
+
+            </div>
+
+            <!-- Utility -->
+
+            <div class="col-lg-6 col-md-6">
+
+                <a href="{{ url_for('products') }}" class="category-card">
+
+                    <img src="{{ url_for('static', filename='images/categories/utility.jpg') }}" alt="Utility">
+
+                    <div class="category-overlay">
+
+                        <h3>Utility</h3>
+
+                        <p>1 Category Available</p>
+
+                    </div>
+
+                </a>
+
+            </div>
+
+            <!-- Misc -->
+
+            <div class="col-lg-6 col-md-6">
+
+                <a href="{{ url_for('products') }}" class="category-card">
+
+                    <img src="{{ url_for('static', filename='images/categories/miscellaneous.jpg') }}"
+                        alt="Miscellaneous">
+
+                    <div class="category-overlay">
+
+                        <h3>Miscellaneous</h3>
+
+                        <p>Future Product Categories</p>
+
+                    </div>
+
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
