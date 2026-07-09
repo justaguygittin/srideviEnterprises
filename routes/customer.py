@@ -9,13 +9,24 @@ Author  : Srikar
 """
 
 from flask import Blueprint, render_template
+from database.db import fetch_all
 
 customer_bp = Blueprint("customer", __name__)
 
 
 @customer_bp.route("/")
 def home():
-    return render_template("customer/home.html")
+
+    departments = fetch_all("""
+        SELECT
+            Department,
+            COUNT(*) AS total_products
+        FROM Catalog
+        GROUP BY Department
+        ORDER BY Department
+    """)
+
+    return render_template("customer/home.html", departments=departments)
 
 
 @customer_bp.route("/products")
