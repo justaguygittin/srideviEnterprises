@@ -73,7 +73,7 @@ Author  : Srikar
 
     width: 100%;
 
-    height: 320px;
+    height: 260px;
 
     object-fit: cover;
 
@@ -115,7 +115,7 @@ Author  : Srikar
 
 .category-overlay h3 {
 
-    font-size: 2rem;
+    font-size: 1.35rem;
 
     font-weight: 600;
 

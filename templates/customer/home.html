@@ -29,4 +29,80 @@ Home
 
 {% include "components/categories.html" %}
 
+<!-- Featured Products -->
+<section class="featured-products-section">
+    <div class="container">
+        <div class="section-heading text-center">
+            <h2>Featured Products</h2>
+            <p>Discover a selection of products from across our catalogue.</p>
+        </div>
+        <div class="row g-4">
+            {% for product in featured_products %}
+            <div class="col-lg-3 col-md-6">
+                <article class="product-card h-100">
+                    <!-- TODO: Replace with product-specific images when image data is available. -->
+                    <img src="{{ url_for('static', filename='images/placeholder.png') }}" alt="{{ product.product_name }}" class="product-card-image">
+                    <div class="product-card-body">
+                        <p class="product-brand">{{ product.brand or 'Sridevi Enterprises' }}</p>
+                        <h3>{{ product.product_name }}</h3>
+                        <p class="product-price">₹{{ '{:,.2f}'.format(product.price or 0) }}</p>
+                        <p class="product-availability">{{ product.availability }}</p>
+                        <a href="{{ url_for('customer.products', product_id=product.id) }}" class="btn btn-primary">View Details</a>
+                    </div>
+                </article>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Popular Brands -->
+<section class="brands-section">
+    <div class="container">
+        <div class="section-heading text-center">
+            <h2>Popular Brands</h2>
+            <p>Brands available through Sridevi Enterprises.</p>
+        </div>
+        <div class="row g-3">
+            {% for brand in brands %}
+            <div class="col-lg-3 col-md-6">
+                <article class="brand-card">
+                    <!-- TODO: Replace placeholder logo treatment with approved brand logos. -->
+                    <span class="brand-logo-placeholder"><i class="fa-solid fa-tag"></i></span>
+                    <h3>{{ brand.brand }}</h3>
+                </article>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- About Sridevi Enterprises -->
+<section class="about-section">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-9 text-center">
+                <h2>About Sridevi Enterprises</h2>
+                <!-- TODO: Replace this placeholder copy with approved company information. -->
+                <p>Sridevi Enterprises brings together practical products for homes, workplaces, and everyday needs. Explore our growing catalogue and connect with our team for dependable service.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Location Map -->
+<section class="map-section">
+    <div class="container">
+        <div class="section-heading text-center">
+            <h2>Visit Us</h2>
+            <p>Find Sridevi Enterprises near you.</p>
+        </div>
+        <!-- TODO: Replace the placeholder map with the approved Google Maps embed URL. -->
+        <div class="map-placeholder" role="img" aria-label="Map location placeholder for Sridevi Enterprises">
+            <i class="fa-solid fa-location-dot"></i>
+            <span>Location map coming soon</span>
+        </div>
+    </div>
+</section>
+
 {% endblock %}

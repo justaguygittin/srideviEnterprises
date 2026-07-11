@@ -9,24 +9,25 @@ Author  : Srikar
 """
 
 from flask import Blueprint, render_template
-from database.db import fetch_all
+from services.customer_service import (
+    get_featured_products,
+    get_home_departments,
+    get_popular_brands,
+)
 
 customer_bp = Blueprint("customer", __name__)
 
 
 @customer_bp.route("/")
 def home():
+    """Render the database-driven customer homepage."""
 
-    departments = fetch_all("""
-        SELECT
-            Department,
-            COUNT(*) AS total_products
-        FROM Catalog
-        GROUP BY Department
-        ORDER BY Department
-    """)
-
-    return render_template("customer/home.html", departments=departments)
+    return render_template(
+        "customer/home.html",
+        departments=get_home_departments(),
+        featured_products=get_featured_products(),
+        brands=get_popular_brands(),
+    )
 
 
 @customer_bp.route("/products")
