@@ -1,0 +1,110 @@
+<!--
+==========================================================
+Project : Sridevi Enterprises
+File    : products.html
+Purpose : Product catalogue listing with search, filters, and sorting.
+
+Author  : Srikar
+==========================================================
+-->
+{% extends "layout/base.html" %}
+
+{% block title %}Products{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="products-page py-5">
+    <div class="container">
+        <header class="products-header">
+            <h1>Products</h1>
+            <p>Browse products from our catalogue.</p>
+        </header>
+
+        <form method="get" class="product-search mb-4">
+            <label for="search" class="visually-hidden">Search products</label>
+            <div class="input-group">
+                <input id="search" class="form-control" type="search" name="search" value="{{ filters.search }}" placeholder="Search products, brands, departments, categories or models">
+                <button class="btn btn-primary" type="submit"><i class="fa-solid fa-magnifying-glass me-2"></i>Search</button>
+            </div>
+        </form>
+
+        <div class="row g-4">
+            <aside class="col-lg-3">
+                <form method="get" class="filter-panel">
+                    <input type="hidden" name="search" value="{{ filters.search }}">
+                    <h2>Filter Products</h2>
+                    <label for="department">Department</label>
+                    <select id="department" name="department" class="form-select">
+                        <option value="">All departments</option>
+                        {% for item in filter_options.departments %}<option value="{{ item.value }}" {% if filters.department == item.value %}selected{% endif %}>{{ item.value }}</option>{% endfor %}
+                    </select>
+                    <label for="category">Category</label>
+                    <select id="category" name="category" class="form-select">
+                        <option value="">All categories</option>
+                        {% for item in filter_options.categories %}<option value="{{ item.value }}" {% if filters.category == item.value %}selected{% endif %}>{{ item.value }}</option>{% endfor %}
+                    </select>
+                    <label for="brand">Brand</label>
+                    <select id="brand" name="brand" class="form-select">
+                        <option value="">All brands</option>
+                        {% for item in filter_options.brands %}<option value="{{ item.value }}" {% if filters.brand == item.value %}selected{% endif %}>{{ item.value }}</option>{% endfor %}
+                    </select>
+                    <label for="availability">Availability</label>
+                    <select id="availability" name="availability" class="form-select">
+                        <option value="">All availability</option>
+                        <option value="in_stock" {% if filters.availability == 'in_stock' %}selected{% endif %}>In stock</option>
+                        <option value="on_request" {% if filters.availability == 'on_request' %}selected{% endif %}>Available on request</option>
+                    </select>
+                    <div class="row g-2">
+                        <div class="col-6"><label for="min_price">Min price</label><input id="min_price" class="form-control" type="number" name="min_price" min="0" value="{{ filters.min_price or '' }}"></div>
+                        <div class="col-6"><label for="max_price">Max price</label><input id="max_price" class="form-control" type="number" name="max_price" min="0" value="{{ filters.max_price or '' }}"></div>
+                    </div>
+                    <input type="hidden" name="sort" value="{{ filters.sort }}">
+                    <button class="btn btn-primary w-100 mt-4" type="submit">Apply Filters</button>
+                    <a href="{{ url_for('customer.products') }}" class="btn btn-link w-100">Clear filters</a>
+                </form>
+            </aside>
+
+            <div class="col-lg-9">
+                <div class="product-list-toolbar">
+                    <p class="mb-0">{{ products|length }} product{{ '' if products|length == 1 else 's' }} found</p>
+                    <form method="get">
+                        {% for name, value in filters.items() if name != 'sort' and value is not none %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+                        <label for="sort" class="visually-hidden">Sort products</label>
+                        <select id="sort" class="form-select" name="sort" onchange="this.form.submit()">
+                            <option value="newest" {% if filters.sort == 'newest' %}selected{% endif %}>Newest</option>
+                            <option value="name" {% if filters.sort == 'name' %}selected{% endif %}>A-Z</option>
+                            <option value="price_low" {% if filters.sort == 'price_low' %}selected{% endif %}>Price: Low to High</option>
+                            <option value="price_high" {% if filters.sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
+                            <option value="brand" {% if filters.sort == 'brand' %}selected{% endif %}>Brand</option>
+                        </select>
+                    </form>
+                </div>
+
+                <div class="row g-4">
+                    {% for product in products %}
+                    <div class="col-xl-3 col-md-6">
+                        <article class="catalog-product-card h-100">
+                            <!-- TODO: Replace the shared placeholder product image with uploaded product images. -->
+                            <img src="{{ url_for('static', filename=product.image_path) }}" alt="{{ product.product_name }}">
+                            <div class="catalog-product-card-body">
+                                <p class="catalog-product-brand">{{ product.brand or 'Sridevi Enterprises' }}</p>
+                                <h2>{{ product.product_name }}</h2>
+                                <p class="catalog-product-meta">{{ product.Department }} · {{ product.category or 'Uncategorised' }}</p>
+                                <p class="catalog-product-price">₹{{ '{:,.2f}'.format(product.price or 0) }}</p>
+                                <p class="catalog-product-availability">{{ product.availability }}</p>
+                                <a href="{{ url_for('customer.product_details', product_id=product.id) }}" class="btn btn-primary w-100">View Details</a>
+                            </div>
+                        </article>
+                    </div>
+                    {% else %}
+                    <div class="col-12"><p class="empty-state">No products match your current search or filters.</p></div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

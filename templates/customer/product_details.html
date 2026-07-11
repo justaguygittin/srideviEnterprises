@@ -1,0 +1,82 @@
+<!--
+==========================================================
+Project : Sridevi Enterprises
+File    : product_details.html
+Purpose : Individual product information, images, and related products.
+
+Author  : Srikar
+==========================================================
+-->
+{% extends "layout/base.html" %}
+
+{% block title %}{{ product.product_name }}{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="product-details-page py-5">
+    <div class="container">
+        <a href="{{ url_for('customer.products') }}" class="back-link"><i class="fa-solid fa-arrow-left me-2"></i>Back to Products</a>
+        <div class="row g-5 mt-1">
+            <div class="col-lg-6">
+                <!-- TODO: Replace the shared placeholder product image after ProductImages is populated. -->
+                <img src="{{ url_for('static', filename=product.images[0].image_path) }}" alt="{{ product.product_name }}" class="product-main-image">
+                <div class="product-gallery" aria-label="Product image gallery">
+                    {% for image in product.images %}
+                    <img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ product.product_name }} image {{ loop.index }}">
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <p class="catalog-product-brand">{{ product.brand or 'Sridevi Enterprises' }}</p>
+                <h1>{{ product.product_name }}</h1>
+                <p class="product-detail-meta">{{ product.Department }} · {{ product.category or 'Uncategorised' }}</p>
+                <p class="product-detail-price">₹{{ '{:,.2f}'.format(product.price or 0) }}</p>
+                <p class="product-detail-availability">{{ product.availability }}</p>
+                <dl class="product-facts">
+                    <div><dt>Model</dt><dd>{{ product.model or 'Not specified' }}</dd></div>
+                    <div><dt>GST</dt><dd>{{ product.gst_percent or 0 }}%</dd></div>
+                </dl>
+                <!-- TODO: Connect this enquiry button to the enquiry module during Phase 4. -->
+                <a href="#" class="btn btn-primary btn-lg">Enquire Now</a>
+            </div>
+        </div>
+
+        <section class="specifications-section">
+            <h2>Specifications</h2>
+            {% if product.specifications %}
+            <dl class="specifications-list">
+                {% for specification in product.specifications %}<div><dt>{{ specification.property }}</dt><dd>{{ specification.value }}</dd></div>{% endfor %}
+            </dl>
+            {% else %}
+            <!-- TODO: Replace this message when ProductDetails is populated for this product. -->
+            <p class="empty-state">Specifications will be available soon.</p>
+            {% endif %}
+        </section>
+
+        <section class="related-products-section">
+            <h2>Similar Products</h2>
+            <div class="row g-4">
+                {% for related_product in related_products %}
+                <div class="col-xl-3 col-md-6">
+                    <article class="catalog-product-card h-100">
+                        <!-- TODO: Replace the shared placeholder product image with uploaded product images. -->
+                        <img src="{{ url_for('static', filename=related_product.image_path) }}" alt="{{ related_product.product_name }}">
+                        <div class="catalog-product-card-body">
+                            <p class="catalog-product-brand">{{ related_product.brand or 'Sridevi Enterprises' }}</p>
+                            <h3>{{ related_product.product_name }}</h3>
+                            <p class="catalog-product-price">₹{{ '{:,.2f}'.format(related_product.price or 0) }}</p>
+                            <a href="{{ url_for('customer.product_details', product_id=related_product.id) }}" class="btn btn-outline-primary w-100">View Details</a>
+                        </div>
+                    </article>
+                </div>
+                {% else %}
+                <div class="col-12"><p class="empty-state">No similar products are available yet.</p></div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</section>
+{% endblock %}
