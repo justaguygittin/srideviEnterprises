@@ -1,33 +1,39 @@
+# ==========================================================
+# Project : Sridevi Enterprises
+# Purpose : Git Ignore
+# Author  : Srikar
+# ==========================================================
+
 # Python
-
 __pycache__/
-
-*.pyc
-
+*.py[cod]
 *.pyo
 
-*.pyd
-
 # Virtual Environment
-
 venv/
-
-# VS Code
-
-.vscode/*.log
-
-# Environment
-
 .env
 
-# Uploads
+# VS Code
+.vscode/
 
+# Flask
+instance/
+*.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Uploaded Files
 static/uploads/
 
-# macOS
+# Python Cache
+.pytest_cache/
+.mypy_cache/
 
-.DS_Store
-
-# Windows
-
-Thumbs.db
+# Build
+dist/
+build/

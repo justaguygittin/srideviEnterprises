@@ -1,4 +1,3 @@
-from database.db import get_connection
 from flask import Flask
 
 from routes.customer import customer_bp
@@ -17,26 +16,6 @@ app.register_blueprint(api_bp)
 @app.route("/routes")
 def routes():
     return "<br>".join(str(r) for r in app.url_map.iter_rules())
-
-
-@app.route("/db-test")
-def db_test():
-
-    try:
-        conn = get_connection()
-
-        return "✅ Connected Successfully"
-
-    except Exception as e:
-
-        return str(e)
-
-    finally:
-
-        try:
-            conn.close()
-        except:
-            pass
 
 
 if __name__ == "__main__":
