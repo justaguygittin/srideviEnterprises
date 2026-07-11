@@ -17,14 +17,41 @@ _PLACEHOLDER_IMAGE = "images/placeholder.png"
 _SORT_OPTIONS = {
     "newest": "id DESC",
     "name": "product_name ASC",
-    "price_low": "COALESCE(offer_price, base_price) ASC",
-    "price_high": "COALESCE(offer_price, base_price) DESC",
     "brand": "brand ASC",
 }
 
 
-def get_products(filters: dict[str, Any]):
-    """Return catalog products matching the supplied search, filters, and sort."""
+def get_products(filters: dict[str, Any], page: int, per_page: int):
+    """Return one paginated page of catalog products matching the supplied filters."""
+
+    where_clause, params = _build_product_filters(filters)
+
+    order_by = _SORT_OPTIONS.get(filters.get("sort"), _SORT_OPTIONS["newest"])
+    products = fetch_all(f"""
+        SELECT
+            id, product_name, NULLIF(TRIM(brand), '') AS brand, Department,
+            category,
+            CASE WHEN stock_quantity > 0 THEN 'In stock' ELSE 'Available on request' END AS availability
+        FROM Catalog
+        WHERE {where_clause}
+        ORDER BY {order_by}
+        LIMIT %s OFFSET %s;
+    """, tuple(params + [per_page, (page - 1) * per_page]))
+
+    _add_primary_images(products)
+    return products
+
+
+def get_product_count(filters: dict[str, Any]) -> int:
+    """Return the number of catalog products matching the supplied filters."""
+
+    where_clause, params = _build_product_filters(filters)
+    result = fetch_one(f"SELECT COUNT(*) AS total FROM Catalog WHERE {where_clause};", tuple(params))
+    return result["total"]
+
+
+def _build_product_filters(filters: dict[str, Any]) -> tuple[str, list[Any]]:
+    """Build the reusable SQL WHERE clause for product listing and count queries."""
 
     where_clauses = ["product_name IS NOT NULL", "TRIM(product_name) <> ''"]
     params: list[Any] = []
@@ -49,24 +76,7 @@ def get_products(filters: dict[str, Any]):
     elif availability == "on_request":
         where_clauses.append("stock_quantity <= 0")
 
-    for field, operator in (("min_price", ">="), ("max_price", "<=")):
-        if filters.get(field) is not None:
-            where_clauses.append(f"COALESCE(offer_price, base_price) {operator} %s")
-            params.append(filters[field])
-
-    order_by = _SORT_OPTIONS.get(filters.get("sort"), _SORT_OPTIONS["newest"])
-    products = fetch_all(f"""
-        SELECT
-            id, product_name, NULLIF(TRIM(brand), '') AS brand, Department,
-            category, COALESCE(offer_price, base_price) AS price,
-            CASE WHEN stock_quantity > 0 THEN 'In stock' ELSE 'Available on request' END AS availability
-        FROM Catalog
-        WHERE {' AND '.join(where_clauses)}
-        ORDER BY {order_by};
-    """, tuple(params))
-
-    _add_primary_images(products)
-    return products
+    return " AND ".join(where_clauses), params
 
 
 def get_product_filters():
@@ -94,7 +104,7 @@ def get_product(product_id: int):
     product = fetch_one("""
         SELECT
             id, product_name, NULLIF(TRIM(brand), '') AS brand, Department,
-            category, model, COALESCE(offer_price, base_price) AS price, gst_percent,
+            category, model,
             CASE WHEN stock_quantity > 0 THEN 'In stock' ELSE 'Available on request' END AS availability
         FROM Catalog
         WHERE id = %s;
@@ -103,6 +113,8 @@ def get_product(product_id: int):
     if product is None:
         return None
 
+    # TODO: Correct UTF-8 encoding in legacy imported catalog data if its source CSV is updated.
+    product["product_name"] = _normalise_catalog_text(product["product_name"])
     product["images"] = get_product_images(product_id)
     product["specifications"] = fetch_all("""
         SELECT Property AS property, PropertyValue AS value
@@ -117,7 +129,6 @@ def get_related_products(product: dict[str, Any]):
     related_products = fetch_all("""
         SELECT
             id, product_name, NULLIF(TRIM(brand), '') AS brand,
-            COALESCE(offer_price, base_price) AS price,
             CASE WHEN stock_quantity > 0 THEN 'In stock' ELSE 'Available on request' END AS availability
         FROM Catalog
         WHERE id <> %s AND Department = %s
@@ -151,6 +162,14 @@ def _add_primary_images(products: list[dict[str, Any]]) -> None:
 
     for product in products:
         product["image_path"] = image_paths.get(product["id"], _PLACEHOLDER_IMAGE)
+        # TODO: Correct UTF-8 encoding in legacy imported catalog data if its source CSV is updated.
+        product["product_name"] = _normalise_catalog_text(product["product_name"])
+
+
+def _normalise_catalog_text(value: str) -> str:
+    """Hide replacement characters present in legacy catalog imports."""
+
+    return value.replace("\ufffd", "")
 
 
 def get_primary_product_image(product_id: int) -> str:

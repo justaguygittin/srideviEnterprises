@@ -44,6 +44,8 @@ Author  : Srikar
 .filter-panel {
 
     padding: 24px;
+    position: sticky;
+    top: 100px;
 
 }
 
@@ -79,6 +81,8 @@ Author  : Srikar
 .catalog-product-card {
 
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 
 }
 
@@ -95,6 +99,9 @@ Author  : Srikar
 .catalog-product-card-body {
 
     padding: 20px;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
 
 }
 
@@ -104,7 +111,12 @@ Author  : Srikar
     color: #1F2937;
     font-size: 1rem;
     font-weight: 600;
-    min-height: 48px;
+    height: 3rem;
+    line-height: 1.5rem;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 
 }
 
@@ -119,12 +131,34 @@ Author  : Srikar
 
 }
 
-.catalog-product-price,
-.product-detail-price {
+.catalog-product-pricing {
 
     color: #1E4FA3;
-    font-size: 1.2rem;
-    font-weight: 700;
+    font-size: .95rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+
+}
+
+.catalog-product-card .btn {
+
+    margin-top: auto;
+
+}
+
+.catalog-product-card:hover {
+
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .14);
+    transform: translateY(-2px);
+    transition: box-shadow .2s ease, transform .2s ease;
+
+}
+
+.catalog-product-card .btn:focus-visible,
+.back-link:focus-visible {
+
+    outline: 3px solid #1E4FA3;
+    outline-offset: 3px;
 
 }
 
@@ -133,6 +167,12 @@ Author  : Srikar
     color: #667085;
     padding: 24px;
     text-align: center;
+
+}
+
+.product-pagination {
+
+    margin-top: 36px;
 
 }
 
@@ -234,6 +274,12 @@ Author  : Srikar
     .product-main-image {
 
         height: 300px;
+
+    }
+
+    .filter-panel {
+
+        position: static;
 
     }
 

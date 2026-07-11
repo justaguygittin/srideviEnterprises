@@ -32,12 +32,15 @@ Author  : Srikar
             <div class="col-lg-6">
                 <p class="catalog-product-brand">{{ product.brand or 'Sridevi Enterprises' }}</p>
                 <h1>{{ product.product_name }}</h1>
+                {#
                 <p class="product-detail-meta">{{ product.Department }} · {{ product.category or 'Uncategorised' }}</p>
-                <p class="product-detail-price">₹{{ '{:,.2f}'.format(product.price or 0) }}</p>
+                #}
+                <!-- TODO: Correct UTF-8 encoding in legacy imported catalog data if source CSV is updated. -->
+                <p class="product-detail-meta">{{ product.Department }} &middot; {{ product.category or 'Uncategorised' }}</p>
+                <p class="catalog-product-pricing">Contact for Pricing</p>
                 <p class="product-detail-availability">{{ product.availability }}</p>
                 <dl class="product-facts">
                     <div><dt>Model</dt><dd>{{ product.model or 'Not specified' }}</dd></div>
-                    <div><dt>GST</dt><dd>{{ product.gst_percent or 0 }}%</dd></div>
                 </dl>
                 <!-- TODO: Connect this enquiry button to the enquiry module during Phase 4. -->
                 <a href="#" class="btn btn-primary btn-lg">Enquire Now</a>
@@ -67,7 +70,9 @@ Author  : Srikar
                         <div class="catalog-product-card-body">
                             <p class="catalog-product-brand">{{ related_product.brand or 'Sridevi Enterprises' }}</p>
                             <h3>{{ related_product.product_name }}</h3>
-                            <p class="catalog-product-price">₹{{ '{:,.2f}'.format(related_product.price or 0) }}</p>
+                            {#
+                            #}
+                            <p class="catalog-product-pricing">Available on Request</p>
                             <a href="{{ url_for('customer.product_details', product_id=related_product.id) }}" class="btn btn-outline-primary w-100">View Details</a>
                         </div>
                     </article>

@@ -8,13 +8,21 @@ Author  : Srikar
 =========================================================
 """
 
+from math import ceil
+
 from flask import Blueprint, abort, render_template, request
 from services.customer_service import (
     get_featured_products,
     get_home_departments,
     get_popular_brands,
 )
-from services.product_service import get_product, get_product_filters, get_products, get_related_products
+from services.product_service import (
+    get_product,
+    get_product_count,
+    get_product_filters,
+    get_products,
+    get_related_products,
+)
 
 customer_bp = Blueprint("customer", __name__)
 
@@ -42,14 +50,25 @@ def products():
         "brand": request.args.get("brand", ""),
         "availability": request.args.get("availability", ""),
         "sort": request.args.get("sort", "newest"),
-        "min_price": request.args.get("min_price", type=float),
-        "max_price": request.args.get("max_price", type=float),
     }
+    per_page = 24
+    total_products = get_product_count(filters)
+    total_pages = max(ceil(total_products / per_page), 1)
+    requested_page = request.args.get("page", 1, type=int) or 1
+    page = min(max(requested_page, 1), total_pages)
+    page_start = max(page - 2, 1)
+    page_end = min(page_start + 4, total_pages)
+    page_start = max(page_end - 4, 1)
+
     return render_template(
         "customer/products.html",
-        products=get_products(filters),
+        products=get_products(filters, page, per_page),
         filter_options=get_product_filters(),
         filters=filters,
+        page=page,
+        page_numbers=range(page_start, page_end + 1),
+        total_pages=total_pages,
+        total_products=total_products,
     )
 
 

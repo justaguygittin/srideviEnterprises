@@ -24,6 +24,7 @@ Author  : Srikar
         </header>
 
         <form method="get" class="product-search mb-4">
+            {% for name, value in filters.items() if name != 'search' %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
             <label for="search" class="visually-hidden">Search products</label>
             <div class="input-group">
                 <input id="search" class="form-control" type="search" name="search" value="{{ filters.search }}" placeholder="Search products, brands, departments, categories or models">
@@ -57,10 +58,6 @@ Author  : Srikar
                         <option value="in_stock" {% if filters.availability == 'in_stock' %}selected{% endif %}>In stock</option>
                         <option value="on_request" {% if filters.availability == 'on_request' %}selected{% endif %}>Available on request</option>
                     </select>
-                    <div class="row g-2">
-                        <div class="col-6"><label for="min_price">Min price</label><input id="min_price" class="form-control" type="number" name="min_price" min="0" value="{{ filters.min_price or '' }}"></div>
-                        <div class="col-6"><label for="max_price">Max price</label><input id="max_price" class="form-control" type="number" name="max_price" min="0" value="{{ filters.max_price or '' }}"></div>
-                    </div>
                     <input type="hidden" name="sort" value="{{ filters.sort }}">
                     <button class="btn btn-primary w-100 mt-4" type="submit">Apply Filters</button>
                     <a href="{{ url_for('customer.products') }}" class="btn btn-link w-100">Clear filters</a>
@@ -69,15 +66,13 @@ Author  : Srikar
 
             <div class="col-lg-9">
                 <div class="product-list-toolbar">
-                    <p class="mb-0">{{ products|length }} product{{ '' if products|length == 1 else 's' }} found</p>
+                    <p class="mb-0">{{ total_products }} product{{ '' if total_products == 1 else 's' }} found</p>
                     <form method="get">
-                        {% for name, value in filters.items() if name != 'sort' and value is not none %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+                        {% for name, value in filters.items() if name != 'sort' %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
                         <label for="sort" class="visually-hidden">Sort products</label>
                         <select id="sort" class="form-select" name="sort" onchange="this.form.submit()">
                             <option value="newest" {% if filters.sort == 'newest' %}selected{% endif %}>Newest</option>
                             <option value="name" {% if filters.sort == 'name' %}selected{% endif %}>A-Z</option>
-                            <option value="price_low" {% if filters.sort == 'price_low' %}selected{% endif %}>Price: Low to High</option>
-                            <option value="price_high" {% if filters.sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
                             <option value="brand" {% if filters.sort == 'brand' %}selected{% endif %}>Brand</option>
                         </select>
                     </form>
@@ -92,8 +87,12 @@ Author  : Srikar
                             <div class="catalog-product-card-body">
                                 <p class="catalog-product-brand">{{ product.brand or 'Sridevi Enterprises' }}</p>
                                 <h2>{{ product.product_name }}</h2>
+                                {#
                                 <p class="catalog-product-meta">{{ product.Department }} · {{ product.category or 'Uncategorised' }}</p>
-                                <p class="catalog-product-price">₹{{ '{:,.2f}'.format(product.price or 0) }}</p>
+                                #}
+                                <!-- TODO: Correct UTF-8 encoding in legacy imported catalog data if source CSV is updated. -->
+                                <p class="catalog-product-meta">{{ product.Department }} &middot; {{ product.category or 'Uncategorised' }}</p>
+                                <p class="catalog-product-pricing">Contact for Pricing</p>
                                 <p class="catalog-product-availability">{{ product.availability }}</p>
                                 <a href="{{ url_for('customer.product_details', product_id=product.id) }}" class="btn btn-primary w-100">View Details</a>
                             </div>
@@ -103,6 +102,24 @@ Author  : Srikar
                     <div class="col-12"><p class="empty-state">No products match your current search or filters.</p></div>
                     {% endfor %}
                 </div>
+
+                {% if total_pages > 1 %}
+                <nav class="product-pagination" aria-label="Product catalogue pages">
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('customer.products', page=page - 1, **filters) }}" aria-label="Previous page">&laquo; Previous</a>
+                        </li>
+                        {% for page_number in page_numbers %}
+                        <li class="page-item {% if page_number == page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('customer.products', page=page_number, **filters) }}">{{ page_number }}</a>
+                        </li>
+                        {% endfor %}
+                        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('customer.products', page=page + 1, **filters) }}" aria-label="Next page">Next &raquo;</a>
+                        </li>
+                    </ul>
+                </nav>
+                {% endif %}
             </div>
         </div>
     </div>

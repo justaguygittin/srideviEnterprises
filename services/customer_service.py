@@ -47,7 +47,6 @@ def get_featured_products():
             id,
             product_name,
             NULLIF(TRIM(brand), '') AS brand,
-            COALESCE(offer_price, base_price) AS price,
             CASE
                 WHEN stock_quantity > 0 THEN 'In stock'
                 ELSE 'Available on request'

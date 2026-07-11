@@ -8,9 +8,10 @@ The project allows customers to browse products, search inventory, compare produ
 
 ---
 
-# Current Status
 
-**Version:** v0.2.0
+#Current Version
+
+v0.3.0
 
 ## Completed
 

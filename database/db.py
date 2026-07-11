@@ -23,6 +23,8 @@ def get_connection():
         user=Config.DB_USER,
         password=Config.DB_PASSWORD,
         database=Config.DB_NAME,
+        charset="utf8mb4",
+        collation="utf8mb4_unicode_ci",
     )
 
 
