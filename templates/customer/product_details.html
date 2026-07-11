@@ -42,8 +42,7 @@ Author  : Srikar
                 <dl class="product-facts">
                     <div><dt>Model</dt><dd>{{ product.model or 'Not specified' }}</dd></div>
                 </dl>
-                <!-- TODO: Connect this enquiry button to the enquiry module during Phase 4. -->
-                <a href="#" class="btn btn-primary btn-lg">Enquire Now</a>
+                <a href="{{ url_for('customer.product_enquiry', product_id=product.id) }}" class="btn btn-primary btn-lg">Send Enquiry</a>
             </div>
         </div>
 

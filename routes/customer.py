@@ -16,6 +16,7 @@ from services.customer_service import (
     get_home_departments,
     get_popular_brands,
 )
+from services.enquiry_service import create_enquiry, get_enquiry_product, validate_enquiry
 from services.product_service import (
     get_product,
     get_product_count,
@@ -87,6 +88,37 @@ def product_details(product_id):
     )
 
 
+@customer_bp.route("/products/<int:product_id>/enquiry", methods=["GET", "POST"])
+def product_enquiry(product_id):
+    """Display and submit a customer enquiry for a catalog product."""
+
+    product = get_enquiry_product(product_id)
+    if product is None:
+        return render_template(
+            "customer/enquiry_form.html",
+            product=None,
+            form_data={},
+            errors={"form": "This product is no longer available."},
+        ), 404
+
+    form_data = {}
+    errors = {}
+    if request.method == "POST":
+        form_data, errors = validate_enquiry(request.form)
+        if not errors:
+            saved, failure_message = create_enquiry(product_id, form_data)
+            if saved:
+                return render_template("customer/enquiry_success.html", product=product)
+            errors["form"] = failure_message
+
+    return render_template(
+        "customer/enquiry_form.html",
+        product=product,
+        form_data=form_data,
+        errors=errors,
+    )
+
+
 @customer_bp.route("/categories")
 def categories():
     return "<h2>Categories - Coming Soon</h2>"
@@ -97,6 +129,22 @@ def compare():
     return "<h2>Compare - Coming Soon</h2>"
 
 
-@customer_bp.route("/contact")
+@customer_bp.route("/contact", methods=["GET", "POST"])
 def contact():
-    return "<h2>Contact - Coming Soon</h2>"
+    """Display and submit general customer enquiries."""
+
+    form_data = {}
+    errors = {}
+    if request.method == "POST":
+        form_data, errors = validate_enquiry(request.form, require_subject=True)
+        if not errors:
+            saved, failure_message = create_enquiry(None, form_data)
+            if saved:
+                return render_template("customer/enquiry_success.html", product=None)
+            errors["form"] = failure_message
+
+    return render_template(
+        "customer/contact.html",
+        form_data=form_data,
+        errors=errors,
+    )

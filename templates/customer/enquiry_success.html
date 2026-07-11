@@ -1,0 +1,34 @@
+<!--
+==========================================================
+Project : Sridevi Enterprises
+File    : enquiry_success.html
+Purpose : Customer enquiry submission confirmation.
+
+Author  : Srikar
+==========================================================
+-->
+{% extends "layout/base.html" %}
+
+{% block title %}Enquiry Submitted{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="product-details-page py-5">
+    <div class="container">
+        <div class="enquiry-form-wrapper enquiry-success text-center">
+            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+            <h1>Thank You</h1>
+            <p>Your enquiry has been submitted successfully.</p>
+            <p>Our team will contact you shortly.</p>
+            <!-- TODO: Implement enquiry history for returning customers. -->
+            <div class="d-flex justify-content-center gap-3 flex-wrap mt-4">
+                <a href="{{ url_for('customer.products') }}" class="btn btn-primary">Return to Products</a>
+                <a href="{{ url_for('customer.products') }}" class="btn btn-outline-primary">Continue Browsing</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

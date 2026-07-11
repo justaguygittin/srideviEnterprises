@@ -1,0 +1,66 @@
+<!--
+==========================================================
+Project : Sridevi Enterprises
+File    : enquiry_form.html
+Purpose : Customer product enquiry form.
+
+Author  : Srikar
+==========================================================
+-->
+{% extends "layout/base.html" %}
+
+{% block title %}Send Enquiry{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="product-details-page py-5">
+    <div class="container">
+        {% if product %}
+        <div class="enquiry-form-wrapper">
+            <a href="{{ url_for('customer.product_details', product_id=product.id) }}" class="back-link"><i class="fa-solid fa-arrow-left me-2"></i>Back to Product</a>
+            <h1>Send Enquiry</h1>
+            <p>Enquiring about <strong>{{ product.product_name }}</strong>{% if product.brand %} by {{ product.brand }}{% endif %}.</p>
+            <p class="catalog-product-pricing">Contact for Pricing</p>
+
+            {% if errors.form %}<div class="alert alert-danger" role="alert">{{ errors.form }}</div>{% endif %}
+
+            <form method="post" novalidate>
+                <input type="hidden" name="product_id" value="{{ product.id }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="customer_name" class="form-label">Customer Name</label>
+                        <input id="customer_name" name="customer_name" class="form-control {% if errors.customer_name %}is-invalid{% endif %}" value="{{ form_data.customer_name or '' }}" autocomplete="name" required>
+                        {% if errors.customer_name %}<div class="invalid-feedback">{{ errors.customer_name }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="phone" class="form-label">Phone Number</label>
+                        <input id="phone" name="phone" class="form-control {% if errors.phone %}is-invalid{% endif %}" value="{{ form_data.phone or '' }}" inputmode="numeric" autocomplete="tel" required>
+                        {% if errors.phone %}<div class="invalid-feedback">{{ errors.phone }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <label for="email" class="form-label">Email Address</label>
+                        <input id="email" name="email" type="email" class="form-control {% if errors.email %}is-invalid{% endif %}" value="{{ form_data.email or '' }}" autocomplete="email" required>
+                        {% if errors.email %}<div class="invalid-feedback">{{ errors.email }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <label for="message" class="form-label">Message</label>
+                        <textarea id="message" name="message" rows="5" class="form-control {% if errors.message %}is-invalid{% endif %}" required>{{ form_data.message or '' }}</textarea>
+                        {% if errors.message %}<div class="invalid-feedback">{{ errors.message }}</div>{% endif %}
+                    </div>
+                </div>
+                <button class="btn btn-primary mt-4" type="submit">Submit Enquiry</button>
+            </form>
+        </div>
+        {% else %}
+        <div class="enquiry-form-wrapper text-center">
+            <h1>Product Unavailable</h1>
+            <p>{{ errors.form }}</p>
+            <a href="{{ url_for('customer.products') }}" class="btn btn-primary">Return to Products</a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

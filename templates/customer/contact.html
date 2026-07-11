@@ -1,0 +1,117 @@
+<!--
+==========================================================
+Project : Sridevi Enterprises
+File    : contact.html
+Purpose : Business contact information and general enquiry form.
+
+Author  : Srikar
+==========================================================
+-->
+{% extends "layout/base.html" %}
+
+{% block title %}Contact Us{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="contact-page py-5">
+    <div class="container">
+        <header class="contact-hero text-center">
+            <h1>Contact Sridevi Enterprises</h1>
+            <p>We're here to help you with furniture, electronics, office supplies and government procurement.</p>
+        </header>
+
+        <div class="row g-4 contact-main-content">
+            <section class="col-lg-5" aria-labelledby="business-information-title">
+                <div class="contact-information-card h-100">
+                    <h2 id="business-information-title">Business Information</h2>
+                    <!-- TODO: Replace placeholder address, phone, email, hours, and website details. -->
+                    <address>
+                        <strong>Showroom Address</strong>
+                        <span>123 Business Road, Your City, India</span>
+                    </address>
+                    <p><strong>Phone</strong><a href="tel:+919876543210">+91 98765 43210</a></p>
+                    <p><strong>Email</strong><a href="mailto:info@sridevienterprises.example">info@sridevienterprises.example</a></p>
+                    <p><strong>Business Hours</strong><span>Monday–Saturday, 9:00 AM–6:00 PM</span></p>
+                    <p><strong>Website</strong><a href="{{ url_for('customer.home') }}">www.sridevienterprises.example</a></p>
+                </div>
+            </section>
+
+            <section class="col-lg-7" aria-labelledby="general-enquiry-title">
+                <div class="contact-form-card">
+                    <h2 id="general-enquiry-title">Send a General Enquiry</h2>
+                    <p class="catalog-product-pricing">Contact for Pricing</p>
+                    {% if errors.form %}<div class="alert alert-danger" role="alert">{{ errors.form }}</div>{% endif %}
+                    <form method="post" novalidate>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="customer_name" class="form-label">Name</label>
+                                <input id="customer_name" name="customer_name" class="form-control {% if errors.customer_name %}is-invalid{% endif %}" value="{{ form_data.customer_name or '' }}" autocomplete="name" required>
+                                {% if errors.customer_name %}<div class="invalid-feedback">{{ errors.customer_name }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="phone" class="form-label">Phone</label>
+                                <input id="phone" name="phone" class="form-control {% if errors.phone %}is-invalid{% endif %}" value="{{ form_data.phone or '' }}" inputmode="numeric" autocomplete="tel" required>
+                                {% if errors.phone %}<div class="invalid-feedback">{{ errors.phone }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">Email</label>
+                                <input id="email" name="email" type="email" class="form-control {% if errors.email %}is-invalid{% endif %}" value="{{ form_data.email or '' }}" autocomplete="email" required>
+                                {% if errors.email %}<div class="invalid-feedback">{{ errors.email }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="subject" class="form-label">Subject</label>
+                                <input id="subject" name="subject" class="form-control {% if errors.subject %}is-invalid{% endif %}" value="{{ form_data.subject or '' }}" required>
+                                {% if errors.subject %}<div class="invalid-feedback">{{ errors.subject }}</div>{% endif %}
+                            </div>
+                            <div class="col-12">
+                                <label for="message" class="form-label">Message</label>
+                                <textarea id="message" name="message" rows="5" class="form-control {% if errors.message %}is-invalid{% endif %}" required>{{ form_data.message or '' }}</textarea>
+                                {% if errors.message %}<div class="invalid-feedback">{{ errors.message }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <button class="btn btn-primary mt-4" type="submit">Submit Enquiry</button>
+                    </form>
+                </div>
+            </section>
+        </div>
+
+        <section class="contact-map-section" aria-labelledby="map-title">
+            <h2 id="map-title">Find Our Showroom</h2>
+            <!-- TODO: Replace placeholder map with Google Maps in a future phase. -->
+            <div class="contact-map-placeholder" role="img" aria-label="Showroom location map placeholder">
+                <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                <span>Showroom location map coming soon</span>
+            </div>
+        </section>
+
+        <section class="contact-faq-section" aria-labelledby="faq-title">
+            <h2 id="faq-title">Frequently Asked Questions</h2>
+            <!-- TODO: Replace FAQ answers with approved business responses. -->
+            <div class="accordion" id="contact-faqs">
+                {% set faqs = [
+                    ('Do you sell directly?', 'Yes. Please contact us to discuss your requirements and availability.'),
+                    ('Can I request quotations?', 'Yes. Send us your requirement and our team will assist with a quotation.'),
+                    ('Do you support GeM procurement?', 'We can assist with government procurement requirements. Please share the relevant details.'),
+                    ('Can I order in bulk?', 'Yes. Contact us with the products and quantities you need.'),
+                    ('Can I visit the showroom?', 'Yes. Please contact us before visiting so our team can assist you.')
+                ] %}
+                {% for question, answer in faqs %}
+                <div class="accordion-item">
+                    <h3 class="accordion-header" id="faq-heading-{{ loop.index }}">
+                        <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#faq-answer-{{ loop.index }}" aria-expanded="{{ 'true' if loop.first else 'false' }}" aria-controls="faq-answer-{{ loop.index }}">
+                            {{ question }}
+                        </button>
+                    </h3>
+                    <div id="faq-answer-{{ loop.index }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}" aria-labelledby="faq-heading-{{ loop.index }}" data-bs-parent="#contact-faqs">
+                        <div class="accordion-body">{{ answer }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</section>
+{% endblock %}

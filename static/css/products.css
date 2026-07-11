@@ -177,6 +177,115 @@ Author  : Srikar
 }
 
 /* ===========================================
+   Customer Enquiry
+=========================================== */
+
+.enquiry-form-wrapper {
+
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 36px;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+
+}
+
+.enquiry-form-wrapper h1 {
+
+    margin-top: 24px;
+
+}
+
+.enquiry-success > i {
+
+    color: #198754;
+    font-size: 3.5rem;
+
+}
+
+/* ===========================================
+   Contact Page
+=========================================== */
+
+.contact-page {
+
+    background: #F5F7FA;
+
+}
+
+.contact-hero,
+.contact-main-content,
+.contact-map-section,
+.contact-faq-section {
+
+    margin-bottom: 48px;
+
+}
+
+.contact-hero h1,
+.contact-page h2 {
+
+    color: #1E4FA3;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+
+}
+
+.contact-information-card,
+.contact-form-card {
+
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+    padding: 32px;
+
+}
+
+.contact-information-card address,
+.contact-information-card p {
+
+    display: grid;
+    gap: 4px;
+    margin: 0 0 20px;
+
+}
+
+.contact-information-card a {
+
+    color: #1E4FA3;
+    overflow-wrap: anywhere;
+
+}
+
+.contact-map-placeholder {
+
+    align-items: center;
+    background: linear-gradient(135deg, #1E4FA3, #0F2E6E);
+    border-radius: 14px;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    font-size: 1.1rem;
+    gap: 12px;
+    justify-content: center;
+    min-height: 320px;
+
+}
+
+.contact-map-placeholder i {
+
+    font-size: 2.5rem;
+
+}
+
+.contact-faq-section .accordion-item {
+
+    border-color: #D0D5DD;
+
+}
+
+/* ===========================================
    Product Details
 =========================================== */
 
@@ -280,6 +389,19 @@ Author  : Srikar
     .filter-panel {
 
         position: static;
+
+    }
+
+    .enquiry-form-wrapper {
+
+        padding: 24px;
+
+    }
+
+    .contact-information-card,
+    .contact-form-card {
+
+        padding: 24px;
 
     }
 
