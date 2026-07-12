@@ -1,11 +1,14 @@
 from flask import Flask
 
+from config import Config
 from routes.customer import customer_bp
 from routes.employee import employee_bp
 from routes.admin import admin_bp
 from routes.api import api_bp
 
 app = Flask(__name__)
+
+app.secret_key = Config.SECRET_KEY
 
 app.register_blueprint(customer_bp)
 app.register_blueprint(employee_bp)
