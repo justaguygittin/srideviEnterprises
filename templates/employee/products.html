@@ -1,0 +1,551 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : products.html
+Purpose : Employee products management (read-only).
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+Products - Employee Portal - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<style>
+    .products-container {
+        min-height: calc(100vh - 120px);
+        background-color: #f8f9fa;
+        padding: 0;
+    }
+
+    .employee-nav {
+        background: white;
+        border-bottom: 2px solid #1E4FA3;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .employee-nav-list {
+        display: flex;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        gap: 0;
+    }
+
+    .employee-nav-item {
+        flex: 1;
+        text-align: center;
+    }
+
+    .employee-nav-link {
+        display: block;
+        padding: 1rem;
+        color: #333;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.95rem;
+        transition: background-color 0.2s, color 0.2s;
+        border-bottom: 3px solid transparent;
+    }
+
+    .employee-nav-link:hover {
+        background-color: #f0f5ff;
+        color: #1E4FA3;
+    }
+
+    .employee-nav-link.active {
+        background-color: #f0f5ff;
+        color: #1E4FA3;
+        border-bottom-color: #1E4FA3;
+    }
+
+    .employee-nav-link.logout {
+        background-color: #fee;
+        color: #c33;
+    }
+
+    .employee-nav-link.logout:hover {
+        background-color: #fdd;
+        color: #a00;
+    }
+
+    .products-content {
+        padding: 2rem;
+    }
+
+    .products-header {
+        margin-bottom: 2rem;
+    }
+
+    .products-header h1 {
+        color: #333;
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .products-count {
+        color: #666;
+        font-size: 0.95rem;
+    }
+
+    .search-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .search-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .form-group {
+        margin-bottom: 0;
+    }
+
+    .form-group label {
+        display: block;
+        color: #333;
+        font-weight: 500;
+        margin-bottom: 0.4rem;
+        font-size: 0.9rem;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 0.6rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        border-color: #1E4FA3;
+        box-shadow: 0 0 0 0.2rem rgba(30, 79, 163, 0.25);
+        outline: none;
+    }
+
+    .search-buttons {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        margin-top: 1rem;
+    }
+
+    .search-btn {
+        background: #1E4FA3;
+        color: white;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .search-btn:hover {
+        background: #1565A0;
+    }
+
+    .reset-btn {
+        background: #ccc;
+        color: #333;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .reset-btn:hover {
+        background: #bbb;
+    }
+
+    .products-table-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        overflow-x: auto;
+    }
+
+    .products-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .products-table thead {
+        background: #f8f9fa;
+        border-bottom: 2px solid #1E4FA3;
+    }
+
+    .products-table th {
+        padding: 1rem;
+        text-align: left;
+        color: #333;
+        font-weight: 600;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+
+    .products-table tbody tr {
+        border-bottom: 1px solid #eee;
+        transition: background 0.2s;
+    }
+
+    .products-table tbody tr:hover {
+        background: #f0f5ff;
+    }
+
+    .products-table td {
+        padding: 1rem;
+        color: #333;
+        font-size: 0.9rem;
+    }
+
+    .product-id {
+        color: #1E4FA3;
+        font-weight: 500;
+    }
+
+    .availability-in-stock {
+        color: #28a745;
+        font-weight: 500;
+    }
+
+    .availability-on-request {
+        color: #ffc107;
+        font-weight: 500;
+    }
+
+    .empty-state {
+        background: white;
+        padding: 3rem;
+        border-radius: 8px;
+        text-align: center;
+        color: #666;
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        color: #ccc;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state p {
+        font-size: 1.1rem;
+        margin: 0;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 2rem;
+    }
+
+    .pagination a,
+    .pagination span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        height: 40px;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-decoration: none;
+        color: #333;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .pagination a:hover {
+        background: #1E4FA3;
+        color: white;
+        border-color: #1E4FA3;
+    }
+
+    .pagination .current {
+        background: #1E4FA3;
+        color: white;
+        border-color: #1E4FA3;
+        font-weight: 600;
+    }
+
+    .pagination .disabled {
+        color: #ccc;
+        cursor: not-allowed;
+    }
+
+    .pagination .disabled:hover {
+        background: white;
+        border-color: #ddd;
+    }
+
+    .products-footer {
+        margin-top: 2rem;
+        padding: 1rem;
+        background: white;
+        border-radius: 8px;
+        text-align: center;
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+        .products-content {
+            padding: 1rem;
+        }
+
+        .products-header h1 {
+            font-size: 1.3rem;
+        }
+
+        .search-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .search-buttons {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .search-btn,
+        .reset-btn {
+            width: 100%;
+        }
+
+        .employee-nav-list {
+            flex-direction: column;
+        }
+
+        .employee-nav-item {
+            text-align: left;
+        }
+
+        .employee-nav-link {
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .products-table {
+            font-size: 0.8rem;
+        }
+
+        .products-table th,
+        .products-table td {
+            padding: 0.6rem 0.4rem;
+        }
+
+        .empty-state {
+            padding: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="products-container">
+    <!-- Employee Navigation -->
+    <nav class="employee-nav">
+        <div class="container">
+            <ul class="employee-nav-list">
+                <li class="employee-nav-item">
+                    <a href="{{ url_for('employee.dashboard') }}"
+                        class="employee-nav-link {% if current_page == 'dashboard' %}active{% endif %}">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                </li>
+                <li class="employee-nav-item">
+                    <a href="{{ url_for('employee.products') }}"
+                        class="employee-nav-link {% if current_page == 'products' %}active{% endif %}">
+                        <i class="fas fa-box"></i> Products
+                    </a>
+                </li>
+                <li class="employee-nav-item">
+                    <a href="{{ url_for('employee.enquiries') }}"
+                        class="employee-nav-link {% if current_page == 'enquiries' %}active{% endif %}">
+                        <i class="fas fa-envelope"></i> Enquiries
+                    </a>
+                </li>
+                <li class="employee-nav-item">
+                    <a href="{{ url_for('employee.customers') }}"
+                        class="employee-nav-link {% if current_page == 'customers' %}active{% endif %}">
+                        <i class="fas fa-users"></i> Customers
+                    </a>
+                </li>
+                <li class="employee-nav-item">
+                    <a href="{{ url_for('employee.logout') }}" class="employee-nav-link logout">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Products Content -->
+    <div class="products-content">
+        <div class="container">
+            <!-- Header -->
+            <div class="products-header">
+                <h1>
+                    <i class="fas fa-box"></i> Products
+                </h1>
+                {% if search or department or category or brand %}
+                <p class="products-count">Found {{ total_products }} product{% if total_products != 1 %}s{% endif %}</p>
+                {% else %}
+                <p class="products-count">Total Products: {{ total_products }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Search Section -->
+            <div class="search-section">
+                <form method="GET" action="{{ url_for('employee.products') }}">
+                    <div class="search-grid">
+                        <div class="form-group">
+                            <label for="search">Search by Name/Brand</label>
+                            <input type="text" id="search" name="search" value="{{ search }}"
+                                placeholder="Product name or brand...">
+                        </div>
+                        <div class="form-group">
+                            <label for="department">Department</label>
+                            <input type="text" id="department" name="department" value="{{ department }}"
+                                placeholder="e.g., Furniture">
+                        </div>
+                        <div class="form-group">
+                            <label for="category">Category</label>
+                            <input type="text" id="category" name="category" value="{{ category }}"
+                                placeholder="e.g., Sofas">
+                        </div>
+                        <div class="form-group">
+                            <label for="brand">Brand</label>
+                            <input type="text" id="brand" name="brand" value="{{ brand }}"
+                                placeholder="e.g., Brand Name">
+                        </div>
+                    </div>
+                    <div class="search-buttons">
+                        <button type="submit" class="search-btn">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <a href="{{ url_for('employee.products') }}" class="reset-btn">
+                            <i class="fas fa-redo"></i> Reset
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Products Table or Empty State -->
+            {% if products %}
+            <div class="products-table-container">
+                <table class="products-table">
+                    <thead>
+                        <tr>
+                            <th>Product ID</th>
+                            <th>Product Name</th>
+                            <th>Brand</th>
+                            <th>Department</th>
+                            <th>Category</th>
+                            <th>Availability</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr>
+                            <td><span class="product-id">#{{ product.id }}</span></td>
+                            <td>{{ product.product_name }}</td>
+                            <td>{{ product.brand or '—' }}</td>
+                            <td>{{ product.Department or '—' }}</td>
+                            <td>{{ product.category or '—' }}</td>
+                            <td>
+                                {% if 'In stock' in product.availability %}
+                                <span class="availability-in-stock">
+                                    <i class="fas fa-check-circle"></i> In Stock
+                                </span>
+                                {% else %}
+                                <span class="availability-on-request">
+                                    <i class="fas fa-info-circle"></i> On Request
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <div class="pagination">
+                {% if page > 1 %}
+                <a
+                    href="{{ url_for('employee.products', page=1, search=search, department=department, category=category, brand=brand) }}">
+                    <i class="fas fa-chevron-left"></i> First
+                </a>
+                <a
+                    href="{{ url_for('employee.products', page=page-1, search=search, department=department, category=category, brand=brand) }}">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </a>
+                {% else %}
+                <span class="disabled"><i class="fas fa-chevron-left"></i> First</span>
+                <span class="disabled"><i class="fas fa-chevron-left"></i> Previous</span>
+                {% endif %}
+
+                {% for page_num in range(start_page, end_page + 1) %}
+                {% if page_num == page %}
+                <span class="current">{{ page_num }}</span>
+                {% else %}
+                <a
+                    href="{{ url_for('employee.products', page=page_num, search=search, department=department, category=category, brand=brand) }}">{{
+                    page_num }}</a>
+                {% endif %}
+                {% endfor %}
+
+                {% if page < total_pages %} <a
+                    href="{{ url_for('employee.products', page=page+1, search=search, department=department, category=category, brand=brand) }}">
+                    Next <i class="fas fa-chevron-right"></i>
+                    </a>
+                    <a
+                        href="{{ url_for('employee.products', page=total_pages, search=search, department=department, category=category, brand=brand) }}">
+                        Last <i class="fas fa-chevron-right"></i>
+                    </a>
+                    {% else %}
+                    <span class="disabled">Next <i class="fas fa-chevron-right"></i></span>
+                    <span class="disabled">Last <i class="fas fa-chevron-right"></i></span>
+                    {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Footer Info -->
+            <div class="products-footer">
+                Showing page {{ page }} of {{ total_pages }} ({{ products|length }} product{% if products|length != 1
+                %}s{% endif %} on this page)
+            </div>
+
+            {% else %}
+            <!-- Empty State -->
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <p>No matching products found.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

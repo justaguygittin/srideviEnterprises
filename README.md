@@ -250,7 +250,15 @@ Git Push
         ↓
 HostyCare Deployment
 ```
+Employee Portal
 
+- Employee Login
+- Session Authentication
+- Dashboard
+- Logout
+- Read-only Products Management
+- Search
+- Pagination
 ---
 
 # Author

@@ -64,3 +64,26 @@ All notable changes to this project will be documented here.
 - Product layout inconsistencies
 
 
+# v0.6.1
+
+## Employee Products Module
+
+Completed
+
+- Employee Products page
+- Read-only product listing
+- Product search
+- Department search
+- Category search
+- Brand search
+- Pagination
+- Route protection
+- Session validation
+- No financial information displayed
+- Responsive employee table
+
+Hotfixes
+
+- Fixed Jinja2 pagination error by moving page calculations to Python.
+- Fixed logout/session protection behavior.
+- Fixed unread MySQL result issue in database helper.
