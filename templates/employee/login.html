@@ -1,0 +1,122 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : login.html
+Purpose : Employee login page.
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+Employee Login - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<style>
+    .login-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 120px);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .login-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 2.5rem;
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .login-card h2 {
+        color: #333;
+        margin-bottom: 1.5rem;
+        text-align: center;
+        font-weight: 600;
+    }
+
+    .login-card .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .login-card .form-label {
+        color: #555;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    .login-card .form-control {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 0.75rem;
+    }
+
+    .login-card .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .login-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        font-weight: 600;
+        padding: 0.75rem;
+        width: 100%;
+        border-radius: 4px;
+        margin-top: 1rem;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .login-btn:hover {
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    .alert-danger {
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <h2>Employee Login</h2>
+
+        {% if success_message %}
+        <div class="alert alert-success" role="alert">
+            {{ success_message }}
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="alert alert-danger" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('employee.login') }}" novalidate>
+            <div class="form-group">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control" id="username" name="username" required autofocus
+                    placeholder="Enter your username">
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="password" name="password" required
+                    placeholder="Enter your password">
+            </div>
+
+            <button type="submit" class="login-btn">Login</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
