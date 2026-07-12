@@ -1,0 +1,170 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : dashboard.html
+Purpose : Employee dashboard page.
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+Dashboard - Employee Portal - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<style>
+    .dashboard-container {
+        min-height: calc(100vh - 120px);
+        background-color: #f8f9fa;
+        padding: 2rem 0;
+    }
+
+    .dashboard-header {
+        background: linear-gradient(135deg, #1E4FA3 0%, #1565A0 100%);
+        color: white;
+        padding: 2.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .dashboard-header h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .dashboard-header p {
+        font-size: 1.1rem;
+        margin: 0;
+        opacity: 0.95;
+    }
+
+    .role-badge {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .dashboard-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .dashboard-card {
+        background: white;
+        border-radius: 8px;
+        padding: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .dashboard-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .dashboard-card-icon {
+        font-size: 3rem;
+        color: #1E4FA3;
+        margin-bottom: 1rem;
+    }
+
+    .dashboard-card h3 {
+        color: #333;
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .dashboard-card p {
+        color: #666;
+        font-size: 0.95rem;
+        margin: 0;
+    }
+
+    .coming-soon {
+        display: inline-block;
+        background: #f0f0f0;
+        color: #999;
+        padding: 0.6rem 1.2rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        margin-top: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-header {
+            padding: 1.5rem;
+        }
+
+        .dashboard-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .dashboard-cards {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="container">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <h1>Welcome, {{ username }}!</h1>
+            <p>Employee Portal</p>
+            <div class="role-badge">
+                <i class="fas fa-id-card"></i> {{ role }}
+            </div>
+        </div>
+
+        <!-- Dashboard Cards -->
+        <div class="dashboard-cards">
+            <!-- Products Card -->
+            <div class="dashboard-card">
+                <div class="dashboard-card-icon">
+                    <i class="fas fa-box"></i>
+                </div>
+                <h3>Products</h3>
+                <p>Manage product inventory and details.</p>
+                <div class="coming-soon">Coming in next phase</div>
+            </div>
+
+            <!-- Enquiries Card -->
+            <div class="dashboard-card">
+                <div class="dashboard-card-icon">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <h3>Enquiries</h3>
+                <p>Track and respond to customer enquiries.</p>
+                <div class="coming-soon">Coming in next phase</div>
+            </div>
+
+            <!-- Customers Card -->
+            <div class="dashboard-card">
+                <div class="dashboard-card-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>Customers</h3>
+                <p>View and manage customer information.</p>
+                <div class="coming-soon">Coming in next phase</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

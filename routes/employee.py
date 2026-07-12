@@ -8,7 +8,7 @@ Author  : Srikar
 =========================================================
 """
 
-from flask import Blueprint, render_template, request, session
+from flask import Blueprint, render_template, request, session, redirect, url_for
 from services.auth_service import authenticate_employee
 
 employee_bp = Blueprint("employee", __name__)
@@ -34,11 +34,23 @@ def login():
                 session["Username"] = user["Username"]
                 session["Role"] = user["Role"]
                 
-                return render_template(
-                    "employee/login.html",
-                    success_message=f"Login successful! Welcome, {user['Username']}.",
-                )
+                return redirect(url_for("employee.dashboard"))
             else:
                 error = "Invalid username or password."
     
     return render_template("employee/login.html", error=error)
+
+
+@employee_bp.route("/employee/dashboard", methods=["GET"])
+def dashboard():
+    """Display employee dashboard."""
+    
+    username = session.get("Username")
+    role = session.get("Role")
+    
+    return render_template(
+        "employee/dashboard.html",
+        username=username,
+        role=role,
+    )
+

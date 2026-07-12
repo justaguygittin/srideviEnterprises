@@ -10,6 +10,7 @@ Author  : Srikar
 
 import mysql.connector
 from config import Config
+from typing import Any, cast
 
 
 def get_connection():
@@ -38,7 +39,7 @@ def fetch_all(query, params=None):
 
     cursor.execute(query, params or ())
 
-    rows = cursor.fetchall()
+    rows = cast(dict[str, Any] | None, cursor.fetchone())
 
     cursor.close()
     conn.close()
@@ -46,7 +47,7 @@ def fetch_all(query, params=None):
     return rows
 
 
-def fetch_one(query, params=None):
+def fetch_one(query: str, params=None) -> dict[str, Any] | None:
     """
     Execute a SELECT query and return one row.
     """
@@ -56,7 +57,7 @@ def fetch_one(query, params=None):
 
     cursor.execute(query, params or ())
 
-    row = cursor.fetchone()
+    row = cast(dict[str, Any] | None, cursor.fetchone())
 
     cursor.close()
     conn.close()

@@ -12,9 +12,13 @@ Author  : Srikar
 """
 
 from database.db import fetch_one
+from typing import Any
 
 
-def authenticate_employee(username, password):
+def authenticate_employee(
+    username: str,
+    password: str,
+) -> dict[str, Any] | None:
     """
     Authenticate an employee by username and plaintext password.
 
