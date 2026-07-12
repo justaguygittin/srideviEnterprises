@@ -29,7 +29,7 @@ def get_connection():
     )
 
 
-def fetch_all(query, params=None):
+def fetch_all(query: str, params=None) -> list[dict[str, Any]]:
     """
     Execute a SELECT query and return all rows.
     """
@@ -39,7 +39,7 @@ def fetch_all(query, params=None):
 
     cursor.execute(query, params or ())
 
-    rows = cast(dict[str, Any] | None, cursor.fetchone())
+    rows = cast(list[dict[str, Any]], cursor.fetchall())
 
     cursor.close()
     conn.close()

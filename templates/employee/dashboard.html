@@ -19,26 +19,84 @@ Dashboard - Employee Portal - Sridevi Enterprises
     .dashboard-container {
         min-height: calc(100vh - 120px);
         background-color: #f8f9fa;
-        padding: 2rem 0;
+        padding: 0;
+    }
+
+    .employee-nav {
+        background: white;
+        border-bottom: 2px solid #1E4FA3;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .employee-nav-list {
+        display: flex;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        gap: 0;
+    }
+
+    .employee-nav-item {
+        flex: 1;
+        text-align: center;
+    }
+
+    .employee-nav-link {
+        display: block;
+        padding: 1rem;
+        color: #333;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.95rem;
+        transition: background-color 0.2s, color 0.2s;
+        border-bottom: 3px solid transparent;
+    }
+
+    .employee-nav-link:hover {
+        background-color: #f0f5ff;
+        color: #1E4FA3;
+    }
+
+    .employee-nav-link.active {
+        background-color: #f0f5ff;
+        color: #1E4FA3;
+        border-bottom-color: #1E4FA3;
+    }
+
+    .employee-nav-link.logout {
+        background-color: #fee;
+        color: #c33;
+    }
+
+    .employee-nav-link.logout:hover {
+        background-color: #fdd;
+        color: #a00;
+    }
+
+    .dashboard-content {
+        padding: 2rem;
     }
 
     .dashboard-header {
         background: linear-gradient(135deg, #1E4FA3 0%, #1565A0 100%);
         color: white;
-        padding: 2.5rem;
+        padding: 1.2rem;
         border-radius: 8px;
         margin-bottom: 2rem;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .dashboard-header h1 {
-        font-size: 2rem;
+        font-size: 1.3rem;
         font-weight: 600;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.3rem;
     }
 
     .dashboard-header p {
-        font-size: 1.1rem;
+        font-size: 0.9rem;
         margin: 0;
         opacity: 0.95;
     }
@@ -46,10 +104,10 @@ Dashboard - Employee Portal - Sridevi Enterprises
     .role-badge {
         display: inline-block;
         background: rgba(255, 255, 255, 0.2);
-        padding: 0.4rem 0.8rem;
+        padding: 0.3rem 0.6rem;
         border-radius: 4px;
-        margin-top: 0.5rem;
-        font-size: 0.9rem;
+        margin-top: 0.4rem;
+        font-size: 0.8rem;
         font-weight: 500;
     }
 
@@ -67,6 +125,10 @@ Dashboard - Employee Portal - Sridevi Enterprises
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         text-align: center;
         transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+        display: block;
     }
 
     .dashboard-card:hover {
@@ -104,13 +166,42 @@ Dashboard - Employee Portal - Sridevi Enterprises
         margin-top: 1rem;
     }
 
+    .coming-soon-message {
+        background: #e3f2fd;
+        border: 1px solid #90caf9;
+        color: #1565c0;
+        padding: 1.5rem;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin-bottom: 2rem;
+    }
+
     @media (max-width: 768px) {
+        .employee-nav-list {
+            flex-direction: column;
+        }
+
+        .employee-nav-item {
+            text-align: left;
+        }
+
+        .employee-nav-link {
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+        }
+
         .dashboard-header {
-            padding: 1.5rem;
+            padding: 1rem;
         }
 
         .dashboard-header h1 {
-            font-size: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        .dashboard-content {
+            padding: 1rem;
         }
 
         .dashboard-cards {
@@ -123,48 +214,92 @@ Dashboard - Employee Portal - Sridevi Enterprises
 
 {% block content %}
 <div class="dashboard-container">
-    <div class="container">
-        <!-- Header -->
-        <div class="dashboard-header">
-            <h1>Welcome, {{ username }}!</h1>
-            <p>Employee Portal</p>
-            <div class="role-badge">
-                <i class="fas fa-id-card"></i> {{ role }}
-            </div>
+    <!-- Employee Navigation -->
+    <nav class="employee-nav">
+        <div class="container">
+            <ul class="employee-nav-list">
+                <li class="employee-nav-item">
+                    <a href="{{ url_for('employee.dashboard') }}" class="employee-nav-link {% if current_page == 'dashboard' %}active{% endif %}">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                </li>
+                <li class="employee-nav-item">
+                    <a href="{{ url_for('employee.products') }}" class="employee-nav-link {% if current_page == 'products' %}active{% endif %}">
+                        <i class="fas fa-box"></i> Products
+                    </a>
+                </li>
+                <li class="employee-nav-item">
+                    <a href="{{ url_for('employee.enquiries') }}" class="employee-nav-link {% if current_page == 'enquiries' %}active{% endif %}">
+                        <i class="fas fa-envelope"></i> Enquiries
+                    </a>
+                </li>
+                <li class="employee-nav-item">
+                    <a href="{{ url_for('employee.customers') }}" class="employee-nav-link {% if current_page == 'customers' %}active{% endif %}">
+                        <i class="fas fa-users"></i> Customers
+                    </a>
+                </li>
+                <li class="employee-nav-item">
+                    <a href="#" class="employee-nav-link logout" title="Logout functionality coming soon">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </li>
+            </ul>
         </div>
+    </nav>
 
-        <!-- Dashboard Cards -->
-        <div class="dashboard-cards">
-            <!-- Products Card -->
-            <div class="dashboard-card">
-                <div class="dashboard-card-icon">
-                    <i class="fas fa-box"></i>
+    <!-- Dashboard Content -->
+    <div class="dashboard-content">
+        <div class="container">
+            {% if coming_soon_message %}
+            <!-- Coming Soon Message -->
+            <div class="coming-soon-message">
+                <i class="fas fa-info-circle"></i> {{ coming_soon_message }}
+            </div>
+            {% else %}
+            <!-- Header -->
+            <div class="dashboard-header">
+                <h1>Welcome, {{ username }}!</h1>
+                <p>Employee Portal</p>
+                <div class="role-badge">
+                    <i class="fas fa-id-card"></i> {{ role }}
                 </div>
-                <h3>Products</h3>
-                <p>Manage product inventory and details.</p>
-                <div class="coming-soon">Coming in next phase</div>
             </div>
 
-            <!-- Enquiries Card -->
-            <div class="dashboard-card">
-                <div class="dashboard-card-icon">
-                    <i class="fas fa-envelope"></i>
-                </div>
-                <h3>Enquiries</h3>
-                <p>Track and respond to customer enquiries.</p>
-                <div class="coming-soon">Coming in next phase</div>
-            </div>
+            <!-- Dashboard Cards -->
+            <div class="dashboard-cards">
+                <!-- Products Card -->
+                <a href="{{ url_for('employee.products') }}" class="dashboard-card">
+                    <div class="dashboard-card-icon">
+                        <i class="fas fa-box"></i>
+                    </div>
+                    <h3>Products</h3>
+                    <p>Manage product inventory and details.</p>
+                    <div class="coming-soon">Coming in next phase</div>
+                </a>
 
-            <!-- Customers Card -->
-            <div class="dashboard-card">
-                <div class="dashboard-card-icon">
-                    <i class="fas fa-users"></i>
-                </div>
-                <h3>Customers</h3>
-                <p>View and manage customer information.</p>
-                <div class="coming-soon">Coming in next phase</div>
+                <!-- Enquiries Card -->
+                <a href="{{ url_for('employee.enquiries') }}" class="dashboard-card">
+                    <div class="dashboard-card-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <h3>Enquiries</h3>
+                    <p>Track and respond to customer enquiries.</p>
+                    <div class="coming-soon">Coming in next phase</div>
+                </a>
+
+                <!-- Customers Card -->
+                <a href="{{ url_for('employee.customers') }}" class="dashboard-card">
+                    <div class="dashboard-card-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Customers</h3>
+                    <p>View and manage customer information.</p>
+                    <div class="coming-soon">Coming in next phase</div>
+                </a>
             </div>
+            {% endif %}
         </div>
     </div>
 </div>
 {% endblock %}
+

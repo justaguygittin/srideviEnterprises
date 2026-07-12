@@ -45,6 +45,9 @@ def login():
 def dashboard():
     """Display employee dashboard."""
     
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+    
     username = session.get("Username")
     role = session.get("Role")
     
@@ -52,5 +55,64 @@ def dashboard():
         "employee/dashboard.html",
         username=username,
         role=role,
+        current_page="dashboard",
     )
+
+
+@employee_bp.route("/employee/products", methods=["GET"])
+def products():
+    """Placeholder products route."""
+    
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+    
+    username = session.get("Username")
+    role = session.get("Role")
+    
+    return render_template(
+        "employee/dashboard.html",
+        username=username,
+        role=role,
+        current_page="products",
+        coming_soon_message="Products module coming in next phase",
+    )
+
+
+@employee_bp.route("/employee/enquiries", methods=["GET"])
+def enquiries():
+    """Placeholder enquiries route."""
+    
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+    
+    username = session.get("Username")
+    role = session.get("Role")
+    
+    return render_template(
+        "employee/dashboard.html",
+        username=username,
+        role=role,
+        current_page="enquiries",
+        coming_soon_message="Enquiries module coming in next phase",
+    )
+
+
+@employee_bp.route("/employee/customers", methods=["GET"])
+def customers():
+    """Placeholder customers route."""
+    
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+    
+    username = session.get("Username")
+    role = session.get("Role")
+    
+    return render_template(
+        "employee/dashboard.html",
+        username=username,
+        role=role,
+        current_page="customers",
+        coming_soon_message="Customers module coming in next phase",
+    )
+
 
