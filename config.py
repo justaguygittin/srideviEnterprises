@@ -37,3 +37,6 @@ class Config:
     # validated in services/image_service.py.
     MAX_CONTENT_LENGTH = 100 * 1024 * 1024
 
+    # Debug mode must be explicitly enabled; defaults to False for safety.
+    DEBUG = os.getenv("FLASK_DEBUG", "False").strip().lower() == "true"
+

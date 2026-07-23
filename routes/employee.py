@@ -86,6 +86,9 @@ def dashboard():
     if not session.get("UserID"):
         return redirect(url_for("employee.login"))
 
+    if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
+        abort(403)
+
     username = session.get("Username")
     role = session.get("Role")
     designation = session.get("Designation")
@@ -105,6 +108,9 @@ def products():
 
     if not session.get("UserID"):
         return redirect(url_for("employee.login"))
+
+    if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
+        abort(403)
 
     username = session.get("Username")
     role = session.get("Role")
@@ -363,6 +369,9 @@ def enquiries():
     if not session.get("UserID"):
         return redirect(url_for("employee.login"))
 
+    if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
+        abort(403)
+
     username = session.get("Username")
     role = session.get("Role")
 
@@ -381,6 +390,9 @@ def customers():
 
     if not session.get("UserID"):
         return redirect(url_for("employee.login"))
+
+    if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
+        abort(403)
 
     username = session.get("Username")
     role = session.get("Role")

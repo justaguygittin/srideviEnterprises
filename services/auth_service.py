@@ -5,14 +5,12 @@ File    : auth_service.py
 Purpose : Authentication service for employee login.
 
 Author  : Srikar
-# TODO:
-# Replace plaintext comparison with password hashing
-# before production deployment.
 =========================================================
 """
 
 from database.db import fetch_one
 from typing import Any
+from werkzeug.security import check_password_hash
 
 
 def authenticate_employee(
@@ -20,11 +18,11 @@ def authenticate_employee(
     password: str,
 ) -> dict[str, Any] | None:
     """
-    Authenticate an employee by username and plaintext password.
+    Authenticate an employee by username and password against the stored hash.
 
     Args:
         username (str): Employee username
-        password (str): Employee plaintext password
+        password (str): Employee plaintext password, as submitted
 
     Returns:
         dict: User data (including job Designation, for display only) if
@@ -35,11 +33,15 @@ def authenticate_employee(
         return None
 
     query = """
-        SELECT Users.UserID, Users.Username, Users.Role, Employees.Designation
+        SELECT Users.UserID, Users.Username, Users.Password, Users.Role, Employees.Designation
         FROM Users
         LEFT JOIN Employees ON Employees.UserID = Users.UserID
-        WHERE Users.Username = %s AND Users.Password = %s
+        WHERE Users.Username = %s
     """
-    user = fetch_one(query, (username, password))
+    user = fetch_one(query, (username,))
 
+    if user is None or not check_password_hash(user["Password"], password):
+        return None
+
+    del user["Password"]
     return user

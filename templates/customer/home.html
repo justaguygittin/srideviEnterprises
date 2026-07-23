@@ -47,7 +47,7 @@ Home
                         <h3>{{ product.product_name }}</h3>
                         <p class="product-availability">Contact for Pricing</p>
                         <p class="product-availability">{{ product.availability }}</p>
-                        <a href="{{ url_for('customer.products', product_id=product.id) }}" class="btn btn-primary">View Details</a>
+                        <a href="{{ url_for('customer.product_details', product_id=product.id) }}" class="btn btn-primary">View Details</a>
                     </div>
                 </article>
             </div>
