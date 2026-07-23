@@ -9,6 +9,7 @@ from routes.api import api_bp
 app = Flask(__name__)
 
 app.secret_key = Config.SECRET_KEY
+app.config["MAX_CONTENT_LENGTH"] = Config.MAX_CONTENT_LENGTH
 
 app.register_blueprint(customer_bp)
 app.register_blueprint(employee_bp)

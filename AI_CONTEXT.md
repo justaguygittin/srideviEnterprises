@@ -81,6 +81,56 @@ Never bypass this architecture.
 
 ---
 
+# Write Operation Pattern
+
+Any feature that writes to more than one table, or combines a database
+write with a filesystem write (e.g. product images), must follow this
+sequence:
+
+Validate
+
+↓
+
+Begin Transaction
+
+↓
+
+Database Write
+
+↓
+
+Filesystem Write
+
+↓
+
+Database Metadata
+
+↓
+
+Commit
+
+On any failure
+
+Rollback Database
+
+↓
+
+Delete Uploaded Files
+
+↓
+
+Return Error
+
+Use database/db.py's transaction() context manager (yields a connection,
+commits on success, rolls back on any exception). Keep all SQL and
+orchestration in the service layer; database/db.py stays mechanical only.
+
+First applied in Add Product (services/product_service.py:create_product,
+services/image_service.py). Reuse this pattern for Edit Product, Delete
+Product, and Delete Product Images.
+
+---
+
 # Current Progress
 
 Completed
@@ -118,6 +168,12 @@ Employee Portal
 ✓ Filters
 
 ✓ Pagination
+
+✓ Product Details
+
+✓ Add Product
+
+✓ Upload Product Images
 
 ---
 
@@ -453,13 +509,13 @@ Employee Product Management
 
 Current Focus
 
-□ Product Details
+☑ Product Details
 
-□ Product Image Gallery
+☑ Product Image Gallery
 
-□ Add Product
+☑ Add Product
 
-□ Upload Product Images
+☑ Upload Product Images
 
 □ Edit Product
 

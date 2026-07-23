@@ -8,6 +8,8 @@ Author  : Srikar
 =========================================================
 """
 
+from contextlib import contextmanager
+
 import mysql.connector
 from config import Config
 from typing import Any, cast
@@ -79,3 +81,25 @@ def execute(query, params=None):
 
     cursor.close()
     conn.close()
+
+
+@contextmanager
+def transaction():
+    """
+    Yield a connection for multi-statement atomic writes.
+
+    Commits on success, rolls back on any exception raised inside the
+    `with` block, and always closes the connection. Callers create their
+    own cursor(s) from the yielded connection.
+    """
+
+    conn = get_connection()
+
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()

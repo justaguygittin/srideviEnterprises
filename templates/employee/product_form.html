@@ -1,0 +1,154 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : product_form.html
+Purpose : Add Product form for the employee portal.
+          Field set is designed to also serve Edit Product later.
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+Add Product - Employee Portal - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee_nav.css') }}">
+<style>
+    .products-container {
+        min-height: calc(100vh - 120px);
+        background-color: #f8f9fa;
+        padding: 0;
+    }
+
+    .products-content {
+        padding: 2rem;
+    }
+
+    .product-form-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        max-width: 900px;
+    }
+
+    .product-form-card h1 {
+        color: #333;
+        font-size: 1.6rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+    }
+
+    .product-form-section-title {
+        color: #1E4FA3;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 1.5rem 0 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #eee;
+    }
+
+    .product-form-hint {
+        color: #666;
+        font-size: 0.85rem;
+        margin-top: 0.3rem;
+    }
+
+    @media (max-width: 768px) {
+        .products-content {
+            padding: 1rem;
+        }
+
+        .product-form-card {
+            padding: 1.25rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="products-container">
+    {% include 'components/employee_nav.html' %}
+
+    <div class="products-content">
+        <div class="container">
+            <a href="{{ url_for('employee.products') }}" class="back-link"><i class="fa-solid fa-arrow-left me-2"></i>Back to Products</a>
+
+            <div class="product-form-card mt-3">
+                <h1>Add Product</h1>
+
+                {% if errors.form %}<div class="alert alert-danger" role="alert">{{ errors.form }}</div>{% endif %}
+
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="product_name" class="form-label">Product Name</label>
+                            <input id="product_name" name="product_name" class="form-control {% if errors.product_name %}is-invalid{% endif %}" value="{{ form_data.product_name or '' }}" required>
+                            {% if errors.product_name %}<div class="invalid-feedback">{{ errors.product_name }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="department" class="form-label">Department</label>
+                            <input id="department" name="department" list="department-list" class="form-control {% if errors.department %}is-invalid{% endif %}" value="{{ form_data.department or '' }}" required>
+                            <datalist id="department-list">
+                                {% for department in filter_options.departments %}<option value="{{ department.value }}">{% endfor %}
+                            </datalist>
+                            {% if errors.department %}<div class="invalid-feedback">{{ errors.department }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="category" class="form-label">Category</label>
+                            <input id="category" name="category" list="category-list" class="form-control {% if errors.category %}is-invalid{% endif %}" value="{{ form_data.category or '' }}" required>
+                            <datalist id="category-list">
+                                {% for category in filter_options.categories %}<option value="{{ category.value }}">{% endfor %}
+                            </datalist>
+                            {% if errors.category %}<div class="invalid-feedback">{{ errors.category }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="brand" class="form-label">Brand <span class="text-muted">(optional)</span></label>
+                            <input id="brand" name="brand" list="brand-list" class="form-control {% if errors.brand %}is-invalid{% endif %}" value="{{ form_data.brand or '' }}">
+                            <datalist id="brand-list">
+                                {% for brand in filter_options.brands %}<option value="{{ brand.value }}">{% endfor %}
+                            </datalist>
+                            {% if errors.brand %}<div class="invalid-feedback">{{ errors.brand }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="model" class="form-label">Model <span class="text-muted">(optional)</span></label>
+                            <input id="model" name="model" class="form-control {% if errors.model %}is-invalid{% endif %}" value="{{ form_data.model or '' }}">
+                            {% if errors.model %}<div class="invalid-feedback">{{ errors.model }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="stock_quantity" class="form-label">Stock Quantity <span class="text-muted">(optional)</span></label>
+                            <input id="stock_quantity" name="stock_quantity" type="number" min="0" step="1" class="form-control {% if errors.stock_quantity %}is-invalid{% endif %}" value="{{ form_data.stock_quantity if form_data.stock_quantity is not none else '' }}">
+                            {% if errors.stock_quantity %}<div class="invalid-feedback">{{ errors.stock_quantity }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="product-form-section-title">Product Images</div>
+                    <input type="file" name="images" multiple accept=".jpg,.jpeg,.png,.webp" class="form-control {% if errors.images %}is-invalid{% endif %}" required>
+                    <p class="product-form-hint">1–10 images. JPG, JPEG, PNG, or WEBP only, 10MB max per image.</p>
+                    {% if errors.images %}<div class="invalid-feedback d-block">{{ errors.images }}</div>{% endif %}
+
+                    <div class="product-form-section-title">Specifications <span class="text-muted fw-normal">(optional)</span></div>
+                    {% if errors.specifications %}<div class="alert alert-danger" role="alert">{{ errors.specifications }}</div>{% endif %}
+                    {% for row in spec_rows %}
+                    <div class="row g-3 mb-2">
+                        <div class="col-md-5">
+                            <input name="spec_property" class="form-control" placeholder="Property (e.g., Material)" value="{{ row.property }}">
+                        </div>
+                        <div class="col-md-7">
+                            <input name="spec_value" class="form-control" placeholder="Value (e.g., Solid Wood)" value="{{ row.value }}">
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    <button class="btn btn-primary mt-4" type="submit">Create Product</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -10,11 +10,23 @@ Author  : Srikar
 
 from math import ceil
 
-from flask import Blueprint, abort, render_template, request, session, redirect, url_for
+from flask import Blueprint, abort, flash, render_template, request, session, redirect, url_for
 from services.auth_service import authenticate_employee
-from services.product_service import get_product, get_product_count, get_products, get_related_products
+from services.image_service import validate_image_files
+from services.product_service import (
+    create_product,
+    find_similar_product,
+    get_product,
+    get_product_count,
+    get_product_filters,
+    get_products,
+    get_related_products,
+    validate_product_form,
+    validate_specifications,
+)
 
 EMPLOYEE_PORTAL_ROLES = ("Employee", "Admin")
+SPEC_ROW_COUNT = 6
 
 employee_bp = Blueprint("employee", __name__)
 
@@ -123,6 +135,72 @@ def products():
         brand=brand,
         start_page=start_page,
         end_page=end_page,
+    )
+
+
+@employee_bp.route("/employee/products/add", methods=["GET", "POST"])
+def add_product():
+    """Display and handle the Add Product form for Employee and Admin roles."""
+
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+
+    if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
+        abort(403)
+
+    form_data: dict = {}
+    errors: dict = {}
+    spec_rows = [{"property": "", "value": ""} for _ in range(SPEC_ROW_COUNT)]
+
+    if request.method == "POST":
+        form_data, errors = validate_product_form(request.form)
+
+        spec_properties = request.form.getlist("spec_property")
+        spec_values = request.form.getlist("spec_value")
+        spec_rows = [
+            {"property": property_name, "value": property_value}
+            for property_name, property_value in zip(spec_properties, spec_values)
+        ]
+        while len(spec_rows) < SPEC_ROW_COUNT:
+            spec_rows.append({"property": "", "value": ""})
+
+        specifications, spec_error = validate_specifications(spec_properties, spec_values)
+        if spec_error:
+            errors["specifications"] = spec_error
+
+        images = request.files.getlist("images")
+        image_error = validate_image_files(images)
+        if image_error:
+            errors["images"] = image_error
+
+        if not errors:
+            duplicate = find_similar_product(
+                form_data["product_name"], form_data["brand"], form_data["model"]
+            )
+
+            try:
+                product_id = create_product(form_data, images, specifications)
+            except Exception:
+                errors["form"] = "Could not save this product. Please try again."
+            else:
+                if duplicate:
+                    flash(
+                        f"Note: product #{duplicate['id']} (\"{duplicate['product_name']}\") "
+                        "looks similar to this one.",
+                        "warning",
+                    )
+                flash("Product created successfully.", "success")
+                return redirect(url_for("employee.product_details", product_id=product_id))
+
+    return render_template(
+        "employee/product_form.html",
+        username=session.get("Username"),
+        role=session.get("Role"),
+        current_page="products",
+        form_data=form_data,
+        errors=errors,
+        spec_rows=spec_rows,
+        filter_options=get_product_filters(),
     )
 
 

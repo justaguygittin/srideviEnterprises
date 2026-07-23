@@ -33,3 +33,7 @@ class Config:
             "Please add 'SECRET_KEY=your-secret-key' to .env"
         )
 
+    # Overall request body cap (defense-in-depth). Per-file size and type are
+    # validated in services/image_service.py.
+    MAX_CONTENT_LENGTH = 100 * 1024 * 1024
+

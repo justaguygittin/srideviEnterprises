@@ -10,7 +10,8 @@ Author  : Srikar
 
 from typing import Any
 
-from database.db import fetch_all, fetch_one
+from database.db import fetch_all, fetch_one, transaction
+from services.image_service import delete_product_folder, save_product_images
 
 
 _PLACEHOLDER_IMAGE = "images/placeholder.png"
@@ -191,3 +192,145 @@ def get_product_images(product_id: int):
         WHERE ProductID = %s AND TRIM(ImageURL) <> '' ORDER BY ImageID;
     """, (product_id,))
     return images or [{"image_path": _PLACEHOLDER_IMAGE, "is_placeholder": True}]
+
+
+def validate_product_form(form_data: dict[str, str]) -> tuple[dict[str, Any], dict[str, str]]:
+    """Validate and normalize Add/Edit Product form fields."""
+
+    cleaned_data: dict[str, Any] = {
+        "product_name": form_data.get("product_name", "").strip(),
+        "department": form_data.get("department", "").strip(),
+        "category": form_data.get("category", "").strip(),
+        "brand": form_data.get("brand", "").strip() or None,
+        "model": form_data.get("model", "").strip() or None,
+        "stock_quantity": form_data.get("stock_quantity", "").strip(),
+    }
+    errors: dict[str, str] = {}
+
+    if not cleaned_data["product_name"]:
+        errors["product_name"] = "Please enter a product name."
+    elif len(cleaned_data["product_name"]) > 255:
+        errors["product_name"] = "Product name must be 255 characters or fewer."
+
+    if not cleaned_data["department"]:
+        errors["department"] = "Please enter a department."
+    elif len(cleaned_data["department"]) > 100:
+        errors["department"] = "Department must be 100 characters or fewer."
+
+    if not cleaned_data["category"]:
+        errors["category"] = "Please enter a category."
+    elif len(cleaned_data["category"]) > 255:
+        errors["category"] = "Category must be 255 characters or fewer."
+
+    if cleaned_data["brand"] and len(cleaned_data["brand"]) > 255:
+        errors["brand"] = "Brand must be 255 characters or fewer."
+
+    if cleaned_data["model"] and len(cleaned_data["model"]) > 255:
+        errors["model"] = "Model must be 255 characters or fewer."
+
+    stock_quantity_raw = cleaned_data["stock_quantity"]
+    if not stock_quantity_raw:
+        cleaned_data["stock_quantity"] = 0
+    elif not stock_quantity_raw.isdigit():
+        errors["stock_quantity"] = "Stock quantity must be a non-negative whole number."
+    else:
+        cleaned_data["stock_quantity"] = int(stock_quantity_raw)
+
+    return cleaned_data, errors
+
+
+def validate_specifications(
+    properties: list[str], values: list[str]
+) -> tuple[list[tuple[str, str]], str | None]:
+    """Pair, trim, and validate submitted specification rows, skipping fully blank rows."""
+
+    specifications: list[tuple[str, str]] = []
+
+    for property_name, property_value in zip(properties, values):
+        property_name = property_name.strip()
+        property_value = property_value.strip()
+
+        if not property_name and not property_value:
+            continue
+        if not property_name or not property_value:
+            return [], "Each specification needs both a property and a value."
+        if len(property_name) > 100 or len(property_value) > 255:
+            return [], "Specification property or value is too long."
+
+        specifications.append((property_name, property_value))
+
+    return specifications, None
+
+
+def find_similar_product(
+    product_name: str, brand: str | None, model: str | None, exclude_id: int | None = None
+) -> dict[str, Any] | None:
+    """Return an existing catalog product with a matching name, brand, and model, if any."""
+
+    where_clauses = [
+        "LOWER(TRIM(product_name)) = LOWER(%s)",
+        "LOWER(TRIM(COALESCE(brand, ''))) = LOWER(%s)",
+        "LOWER(TRIM(COALESCE(model, ''))) = LOWER(%s)",
+    ]
+    params: list[Any] = [product_name, brand or "", model or ""]
+
+    if exclude_id is not None:
+        where_clauses.append("id <> %s")
+        params.append(exclude_id)
+
+    return fetch_one(f"""
+        SELECT id, product_name FROM Catalog WHERE {" AND ".join(where_clauses)} LIMIT 1;
+    """, tuple(params))
+
+
+def create_product(
+    product_data: dict[str, Any],
+    image_files: list,
+    specifications: list[tuple[str, str]],
+) -> int:
+    """
+    Create a catalog product with its images and specifications as one atomic write.
+
+    Standard write-operation pattern (see AI_CONTEXT.md):
+    Begin Transaction -> Database Write -> Filesystem Write -> Database Metadata -> Commit.
+    On failure: Rollback Database -> Delete Uploaded Files -> Return Error (re-raised).
+    """
+
+    product_id = None
+
+    try:
+        with transaction() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute("""
+                    INSERT INTO Catalog (product_name, Department, category, brand, model, stock_quantity)
+                    VALUES (%s, %s, %s, %s, %s, %s);
+                """, (
+                    product_data["product_name"],
+                    product_data["department"],
+                    product_data["category"],
+                    product_data["brand"],
+                    product_data["model"],
+                    product_data["stock_quantity"],
+                ))
+                product_id = cursor.lastrowid
+
+                image_paths = save_product_images(product_id, image_files)
+
+                for image_path in image_paths:
+                    cursor.execute("""
+                        INSERT INTO ProductImages (ProductID, ImageURL) VALUES (%s, %s);
+                    """, (product_id, image_path))
+
+                for property_name, property_value in specifications:
+                    cursor.execute("""
+                        INSERT INTO ProductDetails (ProductID, Property, PropertyValue) VALUES (%s, %s, %s);
+                    """, (product_id, property_name, property_value))
+            finally:
+                cursor.close()
+    except Exception:
+        if product_id is not None:
+            delete_product_folder(product_id)
+        raise
+
+    return product_id
