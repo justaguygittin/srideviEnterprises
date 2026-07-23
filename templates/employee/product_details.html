@@ -33,6 +33,35 @@ Author  : Srikar
             padding: 1rem;
         }
     }
+
+    .product-details-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .gallery-image-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+
+    .gallery-delete-form {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+    }
+
+    .gallery-delete-btn {
+        width: 22px;
+        height: 22px;
+        line-height: 1;
+        padding: 0;
+        border-radius: 50%;
+        font-size: 0.75rem;
+    }
 </style>
 {% endblock %}
 
@@ -43,14 +72,28 @@ Author  : Srikar
     <!-- Product Details Content -->
     <div class="products-content">
         <div class="container">
-            <a href="{{ url_for('employee.products') }}" class="back-link"><i class="fa-solid fa-arrow-left me-2"></i>Back to Products</a>
+            <div class="product-details-actions">
+                <a href="{{ url_for('employee.products') }}" class="back-link"><i class="fa-solid fa-arrow-left me-2"></i>Back to Products</a>
+                <a href="{{ url_for('employee.edit_product', product_id=product.id) }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-pen"></i> Edit Product
+                </a>
+            </div>
 
             <div class="row g-5 mt-1">
                 <div class="col-lg-6">
                     <img src="{{ url_for('static', filename=product.images[0].image_path) }}" alt="{{ product.product_name }}" class="product-main-image">
                     <div class="product-gallery" aria-label="Product image gallery">
                         {% for image in product.images %}
-                        <img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ product.product_name }} image {{ loop.index }}">
+                        <div class="gallery-image-wrapper">
+                            <img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ product.product_name }} image {{ loop.index }}">
+                            {% if role == 'Admin' and loop.index0 < images_with_ids|length %}
+                            <form method="post" action="{{ url_for('employee.delete_image', product_id=product.id, image_id=images_with_ids[loop.index0].id) }}" class="gallery-delete-form" onsubmit="return confirm('Delete this image?');">
+                                <button type="submit" class="btn btn-danger gallery-delete-btn" title="Delete image">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
                         {% endfor %}
                     </div>
                 </div>

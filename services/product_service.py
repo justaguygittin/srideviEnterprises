@@ -10,8 +10,8 @@ Author  : Srikar
 
 from typing import Any
 
-from database.db import fetch_all, fetch_one, transaction
-from services.image_service import delete_product_folder, save_product_images
+from database.db import execute, fetch_all, fetch_one, transaction
+from services.image_service import delete_image_file, delete_product_folder, save_product_images
 
 
 _PLACEHOLDER_IMAGE = "images/placeholder.png"
@@ -117,11 +117,17 @@ def get_product(product_id: int):
     # TODO: Correct UTF-8 encoding in legacy imported catalog data if its source CSV is updated.
     product["product_name"] = _normalise_catalog_text(product["product_name"])
     product["images"] = get_product_images(product_id)
-    product["specifications"] = fetch_all("""
+    product["specifications"] = _get_product_specifications(product_id)
+    return product
+
+
+def _get_product_specifications(product_id: int):
+    """Return a product's specification rows, ordered as entered."""
+
+    return fetch_all("""
         SELECT Property AS property, PropertyValue AS value
         FROM ProductDetails WHERE ProductID = %s ORDER BY DetailID;
     """, (product_id,))
-    return product
 
 
 def get_related_products(product: dict[str, Any]):
@@ -192,6 +198,33 @@ def get_product_images(product_id: int):
         WHERE ProductID = %s AND TRIM(ImageURL) <> '' ORDER BY ImageID;
     """, (product_id,))
     return images or [{"image_path": _PLACEHOLDER_IMAGE, "is_placeholder": True}]
+
+
+def get_product_images_with_ids(product_id: int):
+    """Return a product's images including ImageID, for image management on Edit Product."""
+
+    return fetch_all("""
+        SELECT ImageID AS id, ImageURL AS image_path FROM ProductImages
+        WHERE ProductID = %s AND TRIM(ImageURL) <> '' ORDER BY ImageID;
+    """, (product_id,))
+
+
+def get_product_for_edit(product_id: int):
+    """Return one catalog product's raw editable fields and specifications."""
+
+    product = fetch_one("""
+        SELECT id, product_name, Department AS department, category,
+               NULLIF(TRIM(brand), '') AS brand, model, stock_quantity
+        FROM Catalog
+        WHERE id = %s;
+    """, (product_id,))
+
+    if product is None:
+        return None
+
+    product["product_name"] = _normalise_catalog_text(product["product_name"])
+    product["specifications"] = _get_product_specifications(product_id)
+    return product
 
 
 def validate_product_form(form_data: dict[str, str]) -> tuple[dict[str, Any], dict[str, str]]:
@@ -334,3 +367,109 @@ def create_product(
         raise
 
     return product_id
+
+
+def update_product(
+    product_id: int,
+    product_data: dict[str, Any],
+    specifications: list[tuple[str, str]],
+    new_images: list,
+    replacement_images: dict[int, Any],
+) -> None:
+    """
+    Update a catalog product's fields, specifications, and images as one atomic write.
+
+    Standard write-operation pattern (see AI_CONTEXT.md):
+    Begin Transaction -> Database Update -> Filesystem Update -> Database Metadata -> Commit.
+    On failure: Rollback Database -> Cleanup Files -> Return Error (re-raised).
+
+    Replaced images are only deleted from disk after the transaction commits,
+    so a mid-write failure never destroys a still-referenced file.
+    """
+
+    replaced_image_ids = list(replacement_images.keys())
+    newly_saved_paths: list[str] = []
+    old_paths_to_delete: list[str] = []
+
+    try:
+        with transaction() as conn:
+            cursor = conn.cursor(dictionary=True)
+            try:
+                cursor.execute("""
+                    UPDATE Catalog
+                    SET product_name = %s, Department = %s, category = %s,
+                        brand = %s, model = %s, stock_quantity = %s
+                    WHERE id = %s;
+                """, (
+                    product_data["product_name"],
+                    product_data["department"],
+                    product_data["category"],
+                    product_data["brand"],
+                    product_data["model"],
+                    product_data["stock_quantity"],
+                    product_id,
+                ))
+
+                current_rows: dict[int, str] = {}
+                if replaced_image_ids:
+                    placeholders = ", ".join(["%s"] * len(replaced_image_ids))
+                    cursor.execute(f"""
+                        SELECT ImageID, ImageURL FROM ProductImages
+                        WHERE ProductID = %s AND ImageID IN ({placeholders});
+                    """, (product_id, *replaced_image_ids))
+                    current_rows = {row["ImageID"]: row["ImageURL"] for row in cursor.fetchall()}
+
+                files_to_save = list(new_images) + [replacement_images[image_id] for image_id in replaced_image_ids]
+                saved_paths = save_product_images(product_id, files_to_save)
+                newly_saved_paths = saved_paths
+
+                added_paths = saved_paths[:len(new_images)]
+                replacement_paths = saved_paths[len(new_images):]
+
+                for image_path in added_paths:
+                    cursor.execute("""
+                        INSERT INTO ProductImages (ProductID, ImageURL) VALUES (%s, %s);
+                    """, (product_id, image_path))
+
+                for image_id, new_path in zip(replaced_image_ids, replacement_paths):
+                    cursor.execute("""
+                        UPDATE ProductImages SET ImageURL = %s WHERE ImageID = %s;
+                    """, (new_path, image_id))
+                    if image_id in current_rows:
+                        old_paths_to_delete.append(current_rows[image_id])
+
+                cursor.execute("DELETE FROM ProductDetails WHERE ProductID = %s;", (product_id,))
+                for property_name, property_value in specifications:
+                    cursor.execute("""
+                        INSERT INTO ProductDetails (ProductID, Property, PropertyValue) VALUES (%s, %s, %s);
+                    """, (product_id, property_name, property_value))
+            finally:
+                cursor.close()
+    except Exception:
+        for image_path in newly_saved_paths:
+            delete_image_file(image_path)
+        raise
+
+    for image_path in old_paths_to_delete:
+        delete_image_file(image_path)
+
+
+def delete_product_image(product_id: int, image_id: int) -> tuple[bool, str | None]:
+    """Delete one product image; refuses to delete a product's last remaining image."""
+
+    image_count = fetch_one(
+        "SELECT COUNT(*) AS total FROM ProductImages WHERE ProductID = %s;", (product_id,)
+    )["total"]
+    if image_count <= 1:
+        return False, "A product must have at least one image. Add a replacement before deleting this one."
+
+    image = fetch_one(
+        "SELECT ImageURL FROM ProductImages WHERE ImageID = %s AND ProductID = %s;",
+        (image_id, product_id),
+    )
+    if image is None:
+        return False, "Image not found."
+
+    execute("DELETE FROM ProductImages WHERE ImageID = %s;", (image_id,))
+    delete_image_file(image["ImageURL"])
+    return True, None

@@ -12,21 +12,34 @@ from math import ceil
 
 from flask import Blueprint, abort, flash, render_template, request, session, redirect, url_for
 from services.auth_service import authenticate_employee
-from services.image_service import validate_image_files
+from services.image_service import validate_image_file, validate_image_files
 from services.product_service import (
     create_product,
+    delete_product_image,
     find_similar_product,
     get_product,
     get_product_count,
     get_product_filters,
+    get_product_for_edit,
+    get_product_images_with_ids,
     get_products,
     get_related_products,
+    update_product,
     validate_product_form,
     validate_specifications,
 )
 
 EMPLOYEE_PORTAL_ROLES = ("Employee", "Admin")
 SPEC_ROW_COUNT = 6
+
+
+def _pad_spec_rows(pairs) -> list[dict[str, str]]:
+    """Build the fixed-size specification row list product_form.html renders."""
+
+    rows = [{"property": property_name, "value": property_value} for property_name, property_value in pairs]
+    while len(rows) < SPEC_ROW_COUNT:
+        rows.append({"property": "", "value": ""})
+    return rows
 
 employee_bp = Blueprint("employee", __name__)
 
@@ -150,19 +163,14 @@ def add_product():
 
     form_data: dict = {}
     errors: dict = {}
-    spec_rows = [{"property": "", "value": ""} for _ in range(SPEC_ROW_COUNT)]
+    spec_rows = _pad_spec_rows([])
 
     if request.method == "POST":
         form_data, errors = validate_product_form(request.form)
 
         spec_properties = request.form.getlist("spec_property")
         spec_values = request.form.getlist("spec_value")
-        spec_rows = [
-            {"property": property_name, "value": property_value}
-            for property_name, property_value in zip(spec_properties, spec_values)
-        ]
-        while len(spec_rows) < SPEC_ROW_COUNT:
-            spec_rows.append({"property": "", "value": ""})
+        spec_rows = _pad_spec_rows(zip(spec_properties, spec_values))
 
         specifications, spec_error = validate_specifications(spec_properties, spec_values)
         if spec_error:
@@ -204,6 +212,100 @@ def add_product():
     )
 
 
+@employee_bp.route("/employee/products/<int:product_id>/edit", methods=["GET", "POST"])
+def edit_product(product_id):
+    """Display and handle the Edit Product form for Employee and Admin roles."""
+
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+
+    if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
+        abort(403)
+
+    product = get_product_for_edit(product_id)
+    if product is None:
+        abort(404)
+
+    existing_images = get_product_images_with_ids(product_id)
+
+    form_data = {
+        "product_name": product["product_name"],
+        "department": product["department"],
+        "category": product["category"],
+        "brand": product["brand"] or "",
+        "model": product["model"] or "",
+        "stock_quantity": product["stock_quantity"],
+    }
+    errors: dict = {}
+    spec_rows = _pad_spec_rows(
+        (specification["property"], specification["value"]) for specification in product["specifications"]
+    )
+
+    if request.method == "POST":
+        form_data, errors = validate_product_form(request.form)
+
+        spec_properties = request.form.getlist("spec_property")
+        spec_values = request.form.getlist("spec_value")
+        spec_rows = _pad_spec_rows(zip(spec_properties, spec_values))
+
+        specifications, spec_error = validate_specifications(spec_properties, spec_values)
+        if spec_error:
+            errors["specifications"] = spec_error
+
+        new_images = [file for file in request.files.getlist("images") if file and file.filename]
+        image_error = validate_image_files(new_images, existing_count=len(existing_images))
+        if image_error:
+            errors["images"] = image_error
+
+        replacement_images = {}
+        for image in existing_images:
+            file = request.files.get(f"replace_image_{image['id']}")
+            if file and file.filename:
+                replace_error = validate_image_file(file)
+                if replace_error:
+                    errors["images"] = replace_error
+                else:
+                    replacement_images[image["id"]] = file
+
+        if not errors:
+            try:
+                update_product(product_id, form_data, specifications, new_images, replacement_images)
+            except Exception:
+                errors["form"] = "Could not save these changes. Please try again."
+            else:
+                flash("Product updated successfully.", "success")
+                return redirect(url_for("employee.product_details", product_id=product_id))
+
+    return render_template(
+        "employee/product_form.html",
+        username=session.get("Username"),
+        role=session.get("Role"),
+        current_page="products",
+        product=product,
+        form_data=form_data,
+        errors=errors,
+        spec_rows=spec_rows,
+        existing_images=existing_images,
+        filter_options=get_product_filters(),
+    )
+
+
+@employee_bp.route("/employee/products/<int:product_id>/images/<int:image_id>/delete", methods=["POST"])
+def delete_image(product_id, image_id):
+    """Delete one product image. Admin only."""
+
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+
+    if session.get("Role") != "Admin":
+        abort(403)
+
+    deleted, error = delete_product_image(product_id, image_id)
+    flash(error if error else "Image deleted.", "danger" if error else "success")
+
+    return redirect(url_for("employee.product_details", product_id=product_id))
+
+
 @employee_bp.route("/employee/products/<int:product_id>", methods=["GET"])
 def product_details(product_id):
     """Display one product's read-only details for Employee and Admin roles."""
@@ -225,6 +327,7 @@ def product_details(product_id):
         current_page="products",
         product=product,
         related_products=get_related_products(product),
+        images_with_ids=get_product_images_with_ids(product_id),
     )
 
 

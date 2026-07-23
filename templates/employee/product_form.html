@@ -12,7 +12,7 @@ Author  : Srikar
 {% extends "layout/base.html" %}
 
 {% block title %}
-Add Product - Employee Portal - Sridevi Enterprises
+{% if product %}Edit Product{% else %}Add Product{% endif %} - Employee Portal - Sridevi Enterprises
 {% endblock %}
 
 {% block page_css %}
@@ -59,6 +59,29 @@ Add Product - Employee Portal - Sridevi Enterprises
         margin-top: 0.3rem;
     }
 
+    .existing-image-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .existing-image-row img {
+        width: 70px;
+        height: 70px;
+        object-fit: contain;
+        background: #f8f9fa;
+        border: 1px solid #D0D5DD;
+        border-radius: 6px;
+        padding: 4px;
+        flex-shrink: 0;
+    }
+
+    .existing-image-row .replace-input {
+        flex: 1;
+    }
+
     @media (max-width: 768px) {
         .products-content {
             padding: 1rem;
@@ -77,10 +100,14 @@ Add Product - Employee Portal - Sridevi Enterprises
 
     <div class="products-content">
         <div class="container">
+            {% if product %}
+            <a href="{{ url_for('employee.product_details', product_id=product.id) }}" class="back-link"><i class="fa-solid fa-arrow-left me-2"></i>Back to Product</a>
+            {% else %}
             <a href="{{ url_for('employee.products') }}" class="back-link"><i class="fa-solid fa-arrow-left me-2"></i>Back to Products</a>
+            {% endif %}
 
             <div class="product-form-card mt-3">
-                <h1>Add Product</h1>
+                <h1>{% if product %}Edit Product{% else %}Add Product{% endif %}</h1>
 
                 {% if errors.form %}<div class="alert alert-danger" role="alert">{{ errors.form }}</div>{% endif %}
 
@@ -128,8 +155,23 @@ Add Product - Employee Portal - Sridevi Enterprises
                     </div>
 
                     <div class="product-form-section-title">Product Images</div>
-                    <input type="file" name="images" multiple accept=".jpg,.jpeg,.png,.webp" class="form-control {% if errors.images %}is-invalid{% endif %}" required>
-                    <p class="product-form-hint">1–10 images. JPG, JPEG, PNG, or WEBP only, 10MB max per image.</p>
+
+                    {% if product %}
+                    <p class="product-form-hint">To replace an image, choose a new file next to it. Deleting images is done from the Product Details page.</p>
+                    {% for image in existing_images %}
+                    <div class="existing-image-row">
+                        <img src="{{ url_for('static', filename=image.image_path) }}" alt="Product image {{ loop.index }}">
+                        <div class="replace-input">
+                            <input type="file" name="replace_image_{{ image.id }}" accept=".jpg,.jpeg,.png,.webp" class="form-control">
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <label for="images" class="form-label mt-3">Add More Images <span class="text-muted">(optional)</span></label>
+                    {% else %}
+                    <label for="images" class="form-label">Product Images</label>
+                    {% endif %}
+                    <input id="images" type="file" name="images" multiple accept=".jpg,.jpeg,.png,.webp" class="form-control {% if errors.images %}is-invalid{% endif %}" {% if not product %}required{% endif %}>
+                    <p class="product-form-hint">{% if product %}Up to 10 images total.{% else %}1–10 images.{% endif %} JPG, JPEG, PNG, or WEBP only, 10MB max per image.</p>
                     {% if errors.images %}<div class="invalid-feedback d-block">{{ errors.images }}</div>{% endif %}
 
                     <div class="product-form-section-title">Specifications <span class="text-muted fw-normal">(optional)</span></div>
@@ -145,7 +187,7 @@ Add Product - Employee Portal - Sridevi Enterprises
                     </div>
                     {% endfor %}
 
-                    <button class="btn btn-primary mt-4" type="submit">Create Product</button>
+                    <button class="btn btn-primary mt-4" type="submit">{% if product %}Save Changes{% else %}Create Product{% endif %}</button>
                 </form>
             </div>
         </div>

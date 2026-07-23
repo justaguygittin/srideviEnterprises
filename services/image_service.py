@@ -24,23 +24,39 @@ MAX_IMAGES = 10
 _UPLOAD_SUBPATH = os.path.join("uploads", "products")
 
 
-def validate_image_files(files: list[FileStorage]) -> str | None:
-    """Return the first validation error for a product's image uploads, or None."""
+def validate_image_files(files: list[FileStorage], existing_count: int = 0) -> str | None:
+    """
+    Return the first validation error for a product's image uploads, or None.
+
+    `existing_count` is the number of images the product already has (0 for
+    Add Product), so Edit Product's "add more images" field can submit zero
+    new files without being treated as missing images.
+    """
 
     submitted_files = [file for file in files if file and file.filename]
 
-    if len(submitted_files) < MIN_IMAGES:
+    if existing_count + len(submitted_files) < MIN_IMAGES:
         return "Please attach at least one product image."
-    if len(submitted_files) > MAX_IMAGES:
-        return f"You can upload at most {MAX_IMAGES} images per product."
+    if existing_count + len(submitted_files) > MAX_IMAGES:
+        return f"A product can have at most {MAX_IMAGES} images."
 
     for file in submitted_files:
-        extension = _get_extension(file.filename)
-        if extension not in ALLOWED_EXTENSIONS:
-            return f"'{file.filename}' is not a supported image type (JPG, JPEG, PNG, WEBP only)."
+        error = validate_image_file(file)
+        if error:
+            return error
 
-        if _file_size(file) > MAX_IMAGE_SIZE_BYTES:
-            return f"'{file.filename}' exceeds the 10MB size limit."
+    return None
+
+
+def validate_image_file(file: FileStorage) -> str | None:
+    """Return a validation error for one image file (type/size only), or None."""
+
+    extension = _get_extension(file.filename)
+    if extension not in ALLOWED_EXTENSIONS:
+        return f"'{file.filename}' is not a supported image type (JPG, JPEG, PNG, WEBP only)."
+
+    if _file_size(file) > MAX_IMAGE_SIZE_BYTES:
+        return f"'{file.filename}' exceeds the 10MB size limit."
 
     return None
 
@@ -68,6 +84,16 @@ def delete_product_folder(product_id: int) -> None:
 
     product_folder = os.path.join(current_app.static_folder, _UPLOAD_SUBPATH, str(product_id))
     shutil.rmtree(product_folder, ignore_errors=True)
+
+
+def delete_image_file(relative_path: str) -> None:
+    """Remove one image file by its static-relative path, ignoring a missing file."""
+
+    file_path = os.path.join(current_app.static_folder, relative_path.replace("/", os.sep))
+    try:
+        os.remove(file_path)
+    except OSError:
+        pass
 
 
 def _get_extension(filename: str) -> str:

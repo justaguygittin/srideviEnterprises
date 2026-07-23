@@ -126,8 +126,14 @@ commits on success, rolls back on any exception). Keep all SQL and
 orchestration in the service layer; database/db.py stays mechanical only.
 
 First applied in Add Product (services/product_service.py:create_product,
-services/image_service.py). Reuse this pattern for Edit Product, Delete
-Product, and Delete Product Images.
+services/image_service.py). Reuse this pattern for Delete Product and
+Delete Product Images.
+
+Refinement used by Edit Product (services/product_service.py:update_product):
+when a write replaces an existing file (e.g. Replace Image), delete the old
+file only AFTER the transaction commits, never before. On failure, only the
+newly-written file is cleaned up; the old file is untouched, so a mid-write
+failure can never destroy a still-referenced image.
 
 ---
 
@@ -174,6 +180,10 @@ Employee Portal
 ✓ Add Product
 
 ✓ Upload Product Images
+
+✓ Edit Product
+
+✓ Delete Product Images (Admin)
 
 ---
 
@@ -421,7 +431,73 @@ Minimum Images
 
 Maximum Images
 
-Unlimited
+10
+
+---
+
+# Product Editing
+
+Workflow
+
+Open Product Details
+
+↓
+
+Click Edit Product (Employee or Admin)
+
+↓
+
+Edit product fields and specifications
+
+↓
+
+Replace or add images
+
+↓
+
+Save
+
+↓
+
+Return to Product Details
+
+Routes
+
+- GET/POST /employee/products/<id>/edit
+
+Reuses product_form.html (Add and Edit share one template), and
+validate_product_form() / validate_specifications() unchanged from Add
+Product. See Write Operation Pattern for update_product()'s transaction
+handling and its file-cleanup refinement for replaced images.
+
+Specifications are fully replaced on every save (existing rows deleted,
+submitted rows re-inserted) rather than diffed row-by-row, since spec rows
+have no stable identity in the form.
+
+---
+
+# Product Image Management
+
+Employee can
+
+- Add new images to an existing product
+- Replace an existing image (same slot, new file)
+
+Admin can additionally
+
+- Delete an individual product image
+
+A product's last remaining image cannot be deleted (server-enforced in
+services/product_service.py:delete_product_image), matching the rule that a
+product must never exist without an image.
+
+Routes
+
+- POST /employee/products/<id>/images/<image_id>/delete (Admin only)
+
+Image validation, storage, and deletion all go through
+services/image_service.py — no upload or filesystem logic is duplicated
+elsewhere.
 
 ---
 
@@ -517,11 +593,11 @@ Current Focus
 
 ☑ Upload Product Images
 
-□ Edit Product
+☑ Edit Product
 
 □ Delete Product (Admin)
 
-□ Delete Product Images (Admin)
+☑ Delete Product Images (Admin)
 
 Next
 
