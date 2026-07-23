@@ -74,9 +74,18 @@ Author  : Srikar
         <div class="container">
             <div class="product-details-actions">
                 <a href="{{ url_for('employee.products') }}" class="back-link"><i class="fa-solid fa-arrow-left me-2"></i>Back to Products</a>
-                <a href="{{ url_for('employee.edit_product', product_id=product.id) }}" class="btn btn-primary btn-sm">
-                    <i class="fas fa-pen"></i> Edit Product
-                </a>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('employee.edit_product', product_id=product.id) }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-pen"></i> Edit Product
+                    </a>
+                    {% if role == 'Admin' %}
+                    <form method="post" action="{{ url_for('employee.delete_product', product_id=product.id) }}" onsubmit="return confirm('Delete this product permanently? This removes the product, its images, and its specifications. This cannot be undone.');">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <i class="fas fa-trash"></i> Delete Product
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
             </div>
 
             <div class="row g-5 mt-1">

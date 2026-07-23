@@ -15,6 +15,7 @@ from services.auth_service import authenticate_employee
 from services.image_service import validate_image_file, validate_image_files
 from services.product_service import (
     create_product,
+    delete_product as delete_product_service,
     delete_product_image,
     find_similar_product,
     get_product,
@@ -304,6 +305,30 @@ def delete_image(product_id, image_id):
     flash(error if error else "Image deleted.", "danger" if error else "success")
 
     return redirect(url_for("employee.product_details", product_id=product_id))
+
+
+@employee_bp.route("/employee/products/<int:product_id>/delete", methods=["POST"])
+def delete_product(product_id):
+    """Delete a product and all its related data. Admin only."""
+
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+
+    if session.get("Role") != "Admin":
+        abort(403)
+
+    product = get_product(product_id)
+    if product is None:
+        abort(404)
+
+    try:
+        delete_product_service(product_id)
+    except Exception:
+        flash("Could not delete this product. Please try again.", "danger")
+        return redirect(url_for("employee.product_details", product_id=product_id))
+
+    flash(f'Product "{product["product_name"]}" was deleted.', "success")
+    return redirect(url_for("employee.products"))
 
 
 @employee_bp.route("/employee/products/<int:product_id>", methods=["GET"])

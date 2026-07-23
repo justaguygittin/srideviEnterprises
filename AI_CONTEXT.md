@@ -126,14 +126,15 @@ commits on success, rolls back on any exception). Keep all SQL and
 orchestration in the service layer; database/db.py stays mechanical only.
 
 First applied in Add Product (services/product_service.py:create_product,
-services/image_service.py). Reuse this pattern for Delete Product and
-Delete Product Images.
+services/image_service.py).
 
-Refinement used by Edit Product (services/product_service.py:update_product):
-when a write replaces an existing file (e.g. Replace Image), delete the old
-file only AFTER the transaction commits, never before. On failure, only the
-newly-written file is cleaned up; the old file is untouched, so a mid-write
-failure can never destroy a still-referenced image.
+Refinement used by Edit Product (services/product_service.py:update_product)
+and Delete Product (services/product_service.py:delete_product): when a
+write replaces or removes an existing file, perform the filesystem change
+only AFTER the transaction commits, never before. On failure, only files
+newly written during this request are cleaned up; existing files are
+untouched, so a mid-write failure can never destroy a still-referenced
+image.
 
 ---
 
@@ -184,6 +185,8 @@ Employee Portal
 ✓ Edit Product
 
 ✓ Delete Product Images (Admin)
+
+✓ Delete Product (Admin)
 
 ---
 
@@ -501,6 +504,57 @@ elsewhere.
 
 ---
 
+# Product Deletion
+
+Deleting a product is Admin only. Employees never see the Delete Product
+control and are refused with 403 if the route is called directly.
+
+Workflow
+
+Product Details (Admin)
+
+↓
+
+Click Delete Product (confirmation required)
+
+↓
+
+Delete ProductDetails, ProductImages, and Catalog rows in one transaction
+
+↓
+
+Commit
+
+↓
+
+Delete the product's upload folder
+
+↓
+
+Redirect to Products List
+
+Route
+
+- POST /employee/products/<id>/delete (Admin only)
+
+Confirmation is a plain browser confirm() dialog on the delete form, the
+same lightweight pattern already used for Delete Product Image — no new UI
+component was introduced.
+
+Filesystem deletion (the upload folder) happens only AFTER the database
+transaction commits, never before or during. If it happened first and the
+transaction then failed, the rollback would restore the database rows but
+the images would already be unrecoverably gone. Deferring irreversible
+filesystem deletion until after a successful commit is the same principle
+used for replaced images in Edit Product (see Write Operation Pattern) —
+apply it to any future feature that deletes files tied to a database row.
+
+This completes the Employee Product Management lifecycle: Add, Edit,
+Replace/Delete Images, and Delete Product all exist and share the same
+transaction and image-handling infrastructure.
+
+---
+
 # Image Storage
 
 Images should be stored inside
@@ -595,7 +649,7 @@ Current Focus
 
 ☑ Edit Product
 
-□ Delete Product (Admin)
+☑ Delete Product (Admin)
 
 ☑ Delete Product Images (Admin)
 

@@ -473,3 +473,27 @@ def delete_product_image(product_id: int, image_id: int) -> tuple[bool, str | No
     execute("DELETE FROM ProductImages WHERE ImageID = %s;", (image_id,))
     delete_image_file(image["ImageURL"])
     return True, None
+
+
+def delete_product(product_id: int) -> None:
+    """
+    Delete a product and all its related rows as one atomic write.
+
+    Standard write-operation pattern (see AI_CONTEXT.md):
+    Begin Transaction -> Database Delete -> Commit -> Filesystem Cleanup.
+
+    The upload folder is removed only after the transaction commits, so a
+    mid-transaction failure can never delete images for a product that
+    still exists in the database.
+    """
+
+    with transaction() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("DELETE FROM ProductDetails WHERE ProductID = %s;", (product_id,))
+            cursor.execute("DELETE FROM ProductImages WHERE ProductID = %s;", (product_id,))
+            cursor.execute("DELETE FROM Catalog WHERE id = %s;", (product_id,))
+        finally:
+            cursor.close()
+
+    delete_product_folder(product_id)
