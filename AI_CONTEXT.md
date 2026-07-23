@@ -716,7 +716,13 @@ Deployment & Customer Website
 
 □ HTTPS Configuration
 
-□ Deployment Documentation
+☑ Deployment Documentation
+
+Deployment preparation complete: `.env.example` added, `ProxyFix` applied in app.py for
+HostyCare's TLS-terminating proxy, the unauthenticated `/routes` debug endpoint gated
+behind `Config.DEBUG`, and `DEPLOYMENT.md` written. Remaining Phase 1 items require an
+actual HostyCare deployment and live verification (see Milestone 1.5 in the v0.8.0 plan)
+before they can be checked off.
 
 ### Phase 2 – Customer Experience
 

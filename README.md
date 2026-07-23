@@ -2,269 +2,95 @@
 
 > **Furniture • Electronics • Home Appliances**
 
-A modern customer-facing showroom website for **Sridevi Enterprises**, built using Flask and MariaDB.
+A Flask + MariaDB showroom management system for Sridevi Enterprises: a customer-facing
+digital showroom plus an internal employee portal for product management.
 
-The project allows customers to browse products, search inventory, compare products, view detailed specifications, and send enquiries. It also provides an employee portal for inventory management, customer enquiries, reports, and integration with the existing Receipt Generator.
+Current Version: **v0.8.0** (in development)
 
----
-
-
-#Current Version
-
-v0.3.0
-
-## Completed
-
-- ✅ Project architecture
-- ✅ Flask application setup
-- ✅ MariaDB integration
-- ✅ Blueprint routing
-- ✅ Homepage
-- ✅ Hero video
-- ✅ Responsive navigation
-- ✅ Footer
-- ✅ Search bar
-- ✅ Department-based product organization
-- ✅ HostyCare-compatible deployment architecture
+For architecture, RBAC, and development rules, see [AI_CONTEXT.md](AI_CONTEXT.md).
+For deploying to production, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ---
 
-# Technology Stack
+## Features
 
-- Python 3
-- Flask
+**Customer Website**
+- Homepage with departments, featured products, and popular brands
+- Product listing with search, filters, sorting, and pagination
+- Product details with image gallery and specifications
+- Product enquiry and contact forms
+- Category landing pages and product comparison (in progress)
+
+**Employee Portal**
+- Employee login and session-based authentication
+- Role-based access (Employee / Admin)
+- Product listing, search, filters, and pagination
+- Add, edit, and view products, including image uploads
+- Delete products and product images (Admin only)
+
+---
+
+## Requirements
+
+- Python 3.x
 - MariaDB
-- Bootstrap 5
-- HTML5
-- CSS3
-- JavaScript
-- Jinja2
+- See [requirements.txt](requirements.txt) for pinned Python packages
 
 ---
 
-# Project Structure
+## Installation
 
-```text
-SrideviEnterprises/
-
-app.py
-config.py
-passenger_wsgi.py
-requirements.txt
-
-database/
-schema/
-
-routes/
-services/
-scripts/
-
-templates/
-static/
-
-.devkit/
-```
-
----
-
-# Database
-
-Development Database
-
-```
-MariaDB
-Host : 127.0.0.1
-Port : 3307
-Database :
-gsrikari_Sridevi_Enterprises
-```
-
-Current Tables
-
-- Catalog
-- Customers
-- Employees
-- Enquiries
-- ProductDetails
-- ProductImages
-- StockHistory
-- Users
-
-> **Note**
->
-> The **Catalog** table is shared with the Receipt Generator project and acts as the single source of truth for products.
-
----
-
-# Installation
-
-## Clone Repository
+### Clone the repository
 
 ```bash
 git clone <repository-url>
-cd SrideviEnterprises
+cd srideviEnterprises
 ```
 
-## Create Virtual Environment
+### Create and activate a virtual environment
 
 ```bash
 python -m venv venv
 ```
 
-Activate
-
-Windows
+Windows:
 
 ```bash
 venv\Scripts\activate
 ```
 
----
-
-## Install Dependencies
+### Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
+### Configure environment variables
 
-## Configure Environment
+Copy `.env.example` to `.env` and fill in your local database credentials and a secret key:
 
-Create a `.env` file.
-
-Example
-
-```env
-DB_HOST=127.0.0.1
-DB_PORT=3307
-DB_NAME=gsrikari_Sridevi_Enterprises
-DB_USER=root
-DB_PASSWORD=YOUR_PASSWORD
+```bash
+cp .env.example .env
 ```
 
+The database schema lives in `database/schema/` — import each file in numeric order
+(`001_create_catalog.sql` through `008_create_stockhistory.sql`) into your local MariaDB
+instance.
+
 ---
 
-# Run Project
+## Running Locally
 
 ```bash
 python app.py
 ```
 
-Open
-
-```
-http://127.0.0.1:5000
-```
+Open [http://127.0.0.1:5000](http://127.0.0.1:5000).
 
 ---
 
-# Homepage Features
-
-- Hero Video
-- Responsive Navigation
-- Quick Actions
-- Shop by Department
-- Featured Products
-- Popular Brands
-- About Section
-- Contact Section
-- Google Maps (Placeholder)
-
----
-
-# Roadmap
-
-## Phase 0
-
-- ✅ Project Foundation
-
-## Phase 1
-
-- ✅ UI Framework
-
-## Phase 2
-
-- ✅ Homepage
-
-## Phase 3
-
-- 🔄 Product Module
-
-- Product Listing
-- Product Details
-- Search
-- Filters
-- Compare Products
-
-## Phase 4
-
-- Employee Portal
-
-## Phase 5
-
-- Admin Portal
-
-## Phase 6
-
-- Production Deployment
-
-## Future Enhancements
-
-- GeM Integration
-- IndiaMART Integration
-- Marketplace Synchronization
-- AI Product Search
-- Analytics Dashboard
-
----
-
-# Development Standards
-
-- Blueprint architecture
-- Service layer architecture
-- Database helper layer
-- Responsive-first design
-- Component-based Jinja templates
-- Environment-based configuration
-- Frozen project architecture (no structural changes without version update)
-
----
-
-# Deployment
-
-Production target
-
-- HostyCare
-- Passenger WSGI
-- MariaDB
-
-Development Workflow
-
-```
-Local Development
-        ↓
-Git Commit
-        ↓
-Git Push
-        ↓
-HostyCare Deployment
-```
-Employee Portal
-
-- Employee Login
-- Session Authentication
-- Dashboard
-- Logout
-- Read-only Products Management
-- Search
-- Pagination
----
-
-# Author
+## Author
 
 **Srikar**
 
 Sridevi Enterprises Development Project
-
----
