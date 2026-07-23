@@ -1,0 +1,41 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : employee_nav.html
+Purpose : Shared employee portal navigation bar.
+          Expects `current_page` in the including template's context.
+
+Author  : Srikar
+=========================================================
+-->
+<nav class="employee-nav">
+    <div class="container">
+        <ul class="employee-nav-list">
+            <li class="employee-nav-item">
+                <a href="{{ url_for('employee.dashboard') }}" class="employee-nav-link {% if current_page == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+            </li>
+            <li class="employee-nav-item">
+                <a href="{{ url_for('employee.products') }}" class="employee-nav-link {% if current_page == 'products' %}active{% endif %}">
+                    <i class="fas fa-box"></i> Products
+                </a>
+            </li>
+            <li class="employee-nav-item">
+                <a href="{{ url_for('employee.enquiries') }}" class="employee-nav-link {% if current_page == 'enquiries' %}active{% endif %}">
+                    <i class="fas fa-envelope"></i> Enquiries
+                </a>
+            </li>
+            <li class="employee-nav-item">
+                <a href="{{ url_for('employee.customers') }}" class="employee-nav-link {% if current_page == 'customers' %}active{% endif %}">
+                    <i class="fas fa-users"></i> Customers
+                </a>
+            </li>
+            <li class="employee-nav-item">
+                <a href="{{ url_for('employee.logout') }}" class="employee-nav-link logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </li>
+        </ul>
+    </div>
+</nav>

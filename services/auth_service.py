@@ -27,15 +27,19 @@ def authenticate_employee(
         password (str): Employee plaintext password
 
     Returns:
-        dict: User data if authentication successful, None otherwise
+        dict: User data (including job Designation, for display only) if
+        authentication successful, None otherwise
     """
 
     if not username or not password:
         return None
 
-    query = (
-        "SELECT UserID, Username, Role FROM Users WHERE Username = %s AND Password = %s"
-    )
+    query = """
+        SELECT Users.UserID, Users.Username, Users.Role, Employees.Designation
+        FROM Users
+        LEFT JOIN Employees ON Employees.UserID = Users.UserID
+        WHERE Users.Username = %s AND Users.Password = %s
+    """
     user = fetch_one(query, (username, password))
 
     return user

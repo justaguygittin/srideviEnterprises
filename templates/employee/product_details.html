@@ -1,0 +1,102 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : product_details.html
+Purpose : Employee read-only product details, gallery, and specifications.
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+{{ product.product_name }} - Employee Portal - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee_nav.css') }}">
+<style>
+    .products-container {
+        min-height: calc(100vh - 120px);
+        background-color: #f8f9fa;
+        padding: 0;
+    }
+
+    .products-content {
+        padding: 2rem;
+    }
+
+    @media (max-width: 768px) {
+        .products-content {
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="products-container">
+    {% include 'components/employee_nav.html' %}
+
+    <!-- Product Details Content -->
+    <div class="products-content">
+        <div class="container">
+            <a href="{{ url_for('employee.products') }}" class="back-link"><i class="fa-solid fa-arrow-left me-2"></i>Back to Products</a>
+
+            <div class="row g-5 mt-1">
+                <div class="col-lg-6">
+                    <img src="{{ url_for('static', filename=product.images[0].image_path) }}" alt="{{ product.product_name }}" class="product-main-image">
+                    <div class="product-gallery" aria-label="Product image gallery">
+                        {% for image in product.images %}
+                        <img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ product.product_name }} image {{ loop.index }}">
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <p class="catalog-product-brand">{{ product.brand or 'Sridevi Enterprises' }}</p>
+                    <h1>{{ product.product_name }}</h1>
+                    <p class="product-detail-meta">{{ product.Department }} &middot; {{ product.category or 'Uncategorised' }}</p>
+                    <p class="product-detail-availability">{{ product.availability }}</p>
+                    <dl class="product-facts">
+                        <div><dt>Product ID</dt><dd>#{{ product.id }}</dd></div>
+                        <div><dt>Model</dt><dd>{{ product.model or 'Not specified' }}</dd></div>
+                    </dl>
+                </div>
+            </div>
+
+            <section class="specifications-section">
+                <h2>Specifications</h2>
+                {% if product.specifications %}
+                <dl class="specifications-list">
+                    {% for specification in product.specifications %}<div><dt>{{ specification.property }}</dt><dd>{{ specification.value }}</dd></div>{% endfor %}
+                </dl>
+                {% else %}
+                <p class="empty-state">No specifications recorded for this product yet.</p>
+                {% endif %}
+            </section>
+
+            <section class="related-products-section">
+                <h2>Similar Products</h2>
+                <div class="row g-4">
+                    {% for related_product in related_products %}
+                    <div class="col-xl-3 col-md-6">
+                        <article class="catalog-product-card h-100">
+                            <img src="{{ url_for('static', filename=related_product.image_path) }}" alt="{{ related_product.product_name }}">
+                            <div class="catalog-product-card-body">
+                                <p class="catalog-product-brand">{{ related_product.brand or 'Sridevi Enterprises' }}</p>
+                                <h3>{{ related_product.product_name }}</h3>
+                                <a href="{{ url_for('employee.product_details', product_id=related_product.id) }}" class="btn btn-outline-primary w-100">View Details</a>
+                            </div>
+                        </article>
+                    </div>
+                    {% else %}
+                    <div class="col-12"><p class="empty-state">No similar products are available yet.</p></div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -10,9 +10,11 @@ Author  : Srikar
 
 from math import ceil
 
-from flask import Blueprint, render_template, request, session, redirect, url_for
+from flask import Blueprint, abort, render_template, request, session, redirect, url_for
 from services.auth_service import authenticate_employee
-from services.product_service import get_products, get_product_count
+from services.product_service import get_product, get_product_count, get_products, get_related_products
+
+EMPLOYEE_PORTAL_ROLES = ("Employee", "Admin")
 
 employee_bp = Blueprint("employee", __name__)
 
@@ -40,6 +42,7 @@ def login():
                 session["UserID"] = user["UserID"]
                 session["Username"] = user["Username"]
                 session["Role"] = user["Role"]
+                session["Designation"] = user["Designation"]
 
                 return redirect(url_for("employee.dashboard"))
             else:
@@ -59,11 +62,13 @@ def dashboard():
 
     username = session.get("Username")
     role = session.get("Role")
+    designation = session.get("Designation")
 
     return render_template(
         "employee/dashboard.html",
         username=username,
         role=role,
+        designation=designation,
         current_page="dashboard",
     )
 
@@ -118,6 +123,30 @@ def products():
         brand=brand,
         start_page=start_page,
         end_page=end_page,
+    )
+
+
+@employee_bp.route("/employee/products/<int:product_id>", methods=["GET"])
+def product_details(product_id):
+    """Display one product's read-only details for Employee and Admin roles."""
+
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+
+    if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
+        abort(403)
+
+    product = get_product(product_id)
+    if product is None:
+        abort(404)
+
+    return render_template(
+        "employee/product_details.html",
+        username=session.get("Username"),
+        role=session.get("Role"),
+        current_page="products",
+        product=product,
+        related_products=get_related_products(product),
     )
 
 

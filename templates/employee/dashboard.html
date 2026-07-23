@@ -15,65 +15,12 @@ Dashboard - Employee Portal - Sridevi Enterprises
 {% endblock %}
 
 {% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee_nav.css') }}">
 <style>
     .dashboard-container {
         min-height: calc(100vh - 120px);
         background-color: #f8f9fa;
         padding: 0;
-    }
-
-    .employee-nav {
-        background: white;
-        border-bottom: 2px solid #1E4FA3;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-        position: sticky;
-        top: 0;
-        z-index: 100;
-    }
-
-    .employee-nav-list {
-        display: flex;
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        gap: 0;
-    }
-
-    .employee-nav-item {
-        flex: 1;
-        text-align: center;
-    }
-
-    .employee-nav-link {
-        display: block;
-        padding: 1rem;
-        color: #333;
-        text-decoration: none;
-        font-weight: 500;
-        font-size: 0.95rem;
-        transition: background-color 0.2s, color 0.2s;
-        border-bottom: 3px solid transparent;
-    }
-
-    .employee-nav-link:hover {
-        background-color: #f0f5ff;
-        color: #1E4FA3;
-    }
-
-    .employee-nav-link.active {
-        background-color: #f0f5ff;
-        color: #1E4FA3;
-        border-bottom-color: #1E4FA3;
-    }
-
-    .employee-nav-link.logout {
-        background-color: #fee;
-        color: #c33;
-    }
-
-    .employee-nav-link.logout:hover {
-        background-color: #fdd;
-        color: #a00;
     }
 
     .dashboard-content {
@@ -179,19 +126,6 @@ Dashboard - Employee Portal - Sridevi Enterprises
     }
 
     @media (max-width: 768px) {
-        .employee-nav-list {
-            flex-direction: column;
-        }
-
-        .employee-nav-item {
-            text-align: left;
-        }
-
-        .employee-nav-link {
-            padding: 0.75rem 1rem;
-            font-size: 0.9rem;
-        }
-
         .dashboard-header {
             padding: 1rem;
         }
@@ -214,38 +148,7 @@ Dashboard - Employee Portal - Sridevi Enterprises
 
 {% block content %}
 <div class="dashboard-container">
-    <!-- Employee Navigation -->
-    <nav class="employee-nav">
-        <div class="container">
-            <ul class="employee-nav-list">
-                <li class="employee-nav-item">
-                    <a href="{{ url_for('employee.dashboard') }}" class="employee-nav-link {% if current_page == 'dashboard' %}active{% endif %}">
-                        <i class="fas fa-home"></i> Dashboard
-                    </a>
-                </li>
-                <li class="employee-nav-item">
-                    <a href="{{ url_for('employee.products') }}" class="employee-nav-link {% if current_page == 'products' %}active{% endif %}">
-                        <i class="fas fa-box"></i> Products
-                    </a>
-                </li>
-                <li class="employee-nav-item">
-                    <a href="{{ url_for('employee.enquiries') }}" class="employee-nav-link {% if current_page == 'enquiries' %}active{% endif %}">
-                        <i class="fas fa-envelope"></i> Enquiries
-                    </a>
-                </li>
-                <li class="employee-nav-item">
-                    <a href="{{ url_for('employee.customers') }}" class="employee-nav-link {% if current_page == 'customers' %}active{% endif %}">
-                        <i class="fas fa-users"></i> Customers
-                    </a>
-                </li>
-                <li class="employee-nav-item">
-                    <a href="{{ url_for('employee.logout') }}" class="employee-nav-link logout">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </nav>
+    {% include 'components/employee_nav.html' %}
 
     <!-- Dashboard Content -->
     <div class="dashboard-content">
@@ -261,7 +164,7 @@ Dashboard - Employee Portal - Sridevi Enterprises
                 <h1>Welcome, {{ username }}!</h1>
                 <p>Employee Portal</p>
                 <div class="role-badge">
-                    <i class="fas fa-id-card"></i> {{ role }}
+                    <i class="fas fa-id-card"></i> {{ designation or role }}
                 </div>
             </div>
 
