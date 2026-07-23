@@ -19,6 +19,24 @@ The Employee Portal is the current development priority.
 The objective is to complete a fully functional demonstration build before expanding into advanced business modules.
 
 ---
+# Project Scope
+
+Current Scope
+
+The current project is focused solely on the Sridevi Enterprises showroom application.
+
+The application must become a complete, deployable standalone system before any integration with external projects is considered.
+
+Out of Scope
+
+- Receipt Generator integration
+- Shared authentication
+- Shared inventory
+- Shared invoices
+
+These items are intentionally deferred until after the completion of Sridevi Enterprises v1.0.0.
+
+-----
 
 # Technology Stack
 
@@ -194,16 +212,25 @@ Employee Portal
 
 Current Goal
 
-Complete Employee Product Management.
+Complete a production-ready deployment of the Sridevi Enterprises showroom application.
+
+The immediate objective is to deploy a fully functional standalone system to HostCare with both the Customer Website and Employee Portal operating reliably.
+
+After deployment
+
+Enhance the Customer Website into a polished digital showroom experience.
 
 After that
 
-Complete Customer Product Experience.
+Implement Employee Customer Management.
 
 After that
 
-Complete Customer Enquiry Management.
+Implement Employee Enquiry Management.
 
+Receipt Generator integration is intentionally deferred until Sridevi Enterprises reaches a stable v1.0.0 release.
+
+The Receipt Generator remains an independent project and will be revisited only after the showroom system is feature complete and deployed.
 ---
 
 # Role Based Access Control (RBAC)
@@ -633,15 +660,21 @@ Every completed milestone should be manually testable.
 
 # Current Development Roadmap
 
-v0.7.0
+## v0.7.0 ✅ COMPLETE
 
 Employee Product Management
 
-Current Focus
+☑ Employee Authentication
+
+☑ Session Management
+
+☑ RBAC
+
+☑ Employee Dashboard
+
+☑ Product Listing
 
 ☑ Product Details
-
-☑ Product Image Gallery
 
 ☑ Add Product
 
@@ -649,58 +682,168 @@ Current Focus
 
 ☑ Edit Product
 
-☑ Delete Product (Admin)
+☑ Replace Product Images
 
 ☑ Delete Product Images (Admin)
 
-Next
+☑ Delete Product (Admin)
 
-v0.8.0
+☑ Transaction Framework
 
-Customer Product Experience
+☑ Image Management Service
 
-- Product Details
-- Product Gallery
-- Category Images
-- Similar Products
+☑ Release Hardening
 
-Next
+☑ Production Configuration
 
-v0.9.0
+--------------------------------------------------
 
-Customer Enquiries
+## v0.8.0
 
-- Submit Enquiry
-- Employee Enquiry Dashboard
-- Status Management
+Deployment & Customer Website
 
-Next
+### Phase 1 – Production Deployment
 
-v1.0.0
+□ HostCare Deployment
 
-Working Demonstration Release
+□ Passenger Configuration Validation
 
-- Responsive UI
-- Validation
-- Bug Fixes
-- Final Testing
-- Deployment
+□ Production Environment Validation
 
----
+□ Static File Validation
 
-# Development Rules
+□ Upload Directory Validation
 
-Never modify the project architecture.
+□ HTTPS Configuration
 
-Never expose financial information.
+□ Deployment Documentation
 
-Always implement RBAC before exposing a new route.
+### Phase 2 – Customer Experience
 
-Every new feature must define
+□ Product Details Improvements
 
-- Who can view
-- Who can create
-- Who can edit
-- Who can delete
+□ Product Image Gallery
 
-If a breaking change is required, obtain approval before implementation.
+□ Category Landing Pages
+
+□ Search Improvements
+
+□ Homepage Improvements
+
+□ Responsive UI Polish
+
+### Phase 3 – Production Hardening
+
+□ Logging
+
+□ Custom 403 / 404 / 500 Pages
+
+□ CSRF Protection
+
+□ Session Hardening
+
+□ Automated Test Suite
+
+□ Deployment Verification
+
+--------------------------------------------------
+
+## v0.9.0
+
+Employee Customer Management
+
+□ Customer List
+
+□ Customer Details
+
+□ Customer Search
+
+□ Customer Notes
+
+□ Customer Management Dashboard
+
+--------------------------------------------------
+
+## v0.9.5
+
+Employee Enquiry Management
+
+Customer
+
+□ Submit Product Enquiry
+
+□ Contact Form
+
+□ Enquiry Tracking
+
+Employee
+
+□ View Enquiries
+
+□ Update Status
+
+□ Search & Filters
+
+□ Dashboard Widgets
+
+--------------------------------------------------
+
+## v1.0.0
+
+Sridevi Enterprises Demonstration Release
+
+Customer Website
+
+□ Complete Product Experience
+
+□ Search
+
+□ Categories
+
+□ Product Gallery
+
+□ Product Details
+
+□ Enquiry System
+
+Employee Portal
+
+□ Product Management
+
+□ Customer Management
+
+□ Enquiry Management
+
+System
+
+□ Responsive UI
+
+□ Production Security
+
+□ Automated Testing
+
+□ Documentation
+
+□ Stable Deployment
+
+--------------------------------------------------
+
+## Future Roadmap (Post v1.0.0)
+
+Receipt Generator Integration
+
+Possible future work
+
+• Shared Product Catalog
+
+• Shared Authentication
+
+• Shared Inventory
+
+• Invoice Integration
+
+• Analytics
+
+• Multi-Branch Support
+
+Receipt Generator remains an independent project until after Sridevi Enterprises reaches a stable v1.0.0 release.
