@@ -1,0 +1,99 @@
+<!--
+==========================================================
+Project : Sridevi Enterprises
+File    : categories.html
+Purpose : Premium category browsing page — hero, category
+          search, and full category grid.
+          Reuses the same department data source as the
+          homepage Featured Categories slider.
+
+Author  : Srikar
+==========================================================
+-->
+{% extends "layout/base.html" %}
+
+{% block title %}Categories{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/categories.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<!-- Categories Hero -->
+<section class="categories-page-hero">
+
+    <div class="container">
+
+        <span class="categories-hero-eyebrow">
+            <i class="fa-solid fa-shapes"></i> Browse the Catalogue
+        </span>
+
+        <h1>Shop by Category</h1>
+
+        <p>
+            Explore every department in our showroom and find exactly what your home or workplace needs.
+        </p>
+
+        <form class="categories-search" role="search" onsubmit="return false;">
+
+            <label for="category-search" class="visually-hidden">Search categories</label>
+
+            <div class="input-group">
+
+                <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+
+                <input id="category-search" type="search" class="form-control" placeholder="Search categories..." autocomplete="off">
+
+            </div>
+
+        </form>
+
+    </div>
+
+</section>
+
+<!-- Category Grid -->
+<section class="categories-grid-section">
+
+    <div class="container">
+
+        {% if departments %}
+        <div class="category-grid" id="category-grid">
+
+            {% for department in departments %}
+            <article class="category-grid-card" data-category-name="{{ department.Department|lower }}">
+
+                <div class="category-grid-card-image">
+
+                    <img src="{{ url_for('static', filename=department.image_path) }}" alt="{{ department.Department }}" loading="lazy">
+
+                </div>
+
+                <div class="category-grid-card-body">
+
+                    <h2>{{ department.Department }}</h2>
+
+                    <p>{{ department.total_products }} product{{ '' if department.total_products == 1 else 's' }}</p>
+
+                    <a href="{{ url_for('customer.products', department=department.Department) }}" class="btn btn-primary">
+                        Explore <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+
+                </div>
+
+            </article>
+            {% endfor %}
+
+        </div>
+
+        <p class="empty-state d-none" id="category-empty-state">No categories match your search.</p>
+        {% else %}
+        <p class="empty-state">No categories available yet.</p>
+        {% endif %}
+
+    </div>
+
+</section>
+
+{% endblock %}

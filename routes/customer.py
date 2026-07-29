@@ -121,7 +121,12 @@ def product_enquiry(product_id):
 
 @customer_bp.route("/categories")
 def categories():
-    return "<h2>Categories - Coming Soon</h2>"
+    """Render the premium category browsing page."""
+
+    return render_template(
+        "customer/categories.html",
+        departments=get_home_departments(),
+    )
 
 
 @customer_bp.route("/compare")

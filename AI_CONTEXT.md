@@ -69,11 +69,11 @@ Version Control
 ✓ Home Page (see Homepage below for section detail)
 ✓ Products Page (search, filters, pagination)
 ✓ Product Details Page
+✓ Categories Page (see Categories Page below for section detail)
 ✓ Search
 ✓ Contact Page (general enquiry form)
 
 Not yet built (see Planned Roadmap):
-- Categories Page — `/categories` is currently a placeholder route
 - Product Comparison — `/compare` is currently a placeholder route
 
 ### Homepage
@@ -89,9 +89,33 @@ Sections, in order:
 - About Section
 - Location Map
 
-The dedicated Categories page (`/categories`) is separate and unaffected by the slider — it remains an unbuilt placeholder route, planned for a future phase.
+The dedicated Categories page (`/categories`) is separate and unaffected by the slider — see Categories Page below.
 
 Regression tested: Homepage, Products page, Categories navigation, Mobile, Desktop, no JS console errors, no route changes.
+
+### Categories Page
+
+`/categories` is a premium, standalone category browsing page — not a variant of the homepage slider. It reuses `get_home_departments()` (`services/customer_service.py`), the same data source as the homepage Featured Categories slider, so category names, product counts, and images stay consistent across both. No new service function or API endpoint was introduced.
+
+Sections, in order:
+- Hero (heading, description, category search input)
+- Category Grid — large image cards showing department name, product count, and an Explore button
+
+Category search is client-side only (`initCategorySearch()` in `static/js/main.js`): it filters the already-rendered `.category-grid-card` elements by name as the user types, and toggles an empty-state message when nothing matches. No page reload, no new route.
+
+Each card's Explore button links to `/products?department=<Department>` — the same existing product-listing route and query parameter the homepage slider already uses, so no new listing template was needed.
+
+Styling lives in `static/css/categories.css` (new `.categories-page-hero`, `.categories-search`, `.category-grid`, `.category-grid-card` rules), appended alongside the existing homepage slider rules in the same file without modifying them. Grid is mobile-first: 1 column by default, expanding to 2 / 3 / 4 columns at wider breakpoints. Cards use a hover lift (shadow + translateY), an image zoom, and a gradient overlay on hover.
+
+Both the navbar's and footer's "Categories" links now point to `url_for('customer.categories')`.
+
+#### Navbar Active-Page Highlighting
+
+`templates/components/navbar.html` now sets the `active` class per link by comparing `request.endpoint` against each route's endpoint (e.g. `request.endpoint == 'customer.categories'`), instead of hardcoding `active` on Home. This was a pre-existing gap (previously Home always showed active, regardless of the current page) surfaced while verifying the Categories page's active nav state, and is now correct on every customer page (Home, Products, Categories, Contact). Compare has no route yet, so it never highlights.
+
+#### Category Image Fallback
+
+`_resolve_category_image()` in `services/customer_service.py` now checks that a mapped category image file actually exists **and is non-empty** before using it; otherwise it falls back to the placeholder. This fixed a real bug found while verifying image fallbacks: `electronics.jpg`, `furniture.jpg`, and `miscellaneous.jpg` under `static/images/categories/` are committed as 0-byte stub files, which the browser can't decode — they rendered as broken images instead of the placeholder. Since `get_home_departments()` is shared, this fix also corrects the homepage Featured Categories slider, which had the same broken images. The underlying stub image files still need to be replaced with real photography; until then, all categories correctly show the placeholder.
 
 ## Employee Portal
 
@@ -352,7 +376,7 @@ Remaining Phase 1 items require an actual HostyCare deployment and live verifica
 
 □ Product Details Improvements
 □ Product Image Gallery
-□ Category Landing Pages
+✓ Category Landing Pages — premium `/categories` browsing page, see Categories Page above
 □ Search Improvements
 □ Homepage Improvements
 □ Responsive UI Polish

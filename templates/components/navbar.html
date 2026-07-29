@@ -12,7 +12,6 @@ Responsibilities:
 
 TODO:
 - Replace logo if updated.
-- Add active page highlighting.
 - Add dynamic categories dropdown.
 =========================================================
 -->
@@ -64,19 +63,19 @@ TODO:
             <ul class="navbar-nav mx-auto">
 
                 <li class="nav-item">
-                    <a class="nav-link active" href="{{ url_for('customer.home') }}">
+                    <a class="nav-link {% if request.endpoint == 'customer.home' %}active{% endif %}" href="{{ url_for('customer.home') }}">
                         Home
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('customer.products') }}">
+                    <a class="nav-link {% if request.endpoint == 'customer.products' %}active{% endif %}" href="{{ url_for('customer.products') }}">
                         Products
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a class="nav-link" href="#">
+                    <a class="nav-link {% if request.endpoint == 'customer.categories' %}active{% endif %}" href="{{ url_for('customer.categories') }}">
                         Categories
                     </a>
                 </li>
@@ -88,7 +87,7 @@ TODO:
                 </li>
 
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('customer.contact') }}">
+                    <a class="nav-link {% if request.endpoint == 'customer.contact' %}active{% endif %}" href="{{ url_for('customer.contact') }}">
                         Contact
                     </a>
                 </li>

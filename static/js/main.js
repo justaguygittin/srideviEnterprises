@@ -10,6 +10,7 @@ Author  : Srikar
 
 document.addEventListener("DOMContentLoaded", function () {
     initFeaturedCategoriesSliders();
+    initCategorySearch();
 });
 
 function initFeaturedCategoriesSliders() {
@@ -58,5 +59,35 @@ function initFeaturedCategoriesSliders() {
         window.addEventListener("resize", updateArrowState);
 
         updateArrowState();
+    });
+}
+
+function initCategorySearch() {
+    var searchInput = document.getElementById("category-search");
+    var grid = document.getElementById("category-grid");
+
+    if (!searchInput || !grid) {
+        return;
+    }
+
+    var cards = grid.querySelectorAll(".category-grid-card");
+    var emptyState = document.getElementById("category-empty-state");
+
+    searchInput.addEventListener("input", function () {
+        var query = searchInput.value.trim().toLowerCase();
+        var visibleCount = 0;
+
+        cards.forEach(function (card) {
+            var matches = card.dataset.categoryName.indexOf(query) !== -1;
+            card.classList.toggle("d-none", !matches);
+
+            if (matches) {
+                visibleCount += 1;
+            }
+        });
+
+        if (emptyState) {
+            emptyState.classList.toggle("d-none", visibleCount !== 0);
+        }
     });
 }

@@ -8,6 +8,8 @@ Author  : Srikar
 =========================================================
 """
 
+import os
+
 from database.db import fetch_all
 
 
@@ -18,6 +20,20 @@ _CATEGORY_IMAGES = {
     "utility": "images/categories/utility.jpg",
 }
 _PLACEHOLDER_IMAGE = "images/placeholder.png"
+_STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
+
+
+def _resolve_category_image(department_name):
+    """Return the mapped category image, or the placeholder if it is missing or empty."""
+
+    image_path = _CATEGORY_IMAGES.get(department_name.strip().lower())
+
+    if image_path:
+        full_path = os.path.join(_STATIC_DIR, *image_path.split("/"))
+        if os.path.isfile(full_path) and os.path.getsize(full_path) > 0:
+            return image_path
+
+    return _PLACEHOLDER_IMAGE
 
 
 def get_home_departments():
@@ -32,9 +48,7 @@ def get_home_departments():
     """)
 
     for department in departments:
-        department["image_path"] = _CATEGORY_IMAGES.get(
-            department["Department"].strip().lower(), _PLACEHOLDER_IMAGE
-        )
+        department["image_path"] = _resolve_category_image(department["Department"])
 
     return departments
 
