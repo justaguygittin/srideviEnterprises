@@ -41,7 +41,7 @@ cPanel — it's specific to your app and Python version), then install:
 
 ```bash
 source /home/USER/virtualenv/srideviEnterprises/3.x/bin/activate
-cd ~/srideviEnterprises
+cd ~/SE/srideviEnterprises
 pip install -r requirements.txt
 ```
 
@@ -120,8 +120,8 @@ Then run the smoke test below.
 
 Run this after every deploy or restart:
 
-- [ ] Homepage (`/`) loads with departments, featured products, and brands.
-- [ ] Products listing (`/products`) loads; search, filters, and pagination work.
+- [*] Homepage (`/`) loads with departments, featured products, and brands.
+- [*] Products listing (`/products`) loads; search, filters, and pagination work.
 - [ ] A product details page (`/products/<id>`) loads with its images and specifications.
 - [ ] Employee login (`/employee/login`) succeeds and reaches the dashboard.
 - [ ] Add Product (employee) succeeds, including an image upload.
