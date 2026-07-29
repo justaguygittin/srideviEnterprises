@@ -122,15 +122,15 @@ Run this after every deploy or restart:
 
 - [*] Homepage (`/`) loads with departments, featured products, and brands.
 - [*] Products listing (`/products`) loads; search, filters, and pagination work.
-- [ ] A product details page (`/products/<id>`) loads with its images and specifications.
-- [ ] Employee login (`/employee/login`) succeeds and reaches the dashboard.
-- [ ] Add Product (employee) succeeds, including an image upload.
-- [ ] Edit Product (employee) succeeds.
+- [*] A product details page (`/products/<id>`) loads with its images and specifications.
+- [*] Employee login (`/employee/login`) succeeds and reaches the dashboard.
+- [*] Add Product (employee) succeeds, including an image upload.
+- [*] Edit Product (employee) succeeds.
 - [ ] Newly uploaded images render on the product's details page.
 - [ ] Customer product enquiry form submits successfully.
 - [ ] Contact form submits successfully.
-- [ ] Visiting the site over plain `http://` redirects to `https://`.
-- [ ] The browser shows a valid HTTPS padlock (no certificate warnings).
+- [*] Visiting the site over plain `http://` redirects to `https://`.
+- [*] The browser shows a valid HTTPS padlock (no certificate warnings).
 
 If anything fails, check cPanel's Python app error log (linked from the **Setup Python
 App** page) before making changes.

@@ -50,100 +50,220 @@ Author  : Srikar
 }
 
 /* ===========================================
-   Category Card
+   Featured Categories Slider
 =========================================== */
 
-.category-card {
+.featured-categories-slider-wrapper {
 
     position: relative;
 
-    display: block;
+    display: flex;
 
-    overflow: hidden;
+    align-items: center;
 
-    border-radius: 18px;
-
-    text-decoration: none;
-
-    box-shadow: 0 10px 30px rgba(0, 0, 0, .08);
+    gap: 14px;
 
 }
 
-.category-card img {
-
-    width: 100%;
-
-    height: 260px;
-
-    object-fit: cover;
-
-    transition: .4s;
-
-}
-
-.category-card:hover img {
-
-    transform: scale(1.05);
-
-}
-
-/* ===========================================
-   Overlay
-=========================================== */
-
-.category-overlay {
-
-    position: absolute;
-
-    inset: 0;
-
-    background: linear-gradient(to top,
-            rgba(0, 0, 0, .75),
-            rgba(0, 0, 0, .15));
+.featured-categories-slider {
 
     display: flex;
 
-    flex-direction: column;
+    gap: 20px;
 
-    justify-content: flex-end;
+    flex: 1;
 
-    padding: 30px;
+    overflow-x: auto;
 
-    color: white;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
 
-}
+    padding: 4px 0 12px;
 
-.category-overlay h3 {
-
-    font-size: 1.35rem;
-
-    font-weight: 600;
+    scrollbar-width: none;
 
 }
 
-.category-overlay p {
+.featured-categories-slider::-webkit-scrollbar {
 
-    margin: 0;
-
-    opacity: .9;
+    display: none;
 
 }
 
 /* ===========================================
-   Mobile
+   Category Slide
 =========================================== */
 
-@media(max-width:768px) {
+.category-slide {
 
-    .category-card img {
+    scroll-snap-align: start;
+
+    flex: 0 0 calc(100% - 8px);
+
+    display: flex;
+    flex-direction: column;
+
+    background: #ffffff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+
+    transition: box-shadow .2s ease, transform .2s ease;
+
+}
+
+.category-slide:hover {
+
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .14);
+    transform: translateY(-2px);
+
+}
+
+.category-slide img {
+
+    width: 100%;
+
+    height: 220px;
+
+    object-fit: cover;
+
+}
+
+.category-slide-body {
+
+    padding: 20px;
+
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+
+}
+
+.category-slide-body h3 {
+
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1F2937;
+    margin-bottom: 4px;
+
+}
+
+.category-slide-body p {
+
+    color: #667085;
+    font-size: .9rem;
+    margin-bottom: 16px;
+
+}
+
+.category-slide-body .btn {
+
+    margin-top: auto;
+    align-self: flex-start;
+
+}
+
+/* ===========================================
+   Slider Arrows
+=========================================== */
+
+.slider-arrow {
+
+    flex: 0 0 auto;
+
+    width: 44px;
+    height: 44px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid #D0D5DD;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #1E4FA3;
+
+    cursor: pointer;
+
+    transition: background .2s ease, color .2s ease, opacity .2s ease;
+
+}
+
+.slider-arrow:hover:not(:disabled) {
+
+    background: #1E4FA3;
+    color: #ffffff;
+
+}
+
+.slider-arrow:disabled {
+
+    opacity: .35;
+    cursor: default;
+
+}
+
+/* No scrolling possible (few categories): hide arrows entirely. */
+
+.featured-categories-slider-wrapper.slider-no-overflow .slider-arrow {
+
+    display: none;
+
+}
+
+/* ===========================================
+   Responsive Breakpoints
+=========================================== */
+
+@media (min-width: 576px) {
+
+    .category-slide {
+
+        flex-basis: calc(50% - 10px);
+
+    }
+
+}
+
+@media (min-width: 768px) {
+
+    .category-slide {
+
+        flex-basis: calc(33.333% - 14px);
+
+    }
+
+    .category-slide img {
 
         height: 240px;
 
     }
 
+}
+
+@media (min-width: 1200px) {
+
+    .category-slide {
+
+        flex-basis: calc(25% - 15px);
+
+    }
+
+}
+
+@media (max-width: 768px) {
+
     .section-heading h2 {
 
         font-size: 2rem;
+
+    }
+
+    .slider-arrow {
+
+        width: 36px;
+        height: 36px;
 
     }
 
