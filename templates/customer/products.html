@@ -26,58 +26,128 @@ Author  : Srikar
         <form method="get" class="product-search mb-4">
             {% for name, value in filters.items() if name != 'search' %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
             <label for="search" class="visually-hidden">Search products</label>
-            <div class="input-group">
-                <input id="search" class="form-control" type="search" name="search" value="{{ filters.search }}" placeholder="Search products, brands, departments, categories or models">
-                <button class="btn btn-primary" type="submit"><i class="fa-solid fa-magnifying-glass me-2"></i>Search</button>
+            <div class="search-bar">
+                <div class="search-bar-field">
+                    <i class="fa-solid fa-magnifying-glass search-bar-icon" aria-hidden="true"></i>
+                    <input id="search" class="form-control search-bar-input" type="search" name="search"
+                        value="{{ filters.search }}" autocomplete="off"
+                        placeholder="Search products, brands, departments, categories or models">
+                    {% if filters.search %}
+                    <a href="{{ clear_search_url }}" class="search-bar-clear" aria-label="Clear search">
+                        <i class="fa-solid fa-xmark"></i>
+                    </a>
+                    {% endif %}
+                </div>
+                <button class="btn btn-primary search-bar-submit" type="submit">Search</button>
             </div>
         </form>
 
+        <div class="product-list-toolbar">
+            <p class="product-list-count mb-0">{{ total_products }} product{{ '' if total_products == 1 else 's' }} found</p>
+            <button class="btn btn-outline-primary filter-toggle-btn d-lg-none" type="button"
+                data-bs-toggle="offcanvas" data-bs-target="#filterDrawer" aria-controls="filterDrawer">
+                <i class="fa-solid fa-sliders me-2"></i>Filters
+                {% if active_filters %}<span class="filter-count-badge">{{ active_filters|length }}</span>{% endif %}
+            </button>
+        </div>
+
+        {% if active_filters %}
+        <div class="active-filters-bar mb-4">
+            <span class="active-filters-label">Active filters:</span>
+            {% for chip in active_filters %}
+            <a href="{{ chip.remove_url }}" class="filter-chip">{{ chip.label }}<i class="fa-solid fa-xmark"></i></a>
+            {% endfor %}
+            <a href="{{ url_for('customer.products') }}" class="clear-all-filters-link">Clear all</a>
+        </div>
+        {% endif %}
+
         <div class="row g-4">
             <aside class="col-lg-3">
-                <form method="get" class="filter-panel">
-                    <input type="hidden" name="search" value="{{ filters.search }}">
-                    <h2>Filter Products</h2>
-                    <label for="department">Department</label>
-                    <select id="department" name="department" class="form-select">
-                        <option value="">All departments</option>
-                        {% for item in filter_options.departments %}<option value="{{ item.value }}" {% if filters.department == item.value %}selected{% endif %}>{{ item.value }}</option>{% endfor %}
-                    </select>
-                    <label for="category">Category</label>
-                    <select id="category" name="category" class="form-select">
-                        <option value="">All categories</option>
-                        {% for item in filter_options.categories %}<option value="{{ item.value }}" {% if filters.category == item.value %}selected{% endif %}>{{ item.value }}</option>{% endfor %}
-                    </select>
-                    <label for="brand">Brand</label>
-                    <select id="brand" name="brand" class="form-select">
-                        <option value="">All brands</option>
-                        {% for item in filter_options.brands %}<option value="{{ item.value }}" {% if filters.brand == item.value %}selected{% endif %}>{{ item.value }}</option>{% endfor %}
-                    </select>
-                    <label for="availability">Availability</label>
-                    <select id="availability" name="availability" class="form-select">
-                        <option value="">All availability</option>
-                        <option value="in_stock" {% if filters.availability == 'in_stock' %}selected{% endif %}>In stock</option>
-                        <option value="on_request" {% if filters.availability == 'on_request' %}selected{% endif %}>Available on request</option>
-                    </select>
-                    <input type="hidden" name="sort" value="{{ filters.sort }}">
-                    <button class="btn btn-primary w-100 mt-4" type="submit">Apply Filters</button>
-                    <a href="{{ url_for('customer.products') }}" class="btn btn-link w-100">Clear filters</a>
-                </form>
+                <div class="offcanvas-lg offcanvas-start filter-drawer" tabindex="-1" id="filterDrawer" aria-labelledby="filterDrawerLabel">
+                    <div class="offcanvas-header d-lg-none">
+                        <h2 class="offcanvas-title" id="filterDrawerLabel">Filter Products</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#filterDrawer" aria-label="Close"></button>
+                    </div>
+                    <div class="offcanvas-body">
+                        <form method="get" class="filter-panel">
+                            <input type="hidden" name="search" value="{{ filters.search }}">
+                            <h2 class="filter-panel-title d-none d-lg-block">Filter Products</h2>
+
+                            <div class="filter-group">
+                                <button class="filter-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#filterGroupDepartment" aria-expanded="true" aria-controls="filterGroupDepartment">
+                                    Department <i class="fa-solid fa-chevron-down"></i>
+                                </button>
+                                <div class="collapse show filter-group-body" id="filterGroupDepartment">
+                                    <label for="department" class="visually-hidden">Department</label>
+                                    <select id="department" name="department" class="form-select">
+                                        <option value="">All departments</option>
+                                        {% for item in filter_options.departments %}<option value="{{ item.value }}" {% if filters.department == item.value %}selected{% endif %}>{{ item.value }}</option>{% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="filter-group">
+                                <button class="filter-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#filterGroupCategory" aria-expanded="true" aria-controls="filterGroupCategory">
+                                    Category <i class="fa-solid fa-chevron-down"></i>
+                                </button>
+                                <div class="collapse show filter-group-body" id="filterGroupCategory">
+                                    <label for="category" class="visually-hidden">Category</label>
+                                    <select id="category" name="category" class="form-select">
+                                        <option value="">All categories</option>
+                                        {% for item in filter_options.categories %}<option value="{{ item.value }}" {% if filters.category == item.value %}selected{% endif %}>{{ item.value }}</option>{% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="filter-group">
+                                <button class="filter-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#filterGroupBrand" aria-expanded="true" aria-controls="filterGroupBrand">
+                                    Brand <i class="fa-solid fa-chevron-down"></i>
+                                </button>
+                                <div class="collapse show filter-group-body" id="filterGroupBrand">
+                                    <label for="brand" class="visually-hidden">Brand</label>
+                                    <select id="brand" name="brand" class="form-select">
+                                        <option value="">All brands</option>
+                                        {% for item in filter_options.brands %}<option value="{{ item.value }}" {% if filters.brand == item.value %}selected{% endif %}>{{ item.value }}</option>{% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="filter-group">
+                                <button class="filter-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#filterGroupAvailability" aria-expanded="true" aria-controls="filterGroupAvailability">
+                                    Availability <i class="fa-solid fa-chevron-down"></i>
+                                </button>
+                                <div class="collapse show filter-group-body" id="filterGroupAvailability">
+                                    <label for="availability" class="visually-hidden">Availability</label>
+                                    <select id="availability" name="availability" class="form-select">
+                                        <option value="">All availability</option>
+                                        <option value="in_stock" {% if filters.availability == 'in_stock' %}selected{% endif %}>In stock</option>
+                                        <option value="on_request" {% if filters.availability == 'on_request' %}selected{% endif %}>Available on request</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="filter-group">
+                                <button class="filter-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#filterGroupSort" aria-expanded="true" aria-controls="filterGroupSort">
+                                    Sort By <i class="fa-solid fa-chevron-down"></i>
+                                </button>
+                                <div class="collapse show filter-group-body" id="filterGroupSort">
+                                    <label for="sort" class="visually-hidden">Sort products</label>
+                                    <select id="sort" name="sort" class="form-select" onchange="this.form.submit()">
+                                        <option value="newest" {% if filters.sort == 'newest' %}selected{% endif %}>Newest</option>
+                                        <option value="name" {% if filters.sort == 'name' %}selected{% endif %}>A-Z</option>
+                                        <option value="brand" {% if filters.sort == 'brand' %}selected{% endif %}>Brand</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-primary w-100 mt-4" type="submit">Apply Filters</button>
+                            <a href="{{ url_for('customer.products') }}" class="btn btn-link w-100">Clear filters</a>
+                        </form>
+                    </div>
+                </div>
             </aside>
 
             <div class="col-lg-9">
-                <div class="product-list-toolbar">
-                    <p class="mb-0">{{ total_products }} product{{ '' if total_products == 1 else 's' }} found</p>
-                    <form method="get">
-                        {% for name, value in filters.items() if name != 'sort' %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
-                        <label for="sort" class="visually-hidden">Sort products</label>
-                        <select id="sort" class="form-select" name="sort" onchange="this.form.submit()">
-                            <option value="newest" {% if filters.sort == 'newest' %}selected{% endif %}>Newest</option>
-                            <option value="name" {% if filters.sort == 'name' %}selected{% endif %}>A-Z</option>
-                            <option value="brand" {% if filters.sort == 'brand' %}selected{% endif %}>Brand</option>
-                        </select>
-                    </form>
-                </div>
-
                 <div class="row g-4">
                     {% for product in products %}
                     <div class="col-xl-3 col-md-6">
@@ -85,8 +155,8 @@ Author  : Srikar
                             <!-- TODO: Replace the shared placeholder product image with uploaded product images. -->
                             <img src="{{ url_for('static', filename=product.image_path) }}" alt="{{ product.product_name }}">
                             <div class="catalog-product-card-body">
-                                <p class="catalog-product-brand">{{ product.brand or 'Sridevi Enterprises' }}</p>
-                                <h2>{{ product.product_name }}</h2>
+                                <p class="catalog-product-brand">{{ (product.brand or 'Sridevi Enterprises') | highlight_search(filters.search) }}</p>
+                                <h2>{{ product.product_name | highlight_search(filters.search) }}</h2>
                                 {#
                                 <p class="catalog-product-meta">{{ product.Department }} · {{ product.category or 'Uncategorised' }}</p>
                                 #}
@@ -99,7 +169,31 @@ Author  : Srikar
                         </article>
                     </div>
                     {% else %}
-                    <div class="col-12"><p class="empty-state">No products match your current search or filters.</p></div>
+                    <div class="col-12">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-magnifying-glass empty-state-icon" aria-hidden="true"></i>
+                            {% if filters.search %}
+                            <h2 class="empty-state-title">No products matched &ldquo;{{ filters.search }}&rdquo;</h2>
+                            {% else %}
+                            <h2 class="empty-state-title">No products match your current filters</h2>
+                            {% endif %}
+                            <p class="empty-state-suggestions-label">Suggestions:</p>
+                            <ul class="empty-state-suggestions">
+                                {% if filters.search %}<li>Check your spelling</li>{% endif %}
+                                {% if active_filters %}<li>Remove one or more filters</li>{% endif %}
+                                <li>Browse <a href="{{ url_for('customer.categories') }}">Categories</a></li>
+                                {% if filters.search %}<li>Clear your search</li>{% endif %}
+                            </ul>
+                            <div class="empty-state-actions">
+                                {% if filters.search %}
+                                <a href="{{ clear_search_url }}" class="btn btn-primary">Clear Search</a>
+                                {% endif %}
+                                {% if active_filters %}
+                                <a href="{{ url_for('customer.products') }}" class="btn btn-outline-primary">Clear All Filters</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
                     {% endfor %}
                 </div>
 

@@ -1,7 +1,7 @@
 # AI_CONTEXT.md
 
 # Sridevi Enterprises
-Current Version: v0.7.0 — Employee Product Management (complete)
+Current Version: v0.8.0 — Customer Experience (in progress)
 
 ---
 
@@ -118,6 +118,34 @@ Both the navbar's and footer's "Categories" links now point to `url_for('custome
 #### Category Image Fallback
 
 `_resolve_category_image()` in `services/customer_service.py` now checks that a mapped category image file actually exists **and is non-empty** before using it; otherwise it falls back to the placeholder. This fixed a real bug found while verifying image fallbacks: `electronics.jpg`, `furniture.jpg`, and `miscellaneous.jpg` under `static/images/categories/` are committed as 0-byte stub files, which the browser can't decode — they rendered as broken images instead of the placeholder. Since `get_home_departments()` is shared, this fix also corrects the homepage Featured Categories slider, which had the same broken images. The underlying stub image files still need to be replaced with real photography; until then, all categories correctly show the placeholder.
+
+### Products Page — Filtering Experience
+
+`/products` uses a single reusable filter form — `templates/customer/products.html`'s `.filter-panel` inside a Bootstrap 5 responsive off-canvas (`offcanvas-lg`) — that renders as a sticky left sidebar at the `lg` breakpoint (≥992px) and collapses into a slide-in drawer (opened via a "Filters" toggle button) below it. The same markup serves both layouts; nothing is duplicated between desktop and mobile.
+
+Each filter (Department, Category, Brand, Availability, Sort By) is a collapsible group (Bootstrap `collapse`, expanded by default) with its native `<select>` unchanged from the prior implementation — no new filter dimensions, no new query parameters, no backend or `services/product_service.py` changes. Sort was moved from the old top-toolbar dropdown into the filter panel as its own group (per the sprint's explicit filter list); it still auto-submits on change via `onchange="this.form.submit()"`, while the other filters require "Apply Filters".
+
+**Note:** the sprint spec listed Department/Brand/Availability/Sort as the filter set; Category was kept as a fifth group since it was already a working filter (existing `filter_options.categories` / `category` query param) — dropping it would have removed functionality that wasn't asked to be removed. Flag if this should instead be trimmed to match the spec exactly.
+
+Active filters (Department, Category, Brand, Availability — not search or sort) render as removable chips above the product grid (e.g. "Furniture ×"). Chip removal URLs and the mobile filter-count badge are computed server-side in `routes/customer.py`'s `_build_active_filter_chips()`, reusing the same `filters` dict and `customer.products` route — no new route or API. Product cards, pagination, and the search bar are unchanged from the prior implementation.
+
+**Implementation gotcha:** Bootstrap 5.3.7's responsive offcanvas only works with the size-scoped class alone (`offcanvas-lg`) on the container; adding the base `.offcanvas` class alongside it (as most examples show) causes the element to stay permanently hidden at all breakpoints, because the unconditional `.offcanvas` rule (visibility:hidden, transform:translateX(-100%)) is not overridden by the `.offcanvas-lg` responsive breakpoint rules in this build. Confirmed by inspecting the actual downloaded CDN stylesheet — the `@media (min-width:992px){.offcanvas-lg{...}}` block never resets `visibility`/`transform`. Use `offcanvas-lg` (or `offcanvas-{sm|md|xl|xxl}`) alone, never combined with plain `offcanvas`, for responsive sidebar/drawer patterns in this codebase.
+
+**Dev note:** `FLASK_DEBUG=False` in `.env` means `TEMPLATES_AUTO_RELOAD` is off and the Werkzeug reloader isn't watching files — template and route edits require restarting the `flask-dev` server to take effect, they will not hot-reload.
+
+### Products Page — Search Experience
+
+`/products`'s search bar (`.search-bar` in `templates/customer/products.html`) was rebuilt visually only — same `GET` form, same `search` query param, same `get_products()`/`_build_product_filters()` LIKE-query backend in `services/product_service.py`. It now has an inset search icon, a larger input, and (when `filters.search` is set) an inline clear (×) link — all pure CSS/Jinja, no JavaScript added.
+
+**Search persistence** was already correct going into this sprint (a side effect of the filter-chip work): every filter form, the sort auto-submit, pagination links, and filter-chip removal links already round-trip the full `filters` dict, including `search`. This sprint didn't need to change that — it was verified across all of those interactions (filters, sort, chip removal, pagination) rather than re-implemented.
+
+**Search highlighting**: `routes/customer.py` registers a Jinja filter, `highlight_search(text, term)` (`@customer_bp.app_template_filter`), applied only in `products.html` to `product.product_name` and `product.brand` — so it only affects the Products page, not Product Details or anywhere else. It does a case-insensitive substring match on the existing `filters.search` term already in the template context — no new query, no DB change. Matches are wrapped in `<mark class="search-highlight">`. Each raw text segment is escaped individually via `markupsafe.escape()` before being reassembled as `Markup`, rather than escaping the whole string first and matching against escaped output — this avoids mismatches when the product text itself contains HTML-special characters (e.g. catalog entries like "Tv & Entertainment Units"). Verified against an XSS payload (`<script>...`) as the search term: Jinja's default autoescaping renders it as inert text everywhere it's echoed back (input value, empty-state heading).
+
+**Clear-search URL**: `routes/customer.py`'s `products()` view computes `clear_search_url = url_for("customer.products", **dict(filters, search=""))` once per request and passes it to the template — reused by both the inline × button and the empty state's "Clear Search" button, so clearing search always preserves every other active filter/sort and resets pagination (no `page` param is ever carried by these links, so it naturally defaults back to page 1).
+
+**Empty state**: replaced the one-line "No products match..." with an icon, a heading (quotes the search term when one was used), a suggestions list (spelling, filters, Categories link, clear search — each shown only when relevant), and action buttons ("Clear Search" / "Clear All Filters", each shown only when applicable). Same `{% for %}...{% else %}` block as before, no new route.
+
+Product cards, pagination, and the filter sidebar/drawer from the previous sprint are unchanged.
 
 ## Employee Portal
 
@@ -376,12 +404,25 @@ Remaining Phase 1 items require an actual HostyCare deployment and live verifica
 
 ### Phase 2 – Customer Experience
 
+#### Homepage
+✓ Featured Categories Slider
+✓ Featured Products
+✓ View All Products CTA
+✓ Popular Brands
+✓ Responsive Homepage Polish
+
+#### Categories
+✓ Premium Categories Page
+✓ Live Category Search
+✓ Responsive Category Grid
+
+#### Products
+✓ Filtering Experience
+✓ Search Experience
+□ Product Card Polish
+□ Pagination Polish
 □ Product Details Improvements
 □ Product Image Gallery
-✓ Category Landing Pages — premium `/categories` browsing page, see Categories Page above
-□ Search Improvements
-□ Homepage Improvements
-□ Responsive UI Polish
 
 ### Phase 3 – Production Hardening
 
@@ -446,3 +487,99 @@ Possible future work:
 - Invoice Integration
 - Analytics
 - Multi-Branch Support
+
+## Future Scalability Improvements
+
+These enhancements are intentionally deferred until the product catalog grows significantly. The current implementation is appropriate for the existing catalog size.
+
+### Product Discovery
+
+#### Searchable Brand Filter
+
+Current implementation:
+- Standard dropdown containing all brands.
+
+Future enhancement:
+- Replace with a searchable filter component.
+- Support type-to-filter behavior.
+- Consider checkbox-based multi-select for large brand catalogs.
+
+Reason:
+Standard dropdowns become difficult to use when the catalog contains hundreds of brands.
+
+Priority:
+Post-v0.8
+
+---
+
+#### Searchable Category Filter
+
+Implement only if the number of categories grows enough to justify replacing the current dropdown.
+
+Priority:
+Post-v0.8
+
+---
+
+#### Filter Result Counts
+
+Examples:
+
+- HP (42)
+- Epson (18)
+- Furniture (86)
+
+Allow customers to see how many products each filter will return before selecting it.
+
+Priority:
+Post-v0.8
+
+---
+
+#### Advanced Search
+
+Future enhancements:
+
+- Live autocomplete
+- Product suggestions while typing
+- Highlight matching search terms
+- Recent searches
+
+Priority:
+Post-v0.8
+
+---
+
+#### Performance
+
+Evaluate when the catalog exceeds approximately 1,000–1,500 products.
+
+Potential improvements:
+
+- Lazy image loading
+- Filter caching
+- Query optimization
+- Optional infinite scrolling
+
+Priority:
+Post-v0.8
+
+#### Search Ranking
+
+Future enhancement:
+
+Improve result ordering by relevance.
+
+Possible ranking:
+
+1. Exact product name
+2. Product name prefix
+3. Brand
+4. Partial match
+
+Reason:
+
+Simple LIKE searches become less useful as the catalog grows.
+
+Priority:
+Post-v1.0

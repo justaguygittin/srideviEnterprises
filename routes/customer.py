@@ -8,9 +8,11 @@ Author  : Srikar
 =========================================================
 """
 
+import re
 from math import ceil
 
-from flask import Blueprint, abort, render_template, request
+from flask import Blueprint, abort, render_template, request, url_for
+from markupsafe import Markup, escape
 from services.customer_service import (
     get_featured_products,
     get_home_departments,
@@ -26,6 +28,48 @@ from services.product_service import (
 )
 
 customer_bp = Blueprint("customer", __name__)
+
+_AVAILABILITY_LABELS = {"in_stock": "In Stock", "on_request": "Available on Request"}
+_CHIP_FIELDS = ("department", "category", "brand", "availability")
+
+
+def _build_active_filter_chips(filters: dict) -> list[dict]:
+    """Build removable filter-chip data for the currently active narrowing filters."""
+
+    chips = []
+    for field in _CHIP_FIELDS:
+        value = filters.get(field)
+        if not value:
+            continue
+        label = _AVAILABILITY_LABELS.get(value, value) if field == "availability" else value
+        cleared_filters = dict(filters, **{field: ""})
+        chips.append({
+            "label": label,
+            "remove_url": url_for("customer.products", **cleared_filters),
+        })
+    return chips
+
+
+@customer_bp.app_template_filter("highlight_search")
+def highlight_search(text, term):
+    """Wrap case-insensitive matches of `term` in <mark> tags for the Products page search."""
+
+    if not text or not term:
+        return text
+
+    text = str(text)
+    pattern = re.compile(re.escape(term), re.IGNORECASE)
+    pieces = []
+    cursor = 0
+    for match in pattern.finditer(text):
+        pieces.append(escape(text[cursor:match.start()]))
+        pieces.append(Markup("<mark class='search-highlight'>"))
+        pieces.append(escape(match.group(0)))
+        pieces.append(Markup("</mark>"))
+        cursor = match.end()
+    pieces.append(escape(text[cursor:]))
+
+    return Markup("").join(pieces)
 
 
 @customer_bp.route("/")
@@ -66,6 +110,8 @@ def products():
         products=get_products(filters, page, per_page),
         filter_options=get_product_filters(),
         filters=filters,
+        active_filters=_build_active_filter_chips(filters),
+        clear_search_url=url_for("customer.products", **dict(filters, search="")),
         page=page,
         page_numbers=range(page_start, page_end + 1),
         total_pages=total_pages,
