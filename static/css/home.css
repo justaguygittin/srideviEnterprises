@@ -312,6 +312,13 @@ File    : home.css
 
 }
 
+.product-card {
+
+    display: flex;
+    flex-direction: column;
+
+}
+
 .product-card-image {
 
     width: 100%;
@@ -319,21 +326,40 @@ File    : home.css
     object-fit: contain;
     background: #F5F7FA;
     padding: 20px;
+    flex-shrink: 0;
 
 }
 
 .product-card-body {
 
     padding: 22px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
 
 }
 
-.product-card h3,
 .brand-card h3 {
 
     font-size: 1.05rem;
     font-weight: 600;
     color: #1F2937;
+
+}
+
+.product-card h3 {
+
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #1F2937;
+    line-height: 1.4;
+    margin-bottom: 8px;
+
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    min-height: calc(1.4em * 2);
 
 }
 
@@ -358,6 +384,7 @@ File    : home.css
 .product-card .btn {
 
     width: 100%;
+    margin-top: auto;
 
 }
 

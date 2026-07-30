@@ -91,6 +91,8 @@ Sections, in order:
 
 The dedicated Categories page (`/categories`) is separate and unaffected by the slider — see Categories Page below.
 
+The Featured Products section displays 8 products from `get_featured_products()` (`services/customer_service.py`) — a `LIMIT 8` query, randomly ordered (`ORDER BY RAND()`) for variety on each page load, not a fixed "first 8 by id". It uses the homepage's own `.product-card` markup/styling (distinct from the Products page's `.catalog-product-card`) and ends with a centered "View All Products" button linking to `/products`. No backend changes were needed — the query already returned exactly 8 products.
+
 Regression tested: Homepage, Products page, Categories navigation, Mobile, Desktop, no JS console errors, no route changes.
 
 ### Categories Page
