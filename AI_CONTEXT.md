@@ -147,6 +147,18 @@ Active filters (Department, Category, Brand, Availability — not search or sort
 
 Product cards, pagination, and the filter sidebar/drawer from the previous sprint are unchanged.
 
+### Products Page — Card Polish
+
+**Shared-component constraint:** `.catalog-product-card` and its child classes (`.catalog-product-brand`, `.catalog-product-pricing`, `.catalog-product-card-body`, `.catalog-product-card h2/h3`, the direct-child `img` rule) are reused verbatim by the "Similar Products" section on **both** `customer/product_details.html` and `employee/product_details.html`, and `.catalog-product-brand`/`.catalog-product-pricing` are also used by the main product-info panel on those same pages. Editing those shared rules in place would have visually changed Product Details, which was explicitly out of scope for this sprint. So none of those base declarations were touched — every new/changed rule is scoped under a new additive modifier class, `product-grid-card`, added only to the `<article>` in `products.html`'s catalog loop. Verified in-browser: the Similar Products cards on Product Details still render the old flush `<img>` (no wrapper), no availability badge, and the original (non-uppercase, non-bold) brand typography — confirming zero bleed-through.
+
+**Image presentation:** each card's `<img>` is now wrapped in `.catalog-product-image-wrap` (fixed 208px height, `overflow:hidden`, light gray background) so `.catalog-product-image` can `transform: scale(1.06)` on card hover without the zoomed image escaping the card's rounded corners. `object-fit: contain` was kept (not switched to `cover`/cropping) — deliberate: several catalog photos are furniture/appliance product shots at varying aspect ratios, and cropping risks cutting off part of the product in a showroom context where the full silhouette matters more than filling the frame edge-to-edge. `loading="lazy"` was added for smoother below-the-fold loading (no JS). When `product.image_path` is the shared placeholder (`images/placeholder.png` — same literal string `services/product_service.py`'s `_PLACEHOLDER_IMAGE` already returns), the wrapper gets a `--placeholder` modifier that dims the image slightly (`opacity: .82`) to visually de-emphasize it as "not a real photo" — a template-only check against data already in the `product` dict, no backend change.
+
+**Availability badge:** replaces the old plain-text availability line with a colored pill + dot (`.availability-badge`, green `--in-stock` / amber `--on-request`), driven entirely by the existing two-state `product.availability` string (`"In stock"` / `"Available on request"` from `services/product_service.py`'s `CASE WHEN stock_quantity > 0...` query) — no new field, no third "Limited Stock" state invented, per the sprint's explicit constraint.
+
+**Typography/hierarchy:** reordered to Brand (small, uppercase, bold, letter-spaced) → Product Name → Department/Category meta → Availability badge → "Contact for Pricing" → View Details button, so the badge (more actionable for a showroom than the boilerplate pricing note) reads before it. The CTA button gained a trailing arrow icon and a subtle box-shadow on card hover; its Bootstrap `.btn-primary` class and click behavior (same `href` to `customer.product_details`) are unchanged.
+
+**Equal card heights** continue to work exactly as before (Bootstrap's `.row` flex + `.h-100` on the card + `margin-top: auto` on the button) — verified in-browser that a 4-card row with mismatched brand/name lengths still renders identical card heights.
+
 ## Employee Portal
 
 ✓ Employee Login
@@ -334,6 +346,26 @@ Keep UI clean. Keep Bootstrap consistent. Avoid unnecessary custom CSS.
 
 Keep functions small. Reuse existing services. Avoid duplicate SQL. Avoid duplicate templates. Reuse components whenever possible. Prefer extending existing code instead of rewriting it. Preserve backward compatibility. Do not introduce breaking changes without approval.
 
+## Component Isolation
+
+Shared UI components must never be modified directly if they are reused across multiple pages with different design goals.
+
+Instead:
+
+- extend with modifier classes
+
+- keep shared base styles stable
+
+- scope page-specific styling to additive classes
+
+Example:
+
+.catalog-product-card
+
+↓
+
+.product-grid-card
+
 ---
 
 # 4. Development Workflow
@@ -419,7 +451,7 @@ Remaining Phase 1 items require an actual HostyCare deployment and live verifica
 #### Products
 ✓ Filtering Experience
 ✓ Search Experience
-□ Product Card Polish
+✓ Product Card Polish
 □ Pagination Polish
 □ Product Details Improvements
 □ Product Image Gallery

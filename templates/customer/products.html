@@ -151,9 +151,11 @@ Author  : Srikar
                 <div class="row g-4">
                     {% for product in products %}
                     <div class="col-xl-3 col-md-6">
-                        <article class="catalog-product-card h-100">
-                            <!-- TODO: Replace the shared placeholder product image with uploaded product images. -->
-                            <img src="{{ url_for('static', filename=product.image_path) }}" alt="{{ product.product_name }}">
+                        <article class="catalog-product-card product-grid-card h-100">
+                            <div class="catalog-product-image-wrap{{ ' catalog-product-image-wrap--placeholder' if product.image_path == 'images/placeholder.png' else '' }}">
+                                <!-- TODO: Replace the shared placeholder product image with uploaded product images. -->
+                                <img src="{{ url_for('static', filename=product.image_path) }}" alt="{{ product.product_name }}" class="catalog-product-image" loading="lazy">
+                            </div>
                             <div class="catalog-product-card-body">
                                 <p class="catalog-product-brand">{{ (product.brand or 'Sridevi Enterprises') | highlight_search(filters.search) }}</p>
                                 <h2>{{ product.product_name | highlight_search(filters.search) }}</h2>
@@ -162,9 +164,11 @@ Author  : Srikar
                                 #}
                                 <!-- TODO: Correct UTF-8 encoding in legacy imported catalog data if source CSV is updated. -->
                                 <p class="catalog-product-meta">{{ product.Department }} &middot; {{ product.category or 'Uncategorised' }}</p>
+                                <span class="availability-badge {{ 'availability-badge--in-stock' if product.availability == 'In stock' else 'availability-badge--on-request' }}">{{ product.availability }}</span>
                                 <p class="catalog-product-pricing">Contact for Pricing</p>
-                                <p class="catalog-product-availability">{{ product.availability }}</p>
-                                <a href="{{ url_for('customer.product_details', product_id=product.id) }}" class="btn btn-primary w-100">View Details</a>
+                                <a href="{{ url_for('customer.product_details', product_id=product.id) }}" class="btn btn-primary catalog-product-cta w-100">
+                                    View Details <i class="fa-solid fa-arrow-right ms-1" aria-hidden="true"></i>
+                                </a>
                             </div>
                         </article>
                     </div>

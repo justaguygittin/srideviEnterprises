@@ -434,6 +434,150 @@ Author  : Srikar
 
 }
 
+/* ===========================================
+   Product Grid Cards (Products page only)
+
+   Scoped under .product-grid-card, an additive
+   modifier class used only in the Products page
+   catalog grid, so none of these rules touch the
+   shared .catalog-product-card/.catalog-product-brand/
+   .catalog-product-pricing classes reused by the
+   Similar Products cards and main info panel on
+   the Product Details pages (customer + employee).
+=========================================== */
+
+.product-grid-card .catalog-product-image-wrap {
+
+    position: relative;
+    overflow: hidden;
+    height: 208px;
+    background: #F5F7FA;
+
+}
+
+.product-grid-card .catalog-product-image {
+
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 20px;
+    transition: transform .25s ease;
+
+}
+
+.product-grid-card .catalog-product-image-wrap--placeholder .catalog-product-image {
+
+    opacity: .82;
+
+}
+
+.product-grid-card:hover .catalog-product-image {
+
+    transform: scale(1.06);
+
+}
+
+.product-grid-card .catalog-product-card-body {
+
+    padding: 22px 20px 20px;
+    gap: 3px;
+
+}
+
+.product-grid-card .catalog-product-brand {
+
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+
+}
+
+.product-grid-card h2 {
+
+    margin-bottom: 4px;
+
+}
+
+.product-grid-card .catalog-product-meta {
+
+    margin-bottom: 10px;
+
+}
+
+.product-grid-card .availability-badge {
+
+    margin-bottom: 10px;
+
+}
+
+.product-grid-card .catalog-product-pricing {
+
+    font-size: .85rem;
+    font-weight: 500;
+    margin-bottom: 16px;
+
+}
+
+.product-grid-card .catalog-product-cta {
+
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 10px 16px;
+    transition: background-color .15s ease, box-shadow .15s ease, transform .15s ease;
+
+}
+
+.product-grid-card:hover .catalog-product-cta {
+
+    box-shadow: 0 4px 12px rgba(30, 79, 163, .28);
+
+}
+
+/* ===========================================
+   Availability Badge
+=========================================== */
+
+.availability-badge {
+
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 600;
+    white-space: nowrap;
+
+}
+
+.availability-badge::before {
+
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+
+}
+
+.availability-badge--in-stock {
+
+    background: #ECFDF3;
+    color: #067647;
+
+}
+
+.availability-badge--on-request {
+
+    background: #FFFAEB;
+    color: #B54708;
+
+}
+
 .empty-state {
 
     background: #ffffff;
