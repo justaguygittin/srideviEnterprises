@@ -193,6 +193,24 @@ No changes to `services/product_service.py`, product cards, filters, or search t
 
 Regression tested: Homepage, Categories, Products (search + pagination + filters), Product Details (products with/without specifications, with/without real images), Enquiry Form/Success pages, Employee Portal's shared CSS classes confirmed unaffected by grep + computed-style checks, mobile/tablet/desktop viewports, no console or server errors.
 
+### Product Details Page — Image Gallery Experience
+
+Thumbnail click-to-swap was implemented on `templates/customer/product_details.html`, completing the "Product Image Gallery" roadmap item. This is customer-only — `templates/employee/product_details.html` was intentionally left untouched (see below).
+
+**Markup**: each gallery thumbnail is now a `<button type="button" class="product-gallery-thumb">` wrapping the existing thumbnail `<img>`, instead of a bare `<img>`. The button carries `data-image-src`, `data-image-alt`, and `data-is-placeholder` (mirroring the same placeholder-alt logic already used for the hero image), plus an `aria-label` ("View image N of TOTAL"). The inner `<img>` gets an empty `alt` since the button's `aria-label` already announces it — this avoids double-announcing the same information to screen readers. The hero `<img>` gained `id="product-hero-image"` as the swap target. The `{% if product.images|length > 1 %}` guard around the whole gallery strip (from the previous sprint) is unchanged, so placeholder-only and single-image products still show no thumbnail strip at all.
+
+**Behavior**: `initProductGallery()` in `static/js/main.js` (added to the `DOMContentLoaded` init list alongside `initFeaturedCategoriesSliders()` / `initCategorySearch()`, following the same pattern) wires a click listener per thumbnail. On click: active state moves to the clicked thumbnail (`is-active` class + `aria-current="true"`, removed from the rest), the hero image briefly fades out via a CSS class, then after 150ms its `src`/`alt`/placeholder-dimming class are swapped and the fade class is removed. Because native `<button>` elements are used (not `<img>` or `<div>` with manual `tabindex`/`keydown` handling), Enter/Space activation and Tab-focusability are guaranteed by the browser for free — no custom keyboard code was written, per the "lightest solution possible" constraint.
+
+**Styling**: new rules are `.product-gallery-thumb` (button reset: no border/background/padding, `cursor: pointer`), `.product-gallery-thumb.is-active` (blue box-shadow ring + `scale(1.05)`), `.product-gallery-thumb:hover:not(.is-active)` (neutral gray ring), and `.product-gallery-thumb:focus-visible` (blue outline) — all new classes, so the pre-existing `.product-gallery img` sizing/border rule (shared with the Employee Portal) still applies unchanged to the thumbnail images themselves. The hero's fade transition (`.product-details-page .product-main-image { transition: opacity 150ms ease }` / `.is-fading { opacity: 0 }`) is scoped under `.product-details-page`, so the Employee Portal's own `.product-main-image` (no gallery interactivity there) is unaffected.
+
+**Component isolation**: confirmed via grep that `product-gallery-thumb` and `product-hero-image` appear only in `templates/customer/product_details.html` — the Employee Portal's product details page (which has its own image-management UI: per-thumbnail delete buttons, no click-to-swap) was not modified. Employee-side thumbnail swap was explicitly out of scope for this sprint.
+
+**Out of scope, deliberately not built**: lightbox, fullscreen, zoom, swipe/pinch gestures, videos, 360° viewer, image downloads — per the sprint's constraints.
+
+Regression tested against a real 4-image product: hero swap, active-thumbnail state, mobile (375px, thumbnails fit on one row, no overflow), tablet (768px), desktop, placeholder-only product, single-image product, Homepage, Categories, Products (search + filters + sort + pagination combined), Enquiry form (back-link margin isolation still holds), Employee Portal shared classes (confirmed via grep, no bleed-through). No console or server errors.
+
+**Tooling note**: keyboard Enter/Space activation was verified structurally (native `<button>` semantics guarantee this in any real browser) rather than via the automated browser tool's synthetic key dispatch, which was confirmed unable to trigger click activation even on an unrelated pre-existing Bootstrap button (the navbar toggler) — a tool limitation, not a product defect.
+
 ## Employee Portal
 
 ✓ Employee Login
@@ -422,6 +440,17 @@ Use the same badge component consistently across:
 
 Future pages should reuse this component instead of introducing new status styles.
 
+## Gallery Pattern
+
+Product galleries intentionally use native HTML buttons.
+
+Reasons:
+
+- keyboard accessibility
+- browser semantics
+- screen reader compatibility
+- minimal JavaScript
+
 ---
 
 # 4. Development Workflow
@@ -510,7 +539,7 @@ Remaining Phase 1 items require an actual HostyCare deployment and live verifica
 ✓ Product Card Polish
 ✓ Pagination Polish
 ✓ Product Details Improvements
-□ Product Image Gallery
+✓ Product Image Gallery
 
 ### Phase 3 – Production Hardening
 

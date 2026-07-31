@@ -878,6 +878,18 @@ Author  : Srikar
 
 }
 
+.product-details-page .product-main-image {
+
+    transition: opacity 150ms ease;
+
+}
+
+.product-details-page .product-main-image.is-fading {
+
+    opacity: 0;
+
+}
+
 .product-gallery {
 
     display: flex;
@@ -909,6 +921,38 @@ Author  : Srikar
 .product-details-page .product-gallery img {
 
     flex-shrink: 0;
+
+}
+
+.product-gallery-thumb {
+
+    border: none;
+    background: none;
+    padding: 0;
+    line-height: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: box-shadow 150ms ease, transform 150ms ease;
+
+}
+
+.product-gallery-thumb:hover:not(.is-active) {
+
+    box-shadow: 0 0 0 2px #D0D5DD;
+
+}
+
+.product-gallery-thumb.is-active {
+
+    box-shadow: 0 0 0 2px #1E4FA3;
+    transform: scale(1.05);
+
+}
+
+.product-gallery-thumb:focus-visible {
+
+    outline: 2px solid #1E4FA3;
+    outline-offset: 2px;
 
 }
 

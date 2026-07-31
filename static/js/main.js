@@ -11,6 +11,7 @@ Author  : Srikar
 document.addEventListener("DOMContentLoaded", function () {
     initFeaturedCategoriesSliders();
     initCategorySearch();
+    initProductGallery();
 });
 
 function initFeaturedCategoriesSliders() {
@@ -89,5 +90,42 @@ function initCategorySearch() {
         if (emptyState) {
             emptyState.classList.toggle("d-none", visibleCount !== 0);
         }
+    });
+}
+
+function initProductGallery() {
+    var gallery = document.querySelector(".product-gallery");
+    var heroImage = document.getElementById("product-hero-image");
+
+    if (!gallery || !heroImage) {
+        return;
+    }
+
+    var thumbs = gallery.querySelectorAll(".product-gallery-thumb");
+    var fadeDuration = 150;
+
+    thumbs.forEach(function (thumb) {
+        thumb.addEventListener("click", function () {
+            if (thumb.classList.contains("is-active")) {
+                return;
+            }
+
+            thumbs.forEach(function (t) {
+                t.classList.remove("is-active");
+                t.removeAttribute("aria-current");
+            });
+
+            thumb.classList.add("is-active");
+            thumb.setAttribute("aria-current", "true");
+
+            heroImage.classList.add("is-fading");
+
+            window.setTimeout(function () {
+                heroImage.src = thumb.dataset.imageSrc;
+                heroImage.alt = thumb.dataset.imageAlt;
+                heroImage.classList.toggle("product-main-image--placeholder", thumb.dataset.isPlaceholder === "true");
+                heroImage.classList.remove("is-fading");
+            }, fadeDuration);
+        });
     });
 }

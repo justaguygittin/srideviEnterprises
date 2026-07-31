@@ -22,11 +22,13 @@ Author  : Srikar
         <div class="row g-5 mt-1">
             <div class="col-lg-6 product-hero-media">
                 <!-- TODO: Replace the shared placeholder product image after ProductImages is populated. -->
-                <img src="{{ url_for('static', filename=product.images[0].image_path) }}" alt="{{ 'Image not available' if product.images[0].is_placeholder else product.product_name }}" class="product-main-image{{ ' product-main-image--placeholder' if product.images[0].is_placeholder else '' }}">
+                <img id="product-hero-image" src="{{ url_for('static', filename=product.images[0].image_path) }}" alt="{{ 'Image not available' if product.images[0].is_placeholder else product.product_name }}" class="product-main-image{{ ' product-main-image--placeholder' if product.images[0].is_placeholder else '' }}">
                 {% if product.images|length > 1 %}
                 <div class="product-gallery" aria-label="Product image gallery">
                     {% for image in product.images %}
-                    <img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ product.product_name }} image {{ loop.index }}">
+                    <button type="button" class="product-gallery-thumb{{ ' is-active' if loop.first else '' }}" data-image-src="{{ url_for('static', filename=image.image_path) }}" data-image-alt="{{ 'Image not available' if image.is_placeholder else product.product_name ~ ' image ' ~ loop.index }}" data-is-placeholder="{{ 'true' if image.is_placeholder else 'false' }}" aria-label="View image {{ loop.index }} of {{ product.images|length }}"{{ ' aria-current="true"' if loop.first else '' }}>
+                        <img src="{{ url_for('static', filename=image.image_path) }}" alt="">
+                    </button>
                     {% endfor %}
                 </div>
                 {% endif %}
