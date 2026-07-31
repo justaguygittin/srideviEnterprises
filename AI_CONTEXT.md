@@ -159,6 +159,20 @@ Product cards, pagination, and the filter sidebar/drawer from the previous sprin
 
 **Equal card heights** continue to work exactly as before (Bootstrap's `.row` flex + `.h-100` on the card + `margin-top: auto` on the button) — verified in-browser that a 4-card row with mismatched brand/name lengths still renders identical card heights.
 
+### Products Page — Pagination & Grid Polish
+
+**Results summary**: the toolbar's product count was replaced with a range-aware summary — "Showing 25–48 of 314 products" when there's more than one page, or "Showing N products" when everything fits on one page (avoids a redundant "1–7 of 7"). `range_start`/`range_end` are computed in `routes/customer.py`'s `products()` view as pure arithmetic from values already there (`page`, `per_page`, `total_products`) — no new query.
+
+**Pagination controls**: restyled as individually-rounded pill buttons with a gap (overriding Bootstrap's default joined-border pagination look), themed to the site's `#1E4FA3` blue for the active page, all scoped under the existing `.product-pagination` wrapper — this page is the only place in the customer site using Bootstrap's `.pagination`/`.page-item`/`.page-link` classes (the employee portal's pagination at `templates/employee/products.html` is unrelated hand-rolled markup with its own inline styles, not Bootstrap pagination, so there was no shared-component risk here, unlike the card-polish sprint). Previous/Next gained chevron icons; their text label is hidden below the `sm` breakpoint (`d-none d-sm-inline`) so they collapse to icon-only touch targets on phones without wrapping. Touch targets are 42px (44px under 576px).
+
+**Accessibility**: the active page link gets `aria-current="page"`; disabled Previous/Next links get `aria-disabled="true" tabindex="-1"` (their `href` is left exactly as the existing clamped `url_for(...)` value — only the reachability was fixed, not the URL) so a keyboard user can no longer Tab onto and activate a link that Bootstrap only *visually* disables via `pointer-events: none` (which doesn't block keyboard activation on its own). Verified: 6 of the 7 pagination links are keyboard-focusable on page 1 (the disabled Previous is correctly excluded).
+
+**Scroll-to-grid anchor**: pagination links append a `#product-grid` fragment (id placed on `.product-list-toolbar`, with `scroll-margin-top: 100px` so the sticky navbar doesn't cover it) so clicking a page number lands the user back at the results toolbar instead of the very top of the page. Pure HTML fragment + CSS, no JavaScript. Only pagination links carry the fragment — normal navigation to `/products` (navbar, homepage, category cards) is unaffected. Fragments aren't sent to the server, so this doesn't change the server-visible URL/query contract.
+
+**Out-of-range pages**: `?page=999` (or `?page=abc`, `?page=-5`) needed no backend changes — the existing `page = min(max(requested_page, 1), total_pages)` clamp in `products()` already handles all of these gracefully (Werkzeug's `type=int` on `request.args.get` also already silently falls back to the default on non-numeric input). Verified in-browser: `?page=999&department=Furniture` (only 4 valid pages) renders page 4 with a correct results summary and active pagination state, no broken layout.
+
+No changes to `services/product_service.py`, product cards, filters, or search this sprint.
+
 ## Employee Portal
 
 ✓ Employee Login
@@ -366,6 +380,17 @@ Example:
 
 .product-grid-card
 
+## Implementation Note
+
+Fragment identifiers (#product-grid) are intentionally used instead of JavaScript scrolling.
+
+Reason:
+
+- Works without JavaScript.
+- Preserves browser behavior.
+- Improves accessibility.
+- Easier to maintain.
+
 ---
 
 # 4. Development Workflow
@@ -452,7 +477,7 @@ Remaining Phase 1 items require an actual HostyCare deployment and live verifica
 ✓ Filtering Experience
 ✓ Search Experience
 ✓ Product Card Polish
-□ Pagination Polish
+✓ Pagination Polish
 □ Product Details Improvements
 □ Product Image Gallery
 

@@ -42,8 +42,14 @@ Author  : Srikar
             </div>
         </form>
 
-        <div class="product-list-toolbar">
-            <p class="product-list-count mb-0">{{ total_products }} product{{ '' if total_products == 1 else 's' }} found</p>
+        <div class="product-list-toolbar" id="product-grid">
+            <p class="product-list-count mb-0">
+                {% if total_pages > 1 %}
+                Showing {{ range_start }}&ndash;{{ range_end }} of {{ total_products }} products
+                {% else %}
+                Showing {{ total_products }} product{{ '' if total_products == 1 else 's' }}
+                {% endif %}
+            </p>
             <button class="btn btn-outline-primary filter-toggle-btn d-lg-none" type="button"
                 data-bs-toggle="offcanvas" data-bs-target="#filterDrawer" aria-controls="filterDrawer">
                 <i class="fa-solid fa-sliders me-2"></i>Filters
@@ -205,15 +211,28 @@ Author  : Srikar
                 <nav class="product-pagination" aria-label="Product catalogue pages">
                     <ul class="pagination justify-content-center mb-0">
                         <li class="page-item {% if page == 1 %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('customer.products', page=page - 1, **filters) }}" aria-label="Previous page">&laquo; Previous</a>
+                            <a class="page-link page-link-nav"
+                                href="{{ url_for('customer.products', page=page - 1, **filters) }}#product-grid"
+                                aria-label="Previous page"
+                                {% if page == 1 %}aria-disabled="true" tabindex="-1"{% endif %}>
+                                <i class="fa-solid fa-angle-left" aria-hidden="true"></i>
+                                <span class="d-none d-sm-inline">Previous</span>
+                            </a>
                         </li>
                         {% for page_number in page_numbers %}
                         <li class="page-item {% if page_number == page %}active{% endif %}">
-                            <a class="page-link" href="{{ url_for('customer.products', page=page_number, **filters) }}">{{ page_number }}</a>
+                            <a class="page-link" href="{{ url_for('customer.products', page=page_number, **filters) }}#product-grid"
+                                {% if page_number == page %}aria-current="page"{% endif %}>{{ page_number }}</a>
                         </li>
                         {% endfor %}
                         <li class="page-item {% if page == total_pages %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('customer.products', page=page + 1, **filters) }}" aria-label="Next page">Next &raquo;</a>
+                            <a class="page-link page-link-nav"
+                                href="{{ url_for('customer.products', page=page + 1, **filters) }}#product-grid"
+                                aria-label="Next page"
+                                {% if page == total_pages %}aria-disabled="true" tabindex="-1"{% endif %}>
+                                <span class="d-none d-sm-inline">Next</span>
+                                <i class="fa-solid fa-angle-right" aria-hidden="true"></i>
+                            </a>
                         </li>
                     </ul>
                 </nav>

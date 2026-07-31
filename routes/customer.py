@@ -104,6 +104,8 @@ def products():
     page_start = max(page - 2, 1)
     page_end = min(page_start + 4, total_pages)
     page_start = max(page_end - 4, 1)
+    range_start = (page - 1) * per_page + 1 if total_products else 0
+    range_end = min(page * per_page, total_products)
 
     return render_template(
         "customer/products.html",
@@ -116,6 +118,8 @@ def products():
         page_numbers=range(page_start, page_end + 1),
         total_pages=total_pages,
         total_products=total_products,
+        range_start=range_start,
+        range_end=range_end,
     )
 
 

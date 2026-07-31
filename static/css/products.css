@@ -310,6 +310,7 @@ Author  : Srikar
     padding-bottom: 16px;
     border-bottom: 1px solid #EAECF0;
     gap: 16px;
+    scroll-margin-top: 100px;
 
 }
 
@@ -648,6 +649,82 @@ Author  : Srikar
 .product-pagination {
 
     margin-top: 36px;
+
+}
+
+.product-pagination .pagination {
+
+    gap: 6px;
+    row-gap: 10px;
+    flex-wrap: wrap;
+
+}
+
+.product-pagination .page-item .page-link {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 42px;
+    height: 42px;
+    margin: 0;
+    padding: 0 14px;
+    border: 1px solid #D0D5DD;
+    border-radius: 8px;
+    color: #1F2937;
+    font-weight: 500;
+
+}
+
+.product-pagination .page-link-nav {
+
+    padding: 0 18px;
+    font-weight: 600;
+
+}
+
+.product-pagination .page-item.active .page-link {
+
+    background: #1E4FA3;
+    border-color: #1E4FA3;
+    color: #ffffff;
+    font-weight: 700;
+
+}
+
+.product-pagination .page-item:not(.disabled):not(.active) .page-link:hover {
+
+    background: #EAF1FB;
+    border-color: #1E4FA3;
+    color: #1E4FA3;
+
+}
+
+.product-pagination .page-item.disabled .page-link {
+
+    background: #F5F7FA;
+    border-color: #EAECF0;
+    color: #98A2B3;
+
+}
+
+.product-pagination .page-link:focus-visible {
+
+    outline: 3px solid #1E4FA3;
+    outline-offset: 2px;
+    z-index: 1;
+
+}
+
+@media (max-width: 575.98px) {
+
+    .product-pagination .page-item .page-link {
+
+        min-width: 44px;
+        height: 44px;
+
+    }
 
 }
 
