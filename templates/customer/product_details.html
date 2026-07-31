@@ -18,18 +18,20 @@ Author  : Srikar
 {% block content %}
 <section class="product-details-page py-5">
     <div class="container">
-        <a href="{{ url_for('customer.products') }}" class="back-link"><i class="fa-solid fa-arrow-left me-2"></i>Back to Products</a>
+        <a href="{{ url_for('customer.products') }}" class="back-link pd-back-link"><i class="fa-solid fa-arrow-left me-2"></i>Back to Products</a>
         <div class="row g-5 mt-1">
-            <div class="col-lg-6">
+            <div class="col-lg-6 product-hero-media">
                 <!-- TODO: Replace the shared placeholder product image after ProductImages is populated. -->
-                <img src="{{ url_for('static', filename=product.images[0].image_path) }}" alt="{{ product.product_name }}" class="product-main-image">
+                <img src="{{ url_for('static', filename=product.images[0].image_path) }}" alt="{{ 'Image not available' if product.images[0].is_placeholder else product.product_name }}" class="product-main-image{{ ' product-main-image--placeholder' if product.images[0].is_placeholder else '' }}">
+                {% if product.images|length > 1 %}
                 <div class="product-gallery" aria-label="Product image gallery">
                     {% for image in product.images %}
                     <img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ product.product_name }} image {{ loop.index }}">
                     {% endfor %}
                 </div>
+                {% endif %}
             </div>
-            <div class="col-lg-6">
+            <div class="col-lg-6 product-hero-info">
                 <p class="catalog-product-brand">{{ product.brand or 'Sridevi Enterprises' }}</p>
                 <h1>{{ product.product_name }}</h1>
                 {#
@@ -37,12 +39,14 @@ Author  : Srikar
                 #}
                 <!-- TODO: Correct UTF-8 encoding in legacy imported catalog data if source CSV is updated. -->
                 <p class="product-detail-meta">{{ product.Department }} &middot; {{ product.category or 'Uncategorised' }}</p>
+                <span class="availability-badge {{ 'availability-badge--in-stock' if product.availability == 'In stock' else 'availability-badge--on-request' }}">{{ product.availability }}</span>
                 <p class="catalog-product-pricing">Contact for Pricing</p>
-                <p class="product-detail-availability">{{ product.availability }}</p>
                 <dl class="product-facts">
                     <div><dt>Model</dt><dd>{{ product.model or 'Not specified' }}</dd></div>
                 </dl>
-                <a href="{{ url_for('customer.product_enquiry', product_id=product.id) }}" class="btn btn-primary btn-lg">Send Enquiry</a>
+                <div class="product-hero-cta">
+                    <a href="{{ url_for('customer.product_enquiry', product_id=product.id) }}" class="btn btn-primary btn-lg">Send Enquiry</a>
+                </div>
             </div>
         </div>
 

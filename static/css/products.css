@@ -848,6 +848,13 @@ Author  : Srikar
 
 }
 
+.pd-back-link {
+
+    display: inline-block;
+    margin-bottom: 8px;
+
+}
+
 .product-main-image {
 
     width: 100%;
@@ -859,11 +866,31 @@ Author  : Srikar
 
 }
 
+.product-details-page .product-main-image {
+
+    background: #F5F7FA;
+
+}
+
+.product-details-page .product-main-image--placeholder {
+
+    opacity: .82;
+
+}
+
 .product-gallery {
 
     display: flex;
     gap: 12px;
     margin-top: 16px;
+
+}
+
+.product-details-page .product-gallery {
+
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
 
 }
 
@@ -876,6 +903,12 @@ Author  : Srikar
     border: 1px solid #D0D5DD;
     border-radius: 8px;
     padding: 6px;
+
+}
+
+.product-details-page .product-gallery img {
+
+    flex-shrink: 0;
 
 }
 
@@ -911,6 +944,25 @@ Author  : Srikar
 
 }
 
+.product-details-page .specifications-list {
+
+    display: grid;
+    grid-template-columns: 1fr;
+    row-gap: 0;
+    column-gap: 48px;
+
+}
+
+@media (min-width: 768px) {
+
+    .product-details-page .specifications-list {
+
+        grid-template-columns: repeat(2, 1fr);
+
+    }
+
+}
+
 .specifications-section,
 .related-products-section {
 
@@ -919,15 +971,98 @@ Author  : Srikar
 
 }
 
+.product-details-page .specifications-section {
+
+    margin-top: 56px;
+
+}
+
+.product-details-page .related-products-section {
+
+    margin-top: 64px;
+
+}
+
 /* ===========================================
    Mobile
 =========================================== */
+
+.product-hero-info .catalog-product-brand {
+
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+
+}
+
+.product-hero-info h1 {
+
+    margin-bottom: 10px;
+
+}
+
+.product-hero-info .product-detail-meta {
+
+    margin-bottom: 16px;
+
+}
+
+.product-hero-info .availability-badge {
+
+    margin-bottom: 16px;
+
+}
+
+.product-hero-info .catalog-product-pricing {
+
+    margin-bottom: 0;
+
+}
+
+.product-hero-info .product-facts {
+
+    margin-top: 20px;
+    margin-bottom: 0;
+
+}
+
+.product-hero-cta {
+
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid #EAECF0;
+
+}
+
+@media (max-width: 991.98px) {
+
+    .product-details-page .product-main-image {
+
+        height: 340px;
+
+    }
+
+}
 
 @media (max-width: 767.98px) {
 
     .product-main-image {
 
         height: 300px;
+
+    }
+
+    .product-details-page .product-main-image {
+
+        height: 300px;
+
+    }
+
+    .product-hero-cta .btn {
+
+        width: 100%;
 
     }
 

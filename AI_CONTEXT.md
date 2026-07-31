@@ -173,6 +173,26 @@ Product cards, pagination, and the filter sidebar/drawer from the previous sprin
 
 No changes to `services/product_service.py`, product cards, filters, or search this sprint.
 
+### Product Details Page — Premium Showroom Experience
+
+`templates/customer/product_details.html` was restyled to read as a showroom hero (Brand → Name → Meta → Availability → Pricing note → Model → CTA, then Specifications, then Similar Products) instead of a flat stack of lines. No route or service changes — same `get_product()`/`get_related_products()` data, same `customer.product_enquiry` CTA destination.
+
+**Availability badge**: the plain-text `.product-detail-availability` line was replaced with the same `.availability-badge`/`--in-stock`/`--on-request` markup introduced on Product Cards, for visual consistency across the site. Only the main hero panel changed — the Similar Products cards on this page were left untouched (still `.catalog-product-card`, no badge), per the sprint's explicit "review spacing only, do not redesign the shared cards" constraint.
+
+**Specifications**: `.specifications-list` (inside `.product-details-page` only) is now a two-column CSS grid at `≥768px`, collapsing to one column below that — pure CSS, no template/query changes. `.product-facts` (the Model row) and the employee portal's identical `.specifications-list` markup are untouched, since the two-column rule is scoped under the customer-only `.product-details-page` ancestor.
+
+**No Description field**: the `Catalog` table has no description column (verified against `database/schema/001_create_catalog.sql`), so the "Description" step in the requested scan order was intentionally skipped rather than fabricated. Flag if a future schema change should add one.
+
+**Component isolation**: `product_details.html` shares several CSS classes with `templates/employee/product_details.html` (`.product-main-image`, `.product-gallery`, `.product-facts`, `.specifications-section`, `.related-products-section`, `.catalog-product-card`, `.back-link`) and, less obviously, with `templates/customer/enquiry_form.html` and `enquiry_success.html` (both also wrap their content in `.product-details-page`). Every new rule was scoped to avoid touching either: page-unique elements (main image, gallery, spec grid, section spacing) are scoped under the customer-only `.product-details-page` ancestor; elements that recur elsewhere on the *same* page (hero brand/pricing text, which also appears in this page's own Similar Products cards) are scoped under two new wrapper classes, `.product-hero-media` and `.product-hero-info`, added only around the hero columns; and the back-link (which also exists on `enquiry_form.html`, nested in the same `.product-details-page` wrapper) got its own dedicated `.pd-back-link` class rather than relying on `.product-details-page .back-link`, which would have leaked a margin change onto the enquiry page. Verified in-browser: `enquiry_form.html`'s back-link has no `pd-back-link` class and 0px margin, confirming zero bleed.
+
+**Image gallery**: the thumbnail row is skipped entirely when a product has only its one placeholder image (`{% if product.images|length > 1 %}`) — previously it rendered a duplicate thumbnail identical to the main image. Thumbnails remain non-interactive (no click-to-swap) — that behavior is deliberately deferred to the separate "Product Image Gallery" roadmap item, not part of this sprint. The gallery row also gained `overflow-x: auto` (scoped to `.product-details-page`) so it won't overflow once products have multiple images; not yet exercised by real data — no product in the current catalog has more than one image.
+
+**Placeholder image treatment**: the main image now gets the same `--placeholder` opacity dimming (0.82) introduced for Product Cards, plus corrected alt text ("Image not available" instead of the product name) when `product.images[0].is_placeholder` is true, and a `#F5F7FA` background (matching the card image wrap) instead of plain white.
+
+**CTA**: the existing "Send Enquiry" button (same href, same text) was wrapped in `.product-hero-cta` with a top border and extra spacing to read as a distinct action area, and goes full-width on mobile. No new buttons were introduced.
+
+Regression tested: Homepage, Categories, Products (search + pagination + filters), Product Details (products with/without specifications, with/without real images), Enquiry Form/Success pages, Employee Portal's shared CSS classes confirmed unaffected by grep + computed-style checks, mobile/tablet/desktop viewports, no console or server errors.
+
 ## Employee Portal
 
 ✓ Employee Login
@@ -391,6 +411,17 @@ Reason:
 - Improves accessibility.
 - Easier to maintain.
 
+## Shared Design Language
+
+Availability badges are the canonical visual indicator of product status.
+
+Use the same badge component consistently across:
+
+- Product Cards
+- Product Details
+
+Future pages should reuse this component instead of introducing new status styles.
+
 ---
 
 # 4. Development Workflow
@@ -478,7 +509,7 @@ Remaining Phase 1 items require an actual HostyCare deployment and live verifica
 ✓ Search Experience
 ✓ Product Card Polish
 ✓ Pagination Polish
-□ Product Details Improvements
+✓ Product Details Improvements
 □ Product Image Gallery
 
 ### Phase 3 – Production Hardening
