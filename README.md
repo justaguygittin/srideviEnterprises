@@ -19,7 +19,7 @@ For deploying to production, see [DEPLOYMENT.md](DEPLOYMENT.md).
 - Product listing with search, filters, sorting, and pagination
 - Product details with image gallery and specifications
 - Product enquiry and contact forms
-- Category landing pages and product comparison (in progress)
+- Category landing pages
 
 **Employee Portal**
 - Employee login and session-based authentication

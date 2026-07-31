@@ -135,44 +135,6 @@ File    : home.css
 }
 
 /* ===========================================
-   Buttons
-=========================================== */
-
-.hero-buttons {
-
-    display: flex;
-
-    gap: 20px;
-
-    flex-wrap: wrap;
-
-    justify-content: center;
-
-}
-
-.hero-buttons .btn {
-
-    padding: 12px 28px;
-
-    border-radius: 8px;
-
-}
-
-.hero-buttons .btn-outline-light {
-
-    border: 2px solid white;
-
-}
-
-.hero-buttons .btn:hover {
-
-    transform: translateY(-2px);
-
-    transition: .25s;
-
-}
-
-/* ===========================================
    Mobile
 =========================================== */
 
@@ -187,12 +149,6 @@ File    : home.css
     .hero-title {
 
         font-size: 2rem;
-
-    }
-
-    .hero-buttons {
-
-        flex-direction: column;
 
     }
 

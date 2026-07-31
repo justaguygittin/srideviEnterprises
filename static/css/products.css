@@ -316,7 +316,6 @@ Author  : Srikar
 
 .catalog-product-brand,
 .catalog-product-meta,
-.catalog-product-availability,
 .product-detail-meta,
 .product-detail-availability {
 
@@ -796,18 +795,13 @@ Author  : Srikar
 .product-details-page .product-main-image {
 
     background: #F5F7FA;
+    transition: opacity 150ms ease;
 
 }
 
 .product-details-page .product-main-image--placeholder {
 
     opacity: .82;
-
-}
-
-.product-details-page .product-main-image {
-
-    transition: opacity 150ms ease;
 
 }
 
