@@ -349,7 +349,7 @@ File    : home.css
 
 .product-card h3 {
 
-    font-size: 1.05rem;
+    font-size: 1rem;
     font-weight: 600;
     color: #1F2937;
     line-height: 1.4;
@@ -363,21 +363,20 @@ File    : home.css
 
 }
 
-.product-brand,
-.product-availability {
+.product-brand {
 
     color: #667085;
-    font-size: .9rem;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
     margin-bottom: 8px;
 
 }
 
-.product-availability {
+.product-card .availability-badge {
 
-    color: #1E4FA3;
-    font-size: 1.2rem;
-    font-weight: 700;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
 
 }
 

@@ -103,23 +103,16 @@ File    : navbar.css
 
 /* ===========================================
    Search
+
+   Reuses the Products page's .search-bar component
+   (products.css) for icon placement, input height,
+   padding, radius, and focus state — only the
+   navbar-specific container width is set here.
 =========================================== */
 
-.search-form {
+.navbar-search-bar {
 
-    width: 280px;
-
-}
-
-.search-form input {
-
-    border-radius: 10px;
-
-}
-
-.search-form button {
-
-    border-radius: 10px;
+    width: 320px;
 
 }
 
@@ -129,7 +122,7 @@ File    : navbar.css
 
 @media(max-width:991px) {
 
-    .search-form {
+    .navbar-search-bar {
 
         width: 100%;
 

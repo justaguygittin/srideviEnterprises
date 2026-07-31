@@ -75,9 +75,8 @@ Author  : Srikar
                         <div class="catalog-product-card-body">
                             <p class="catalog-product-brand">{{ related_product.brand or 'Sridevi Enterprises' }}</p>
                             <h3>{{ related_product.product_name }}</h3>
-                            {#
-                            #}
-                            <p class="catalog-product-pricing">Available on Request</p>
+                            <span class="availability-badge {{ 'availability-badge--in-stock' if related_product.availability == 'In stock' else 'availability-badge--on-request' }}">{{ related_product.availability }}</span>
+                            <p class="catalog-product-pricing">Contact for Pricing</p>
                             <a href="{{ url_for('customer.product_details', product_id=related_product.id) }}" class="btn btn-outline-primary w-100">View Details</a>
                         </div>
                     </article>

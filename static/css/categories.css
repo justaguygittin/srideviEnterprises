@@ -204,6 +204,13 @@ Author  : Srikar
 
 }
 
+.slider-arrow:focus-visible {
+
+    outline: 3px solid #1E4FA3;
+    outline-offset: 2px;
+
+}
+
 /* No scrolling possible (few categories): hide arrows entirely. */
 
 .featured-categories-slider-wrapper.slider-no-overflow .slider-arrow {

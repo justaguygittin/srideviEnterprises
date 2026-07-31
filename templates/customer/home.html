@@ -15,6 +15,9 @@ Author  : Srikar
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/categories.css') }}">
 
+<!-- Reuses the Products page's .availability-badge / .catalog-product-pricing for Featured Products -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
+
 {% endblock %}
 
 {% block title %}
@@ -45,8 +48,8 @@ Home
                     <div class="product-card-body">
                         <p class="product-brand">{{ product.brand or 'Sridevi Enterprises' }}</p>
                         <h3>{{ product.product_name }}</h3>
-                        <p class="product-availability">Contact for Pricing</p>
-                        <p class="product-availability">{{ product.availability }}</p>
+                        <span class="availability-badge {{ 'availability-badge--in-stock' if product.availability == 'In stock' else 'availability-badge--on-request' }}">{{ product.availability }}</span>
+                        <p class="catalog-product-pricing">Contact for Pricing</p>
                         <a href="{{ url_for('customer.product_details', product_id=product.id) }}" class="btn btn-primary">View Details</a>
                     </div>
                 </article>

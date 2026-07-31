@@ -4,22 +4,30 @@ Project : Sridevi Enterprises
 File    : searchbar.html
 
 Purpose:
-Reusable search bar component.
-
-TODO:
-- Connect to product search route.
-- Add autocomplete.
-- Add search suggestions.
+Reusable search bar component. Submits to the existing
+Products search (GET /products?search=...), reusing the
+same "search" query parameter and visual language as the
+Products page search bar (.search-bar / products.css).
 =========================================================
 -->
-<form class="d-flex search-form" role="search" method="GET" action="#">
+<form class="search-bar navbar-search-bar" role="search" method="GET" action="{{ url_for('customer.products') }}">
 
-    <input class="form-control me-2" type="search" name="search" placeholder="Search products..."
-        aria-label="Search products">
+    <div class="search-bar-field">
 
-    <button class="btn btn-primary" type="submit">
+        <i class="fa-solid fa-magnifying-glass search-bar-icon" aria-hidden="true"></i>
 
-        <i class="fa-solid fa-magnifying-glass"></i>
+        <label for="navbar-search" class="visually-hidden">Search products</label>
+
+        <input id="navbar-search" class="form-control search-bar-input" type="search" name="search"
+            placeholder="Search products..." autocomplete="off">
+
+    </div>
+
+    <button class="btn btn-primary search-bar-submit" type="submit">
+
+        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        <span class="visually-hidden">Search</span>
+
     </button>
 
 </form>

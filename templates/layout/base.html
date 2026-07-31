@@ -54,6 +54,9 @@ TODO:
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}">
 
+    <!-- Shared Components (used by the navbar on every page) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/search.css') }}">
+
     <!-- Page Specific CSS -->
     {% block page_css %}
     {% endblock %}

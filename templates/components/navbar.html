@@ -80,11 +80,7 @@ TODO:
                     </a>
                 </li>
 
-                <li class="nav-item">
-                    <a class="nav-link" href="#">
-                        Compare
-                    </a>
-                </li>
+                <!-- Compare is planned for v0.9 — intentionally hidden from navigation until it exists. -->
 
                 <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'customer.contact' %}active{% endif %}" href="{{ url_for('customer.contact') }}">
