@@ -32,6 +32,11 @@ Author  : Srikar
                 </a>
             </li>
             <li class="employee-nav-item">
+                <a href="{{ url_for('employee.receipts') }}" class="employee-nav-link {% if current_page == 'receipts' %}active{% endif %}">
+                    <i class="fas fa-receipt"></i> Receipts
+                </a>
+            </li>
+            <li class="employee-nav-item">
                 <a href="{{ url_for('employee.logout') }}" class="employee-nav-link logout">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>

@@ -12,6 +12,7 @@ from datetime import datetime
 from math import ceil
 
 from flask import Blueprint, abort, flash, render_template, request, session, redirect, url_for
+from config import Config
 from services.auth_service import authenticate_employee
 from services.enquiry_service import get_customer_count, get_customers, get_enquiries, get_enquiry_count
 from services.image_service import validate_image_file, validate_image_files
@@ -125,6 +126,7 @@ def dashboard():
         customer_count=customer_count,
         db_connected=db_connected,
         catalog_loaded=catalog_loaded,
+        receipt_generator_configured=bool(Config.RECEIPT_GENERATOR_URL),
     )
 
 
@@ -473,6 +475,25 @@ def customers():
         page=page,
         start_page=start_page,
         end_page=end_page,
+    )
+
+
+@employee_bp.route("/employee/receipts", methods=["GET"])
+def receipts():
+    """Display the Receipt Generator integration page for employees."""
+
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+
+    if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
+        abort(403)
+
+    return render_template(
+        "employee/receipts.html",
+        username=session.get("Username"),
+        role=session.get("Role"),
+        current_page="receipts",
+        receipt_generator_url=Config.RECEIPT_GENERATOR_URL,
     )
 
 

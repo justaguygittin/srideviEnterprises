@@ -239,6 +239,7 @@ A holistic UX audit across the full customer journey (Homepage → Categories �
 ✓ Employee Dashboard
 ✓ Employee Enquiries (read-only)
 ✓ Employee Customers (read-only, derived from Enquiries)
+✓ Receipt Generator Integration Bridge (launch-only, see Employee Receipt Generator Bridge)
 ✓ Product Listing (search, filters, pagination)
 ✓ Product Details
 ✓ Add Product
@@ -362,6 +363,22 @@ Foundation (read-only) employee-facing customer list, replacing the `/employee/c
 **Future extension points**: `Customers.Address` (unused, since the page is Enquiries-derived and Enquiries has no address field) and any real `Customers` table usage are natural follow-ups if a genuine customer-accounts feature is ever built. No customer status was introduced, per this sprint's explicit constraint.
 
 **Future extension points**: the table has plain `<th>` columns (Customer, Product, Date, Status, Actions) with no colspan/rowspan tricks, so future columns (Priority, Assigned Employee, Last Updated) can be appended without restructuring. `Status` currently only ever contains `'Pending'` (no UI writes to it yet — this module is read-only); `.status-badge`'s color mapping already handles `Resolved`/`Closed` and an "other" fallback so a future status-update feature can start writing new values without any CSS changes here.
+
+### Employee Receipt Generator Bridge
+
+The Receipt Generator is a **completely separate Flask project** (its own repo, `app.py`, dependencies, and process — found locally at a sibling directory outside this repo). It shares only the `Catalog` table in the same MariaDB database (already documented in `database/README.md`: "Catalog is the shared table with the Receipt Generator") and is deployed independently (it has its own `passenger_wsgi.py`/`render.yaml`, and even hardcodes its own local DB connection rather than reading this project's `.env`). This milestone adds only the **integration bridge** on the Employee Portal side — nothing in the Receipt Generator project was read into memory for reuse, copied, or modified.
+
+**Why duplication/merging was rejected**: reverse-proxying, iframing, or re-implementing any invoice/GST logic here would (a) require running two Flask processes that already conflict on the same default port in local dev, (b) duplicate business logic (GST math, PDF generation) that already exists and works in the other project, and (c) blur a deployment boundary the two projects don't currently share (different hosting config, no shared session/auth). The Receipt Generator also has **no authentication of its own** — its routes are open once reached — so the only safe integration from the Portal side is a plain outbound link, never an embed that would imply it's protected by this app's login.
+
+**Launch method — configurable external link**: `Config.RECEIPT_GENERATOR_URL` (`config.py`, read from a new optional `RECEIPT_GENERATOR_URL` env var, documented in `.env.example`) holds the deployed Receipt Generator's base URL. `routes/employee.py:receipts()` (`GET /employee/receipts`) passes it straight through to `templates/employee/receipts.html`:
+- **If set**: renders a primary "Launch Receipt Generator" button (`target="_blank" rel="noopener noreferrer"`) — opens in a new tab since it's a genuinely separate application/origin, not something to embed.
+- **If unset (the default, since no real deployment URL exists yet)**: renders a plain Bootstrap-styled "Receipt Generator Unavailable" info card — no stack trace, no technical detail exposed to the employee, just a professional "check back later or contact your administrator" message. This is the actual out-of-the-box state of this repo today.
+
+**Dashboard integration**: the Receipt Generator Quick Action card is now a normal active link to `employee.receipts` (no more `is-pending`/`.coming-soon` — the module itself is real now, exactly like Enquiries/Customers before it). The Overview stat card shows `"Ready"` or `"Not Configured"` (computed from whether the URL is set) instead of the old static `"Available Soon"` label — this mirrors the System Status panel's existing convention of reporting real boolean state rather than fabricating a number; there is no meaningful count to show here since invoices are created and stored entirely inside the other project's own database, which this app deliberately does not query.
+
+**Navigation**: `employee_nav.html` gained one more `<li>` ("Receipts", between Customers and Logout) — the same list-item pattern used by every other module link, not a nav redesign.
+
+**Future integration roadmap**: if the two systems are ever meant to feel more integrated (e.g. showing recent invoice counts on the Dashboard, or single sign-on into the Receipt Generator), that requires the Receipt Generator to expose either an API or shared authentication — neither exists today. Until then, this launch-link bridge is the intended integration boundary; do not add direct queries against the Receipt Generator's own tables (e.g. its `invoices` table) from this codebase, since that would silently couple the two projects' schemas without either project agreeing to the contract.
 
 ---
 
@@ -717,13 +734,43 @@ System:
 
 Receipt Generator Integration — remains an independent project until after Sridevi Enterprises reaches a stable v1.0.0 release.
 
-Possible future work:
-- Shared Product Catalog
-- Shared Authentication
-- Shared Inventory
-- Invoice Integration
-- Analytics
-- Multi-Branch Support
+Current state:
+
+Employee Portal launches the independent Receipt Generator
+through a configurable URL.
+
+Future state (v1.0+):
+
+Single Sign-On (SSO)
+
+↓
+
+Employee Portal authentication
+
+↓
+
+Trusted launch token
+
+↓
+
+Receipt Generator automatically authenticates
+the employee.
+
+Goal:
+
+Employees should never have to log in twice.
+
+Receipt Generator
+
+## Future Improvements
+
+□ Recent receipts
+□ Receipt search
+□ Open last receipt
+□ Sales summary
+□ Invoice history
+□ Launch with selected customer
+□ Launch with selected products
 
 ## Future Scalability Improvements
 

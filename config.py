@@ -40,3 +40,9 @@ class Config:
     # Debug mode must be explicitly enabled; defaults to False for safety.
     DEBUG = os.getenv("FLASK_DEBUG", "False").strip().lower() == "true"
 
+    # Base URL of the separately-hosted Receipt Generator project (its own Flask
+    # app, not part of this codebase - see AI_CONTEXT.md). Left unset until a
+    # deployment URL exists; the Employee Portal shows a graceful "unavailable"
+    # message when this is empty rather than guessing a URL.
+    RECEIPT_GENERATOR_URL = os.getenv("RECEIPT_GENERATOR_URL", "").strip()
+
