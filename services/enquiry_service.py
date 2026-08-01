@@ -13,7 +13,7 @@ from typing import Any
 
 import mysql.connector
 
-from database.db import execute, fetch_one
+from database.db import execute, fetch_all, fetch_one
 
 
 _EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -96,6 +96,52 @@ def create_enquiry(product_id: int | None, enquiry: dict[str, str]) -> tuple[boo
 
     # TODO: Integrate email notification for new customer enquiries.
     return True, None
+
+
+def get_enquiries(filters: dict[str, Any], page: int, per_page: int):
+    """Return one paginated page of enquiries matching the supplied filters, newest first."""
+
+    where_clause, params = _build_enquiry_filters(filters)
+    return fetch_all(f"""
+        SELECT
+            e.EnquiryID, e.CustomerName, e.Phone, e.Email, e.Message,
+            e.Status, e.EnquiryDate, e.ProductID, c.product_name AS ProductName
+        FROM Enquiries e
+        LEFT JOIN Catalog c ON c.id = e.ProductID
+        WHERE {where_clause}
+        ORDER BY e.EnquiryDate DESC
+        LIMIT %s OFFSET %s;
+    """, tuple(params + [per_page, (page - 1) * per_page]))
+
+
+def get_enquiry_count(filters: dict[str, Any]) -> int:
+    """Return the number of enquiries matching the supplied filters."""
+
+    where_clause, params = _build_enquiry_filters(filters)
+    result = fetch_one(f"""
+        SELECT COUNT(*) AS total
+        FROM Enquiries e
+        LEFT JOIN Catalog c ON c.id = e.ProductID
+        WHERE {where_clause};
+    """, tuple(params))
+    return result["total"]
+
+
+def _build_enquiry_filters(filters: dict[str, Any]) -> tuple[str, list[Any]]:
+    """Build the reusable SQL WHERE clause for enquiry listing and count queries."""
+
+    where_clauses = ["1=1"]
+    params: list[Any] = []
+
+    search = filters.get("search", "").strip()
+    if search:
+        like_value = f"%{search}%"
+        where_clauses.append("""(
+            e.CustomerName LIKE %s OR e.Email LIKE %s OR e.Phone LIKE %s OR c.product_name LIKE %s
+        )""")
+        params.extend([like_value] * 4)
+
+    return " AND ".join(where_clauses), params
 
 
 def _normalise_phone(phone: str) -> str:

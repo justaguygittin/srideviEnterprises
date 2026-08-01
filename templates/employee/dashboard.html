@@ -397,7 +397,7 @@ Dashboard - Employee Portal - Sridevi Enterprises
                 <div class="stat-card">
                     <div class="stat-card-icon"><i class="fas fa-envelope"></i></div>
                     <div class="stat-card-body">
-                        <div class="stat-card-value stat-pending">Coming Soon</div>
+                        <div class="stat-card-value">{{ enquiry_count }}</div>
                         <p class="stat-card-label">Enquiries</p>
                     </div>
                 </div>
@@ -430,13 +430,12 @@ Dashboard - Employee Portal - Sridevi Enterprises
                     <p>Create a new catalog listing.</p>
                 </a>
 
-                <a href="{{ url_for('employee.enquiries') }}" class="dashboard-card is-pending">
+                <a href="{{ url_for('employee.enquiries') }}" class="dashboard-card">
                     <div class="dashboard-card-icon">
                         <i class="fas fa-envelope-open-text"></i>
                     </div>
                     <h3>View Enquiries</h3>
-                    <p>Track and respond to customer enquiries.</p>
-                    <div class="coming-soon">Coming Soon</div>
+                    <p>Browse customer enquiries.</p>
                 </a>
 
                 <a href="{{ url_for('employee.customers') }}" class="dashboard-card is-pending">

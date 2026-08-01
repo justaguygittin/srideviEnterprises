@@ -237,6 +237,7 @@ A holistic UX audit across the full customer journey (Homepage → Categories �
 ✓ Protected Routes
 ✓ RBAC (see Architecture & Conventions)
 ✓ Employee Dashboard
+✓ Employee Enquiries (read-only)
 ✓ Product Listing (search, filters, pagination)
 ✓ Product Details
 ✓ Add Product
@@ -315,7 +316,29 @@ No new routes, no schema changes, no auth changes. `coming_soon_message` branch 
 
 **System Status panel**: `db_connected`/`catalog_loaded` in `dashboard()` are set `True` directly after `get_product_count()` returns — no new health-check query. Reaching that line already proves the DB call succeeded, so this is a free-standing implication of an existing call, not fabricated status. If a real health-check becomes necessary later, replace this inline logic rather than assuming it already checks anything beyond that one query.
 
-**Recent Enquiries empty state**: intentionally static markup ("No enquiries available yet...") — does not query the `Enquiries` table. Wiring it to real data is Enquiry Management (v0.9.5), out of scope here.
+**Recent Enquiries empty state**: intentionally static markup ("No enquiries available yet...") — does not query the `Enquiries` table. Wiring it to real data is Enquiry Management (v0.9.5), out of scope here. **Update (Milestone 3):** the Overview stat and Quick Actions card below now DO show real data (see Employee Enquiries Module) — only this Operations panel remains static. This is a known, flagged inconsistency (the dashboard can show "14" in Overview while this panel still says "No enquiries available yet"); reconciling it is deferred to a future milestone rather than done as an unscoped fix here.
+
+### Employee Enquiries Module
+
+Foundation (read-only) employee-facing view of the `Enquiries` table, replacing the `/employee/enquiries` placeholder that used to render `dashboard.html`'s `coming_soon_message` branch. `employee.customers()` still uses that placeholder branch unchanged — only `employee.enquiries()` was rewired to a real template.
+
+**Database**: no schema changes. `Enquiries` (`database/schema/005_create_enquiries.sql`) already existed and was already being written to by the customer site's product-enquiry and Contact forms (`services/enquiry_service.py:create_enquiry()`, used by `routes/customer.py`). This module only adds read queries.
+
+**Service layer**: `get_enquiries(filters, page, per_page)` and `get_enquiry_count(filters)` were added to `services/enquiry_service.py`, mirroring `product_service.py`'s `get_products()`/`get_product_count()` pattern exactly (same `_build_*_filters()` helper shape, same `fetch_all`/`fetch_one` reuse from `database/db.py`). `get_enquiries()` `LEFT JOIN`s `Catalog` to resolve `ProductID` to a product name for display (`ProductID` is nullable — general Contact-form enquiries have none, shown as "General Enquiry"). Search matches Customer Name, Email, Phone, or the joined product name.
+
+**Route/template**: `routes/employee.py:enquiries()` follows the exact same pagination shape as `products()` (`per_page = 20`, `start_page`/`end_page` window, clamped `page`). `templates/employee/enquiries.html` is a new, self-contained page (own `page_css` block, own scoped class names — `.enquiries-table`, not `.products-table`) that structurally follows `products.html`'s list-page pattern (search bar → table → pagination → empty state), while reusing the Dashboard's *visual language*: card shadows/radii, the pill-badge convention, and the Operations panel's exact `.empty-state` CSS, copied in per the sprint's explicit instruction to reuse it (each employee page keeps its own inline styles — no shared CSS file was introduced, consistent with how `dashboard.html`/`products.html` already do this independently).
+
+**Dashboard integration**: `dashboard()` now also calls `get_enquiry_count({})` and passes `enquiry_count` to the template. The Overview stat card shows the real number instead of "Coming Soon", and the "View Enquiries" Quick Action card lost its `is-pending`/`.coming-soon` treatment — it now looks and behaves exactly like "View Products"/"Add Product". The Customers stat/card are untouched (still pending; Customers module is out of scope this sprint).
+
+#### UI Polish (Milestone 4)
+
+**Detail view is now a read-only Bootstrap modal, not `<details>`.** Each row's "View Details" is a `.btn.btn-primary.btn-sm` (the same primary-button convention already used elsewhere in the portal, e.g. Add Product) that opens `#enquiryModal{{ EnquiryID }}` — one modal per row, rendered in its own loop right after the table (not nested inside `<td>`, to keep the table markup simple and avoid any interaction between the table's `overflow-x: auto` scroll container and the modal). **This is the first Bootstrap modal used anywhere in the app** — it works because `bootstrap.bundle.min.js` is already loaded globally in `layout/base.html`; no new script was added. The modal is strictly read-only: header + a `<dl>` of Customer Name/Phone/Email/Product/Date/Status/Message + a single Close button in the footer — no edit, status-update, or delete controls, matching the module's read-only scope.
+
+**Status badge palette expanded for future values.** `.status-badge` now has distinct styles for `status-pending` (amber), `status-in-progress` (blue), `status-resolved` (green), `status-closed` (gray), and `status-other` (neutral fallback) — only `status-pending` can appear today since nothing writes any other value to `Enquiries.Status` yet, but the CSS and the Jinja `status_class` selection logic (duplicated identically in the table row and the modal, both driven by the same `Status` string) already handle `Resolved`/`Closed`/`In Progress` so a future status-update feature can start writing those values without touching this page's CSS.
+
+**Convention for future employee list pages needing a read-only detail view**: reuse this per-row-modal pattern (loop after the table, `id="{{ prefix }}{{ row.PrimaryKey }}"`, `<dl>` body, Close-only footer) rather than inventing a new disclosure mechanism.
+
+**Future extension points**: the table has plain `<th>` columns (Customer, Product, Date, Status, Actions) with no colspan/rowspan tricks, so future columns (Priority, Assigned Employee, Last Updated) can be appended without restructuring. `Status` currently only ever contains `'Pending'` (no UI writes to it yet — this module is read-only); `.status-badge`'s color mapping already handles `Resolved`/`Closed` and an "other" fallback so a future status-update feature can start writing new values without any CSS changes here.
 
 ---
 

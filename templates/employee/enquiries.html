@@ -1,0 +1,565 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : enquiries.html
+Purpose : Employee enquiries management (read-only).
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+Enquiries - Employee Portal - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee_nav.css') }}">
+<style>
+    .enquiries-container {
+        min-height: calc(100vh - 120px);
+        background-color: #f8f9fa;
+        padding: 0;
+    }
+
+    .enquiries-content {
+        padding: 2rem;
+    }
+
+    .enquiries-header {
+        margin-bottom: 2rem;
+    }
+
+    .enquiries-header h1 {
+        color: #333;
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .enquiries-count {
+        color: #666;
+        font-size: 0.95rem;
+    }
+
+    .search-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .search-bar-row {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .search-bar-row input {
+        flex: 1;
+        min-width: 200px;
+        padding: 0.6rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+
+    .search-bar-row input:focus {
+        border-color: #1E4FA3;
+        box-shadow: 0 0 0 0.2rem rgba(30, 79, 163, 0.25);
+        outline: none;
+    }
+
+    .search-btn {
+        background: #1E4FA3;
+        color: white;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .search-btn:hover {
+        background: #1565A0;
+    }
+
+    .refresh-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: #ccc;
+        color: #333;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: background 0.2s;
+    }
+
+    .refresh-btn:hover {
+        background: #bbb;
+        color: #333;
+    }
+
+    .enquiries-table-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        overflow-x: auto;
+    }
+
+    .enquiries-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .enquiries-table thead {
+        background: #f8f9fa;
+        border-bottom: 2px solid #1E4FA3;
+    }
+
+    .enquiries-table th {
+        padding: 1rem;
+        text-align: left;
+        color: #333;
+        font-weight: 600;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+
+    .enquiries-table tbody tr {
+        border-bottom: 1px solid #eee;
+        transition: background 0.2s;
+    }
+
+    .enquiries-table tbody tr:hover {
+        background: #f0f5ff;
+    }
+
+    .enquiries-table td {
+        padding: 1rem;
+        color: #333;
+        font-size: 0.9rem;
+        vertical-align: top;
+    }
+
+    .customer-name {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-weight: 500;
+        color: #333;
+    }
+
+    .customer-contact {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: #888;
+        font-size: 0.8rem;
+        margin-top: 0.3rem;
+    }
+
+    .customer-name i,
+    .customer-contact i {
+        width: 0.9em;
+        color: #aaa;
+        font-size: 0.85em;
+    }
+
+    .enquiry-product-link {
+        color: #1E4FA3;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .enquiry-product-link:hover {
+        text-decoration: underline;
+    }
+
+    .enquiry-general {
+        color: #888;
+        font-style: italic;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.3rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+    }
+
+    .status-badge.status-pending {
+        background: #fff3cd;
+        color: #97710b;
+    }
+
+    .status-badge.status-in-progress {
+        background: #cfe2ff;
+        color: #0854a0;
+    }
+
+    .status-badge.status-resolved {
+        background: #d4edda;
+        color: #1e7e34;
+    }
+
+    .status-badge.status-closed {
+        background: #e2e3e5;
+        color: #41464b;
+    }
+
+    .status-badge.status-other {
+        background: #f1f1f1;
+        color: #777;
+    }
+
+    .enquiries-table td.enquiry-actions-cell {
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .enquiry-detail-modal .modal-body dl {
+        margin: 0;
+    }
+
+    .enquiry-detail-modal .modal-body dt {
+        color: #666;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        margin-top: 1rem;
+    }
+
+    .enquiry-detail-modal .modal-body dt:first-child {
+        margin-top: 0;
+    }
+
+    .enquiry-detail-modal .modal-body dd {
+        margin: 0.25rem 0 0;
+        color: #333;
+        font-size: 0.95rem;
+    }
+
+    .enquiry-detail-modal .modal-body dd.enquiry-message {
+        white-space: pre-wrap;
+    }
+
+    /* Reused from the Dashboard Operations empty-state pattern. */
+    .empty-state {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        padding: 3rem 1.5rem;
+        color: #999;
+    }
+
+    .empty-state i {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        color: #ccc;
+    }
+
+    .empty-state p {
+        margin: 0;
+        font-size: 1rem;
+        color: #666;
+    }
+
+    .empty-state p.empty-state-subtext {
+        font-size: 0.85rem;
+        color: #999;
+        margin-top: 0.4rem;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 2rem;
+    }
+
+    .pagination a,
+    .pagination span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        height: 40px;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-decoration: none;
+        color: #333;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .pagination a:hover {
+        background: #1E4FA3;
+        color: white;
+        border-color: #1E4FA3;
+    }
+
+    .pagination .current {
+        background: #1E4FA3;
+        color: white;
+        border-color: #1E4FA3;
+        font-weight: 600;
+    }
+
+    .pagination .disabled {
+        color: #ccc;
+        cursor: not-allowed;
+    }
+
+    .pagination .disabled:hover {
+        background: white;
+        border-color: #ddd;
+    }
+
+    .enquiries-footer {
+        margin-top: 2rem;
+        padding: 1rem;
+        background: white;
+        border-radius: 8px;
+        text-align: center;
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+        .enquiries-content {
+            padding: 1rem;
+        }
+
+        .enquiries-header h1 {
+            font-size: 1.3rem;
+        }
+
+        .search-bar-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .refresh-btn {
+            justify-content: center;
+        }
+
+        .enquiries-table {
+            font-size: 0.8rem;
+        }
+
+        .enquiries-table th,
+        .enquiries-table td {
+            padding: 0.6rem 0.4rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="enquiries-container">
+    {% include 'components/employee_nav.html' %}
+
+    <!-- Enquiries Content -->
+    <div class="enquiries-content">
+        <div class="container">
+            <!-- Header -->
+            <div class="enquiries-header">
+                <h1><i class="fas fa-envelope"></i> Enquiries</h1>
+                {% if search %}
+                <p class="enquiries-count">Found {{ total_enquiries }} enquir{% if total_enquiries != 1 %}ies{% else %}y{% endif %}</p>
+                {% else %}
+                <p class="enquiries-count">Total Enquiries: {{ total_enquiries }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Search Section -->
+            <div class="search-section">
+                <form method="GET" action="{{ url_for('employee.enquiries') }}">
+                    <div class="search-bar-row">
+                        <input type="text" name="search" value="{{ search }}" placeholder="Search enquiries...">
+                        <button type="submit" class="search-btn">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <a href="{{ url_for('employee.enquiries') }}" class="refresh-btn">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Enquiries Table or Empty State -->
+            {% if enquiries %}
+            <div class="enquiries-table-container">
+                <table class="enquiries-table">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Product</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th class="enquiry-actions-cell">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for enquiry in enquiries %}
+                        <tr>
+                            <td>
+                                <span class="customer-name"><i class="fas fa-user"></i> {{ enquiry.CustomerName }}</span>
+                                <span class="customer-contact"><i class="fas fa-phone"></i> {{ enquiry.Phone }}</span>
+                                <span class="customer-contact"><i class="fas fa-envelope"></i> {{ enquiry.Email }}</span>
+                            </td>
+                            <td>
+                                {% if enquiry.ProductID and enquiry.ProductName %}
+                                <a href="{{ url_for('employee.product_details', product_id=enquiry.ProductID) }}" class="enquiry-product-link">
+                                    {{ enquiry.ProductName }}
+                                </a>
+                                {% else %}
+                                <span class="enquiry-general">General Enquiry</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ enquiry.EnquiryDate.strftime("%d %b %Y, %I:%M %p") }}</td>
+                            <td>
+                                {% set status_lower = (enquiry.Status or "").lower() %}
+                                {% set status_class = "status-pending" if status_lower == "pending"
+                                    else "status-in-progress" if status_lower in ("in progress", "in-progress")
+                                    else "status-resolved" if status_lower == "resolved"
+                                    else "status-closed" if status_lower == "closed"
+                                    else "status-other" %}
+                                <span class="status-badge {{ status_class }}">
+                                    {{ enquiry.Status or "Unknown" }}
+                                </span>
+                            </td>
+                            <td class="enquiry-actions-cell">
+                                <button type="button" class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#enquiryModal{{ enquiry.EnquiryID }}">
+                                    <i class="fas fa-eye"></i> View Details
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Enquiry Detail Modals (read-only) -->
+            {% for enquiry in enquiries %}
+            <div class="modal fade enquiry-detail-modal" id="enquiryModal{{ enquiry.EnquiryID }}" tabindex="-1" aria-labelledby="enquiryModalLabel{{ enquiry.EnquiryID }}" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="enquiryModalLabel{{ enquiry.EnquiryID }}">Enquiry Details</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <dl>
+                                <dt>Customer Name</dt>
+                                <dd>{{ enquiry.CustomerName }}</dd>
+
+                                <dt>Phone</dt>
+                                <dd>{{ enquiry.Phone }}</dd>
+
+                                <dt>Email</dt>
+                                <dd>{{ enquiry.Email }}</dd>
+
+                                <dt>Product</dt>
+                                <dd>
+                                    {% if enquiry.ProductID and enquiry.ProductName %}
+                                    <a href="{{ url_for('employee.product_details', product_id=enquiry.ProductID) }}" class="enquiry-product-link">{{ enquiry.ProductName }}</a>
+                                    {% else %}
+                                    <span class="enquiry-general">General Enquiry</span>
+                                    {% endif %}
+                                </dd>
+
+                                <dt>Date</dt>
+                                <dd>{{ enquiry.EnquiryDate.strftime("%d %b %Y, %I:%M %p") }}</dd>
+
+                                <dt>Status</dt>
+                                <dd>
+                                    {% set status_lower = (enquiry.Status or "").lower() %}
+                                    {% set status_class = "status-pending" if status_lower == "pending"
+                                        else "status-in-progress" if status_lower in ("in progress", "in-progress")
+                                        else "status-resolved" if status_lower == "resolved"
+                                        else "status-closed" if status_lower == "closed"
+                                        else "status-other" %}
+                                    <span class="status-badge {{ status_class }}">{{ enquiry.Status or "Unknown" }}</span>
+                                </dd>
+
+                                <dt>Message</dt>
+                                <dd class="enquiry-message">{{ enquiry.Message }}</dd>
+                            </dl>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <div class="pagination">
+                {% if page > 1 %}
+                <a href="{{ url_for('employee.enquiries', page=1, search=search) }}">
+                    <i class="fas fa-chevron-left"></i> First
+                </a>
+                <a href="{{ url_for('employee.enquiries', page=page-1, search=search) }}">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </a>
+                {% else %}
+                <span class="disabled"><i class="fas fa-chevron-left"></i> First</span>
+                <span class="disabled"><i class="fas fa-chevron-left"></i> Previous</span>
+                {% endif %}
+
+                {% for page_num in range(start_page, end_page + 1) %}
+                {% if page_num == page %}
+                <span class="current">{{ page_num }}</span>
+                {% else %}
+                <a href="{{ url_for('employee.enquiries', page=page_num, search=search) }}">{{ page_num }}</a>
+                {% endif %}
+                {% endfor %}
+
+                {% if page < total_pages %}
+                <a href="{{ url_for('employee.enquiries', page=page+1, search=search) }}">
+                    Next <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="{{ url_for('employee.enquiries', page=total_pages, search=search) }}">
+                    Last <i class="fas fa-chevron-right"></i>
+                </a>
+                {% else %}
+                <span class="disabled">Next <i class="fas fa-chevron-right"></i></span>
+                <span class="disabled">Last <i class="fas fa-chevron-right"></i></span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Footer Info -->
+            <div class="enquiries-footer">
+                Showing page {{ page }} of {{ total_pages }} ({{ enquiries|length }} enquir{% if enquiries|length != 1 %}ies{% else %}y{% endif %} on this page)
+            </div>
+
+            {% else %}
+            <!-- Empty State (reused from Dashboard Operations pattern) -->
+            <div class="empty-state">
+                <i class="far fa-envelope-open"></i>
+                <p>No enquiries have been received yet.</p>
+                <p class="empty-state-subtext">Customer enquiries will appear here automatically.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

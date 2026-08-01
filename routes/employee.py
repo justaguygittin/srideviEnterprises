@@ -13,6 +13,7 @@ from math import ceil
 
 from flask import Blueprint, abort, flash, render_template, request, session, redirect, url_for
 from services.auth_service import authenticate_employee
+from services.enquiry_service import get_enquiries, get_enquiry_count
 from services.image_service import validate_image_file, validate_image_files
 from services.product_service import (
     create_product,
@@ -103,6 +104,7 @@ def dashboard():
         greeting = "Good evening"
 
     product_count = get_product_count({})
+    enquiry_count = get_enquiry_count({})
 
     # Reaching this line means the Catalog query above already succeeded,
     # so both of these are simply true at render time - no extra queries needed.
@@ -118,6 +120,7 @@ def dashboard():
         greeting=greeting,
         current_date=now.strftime("%A, %B %d, %Y"),
         product_count=product_count,
+        enquiry_count=enquiry_count,
         db_connected=db_connected,
         catalog_loaded=catalog_loaded,
     )
@@ -385,7 +388,7 @@ def product_details(product_id):
 
 @employee_bp.route("/employee/enquiries", methods=["GET"])
 def enquiries():
-    """Placeholder enquiries route."""
+    """Display customer enquiries for employees."""
 
     if not session.get("UserID"):
         return redirect(url_for("employee.login"))
@@ -396,12 +399,34 @@ def enquiries():
     username = session.get("Username")
     role = session.get("Role")
 
+    page = request.args.get("page", 1, type=int)
+    search = request.args.get("search", "").strip()
+    filters = {"search": search}
+
+    per_page = 20
+    total_enquiries = get_enquiry_count(filters)
+    total_pages = ceil(total_enquiries / per_page) if total_enquiries > 0 else 1
+
+    if page < 1 or page > total_pages:
+        page = 1
+
+    enquiry_list = get_enquiries(filters, page, per_page)
+
+    start_page = max(1, page - 2)
+    end_page = min(total_pages, page + 2)
+
     return render_template(
-        "employee/dashboard.html",
+        "employee/enquiries.html",
         username=username,
         role=role,
         current_page="enquiries",
-        coming_soon_message="Enquiries module coming in next phase",
+        enquiries=enquiry_list,
+        search=search,
+        total_enquiries=total_enquiries,
+        total_pages=total_pages,
+        page=page,
+        start_page=start_page,
+        end_page=end_page,
     )
 
 
