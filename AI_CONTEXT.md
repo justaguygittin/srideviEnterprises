@@ -238,6 +238,7 @@ A holistic UX audit across the full customer journey (Homepage → Categories �
 ✓ RBAC (see Architecture & Conventions)
 ✓ Employee Dashboard
 ✓ Employee Enquiries (read-only)
+✓ Employee Customers (read-only, derived from Enquiries)
 ✓ Product Listing (search, filters, pagination)
 ✓ Product Details
 ✓ Add Product
@@ -320,7 +321,7 @@ No new routes, no schema changes, no auth changes. `coming_soon_message` branch 
 
 ### Employee Enquiries Module
 
-Foundation (read-only) employee-facing view of the `Enquiries` table, replacing the `/employee/enquiries` placeholder that used to render `dashboard.html`'s `coming_soon_message` branch. `employee.customers()` still uses that placeholder branch unchanged — only `employee.enquiries()` was rewired to a real template.
+Foundation (read-only) employee-facing view of the `Enquiries` table, replacing the `/employee/enquiries` placeholder that used to render `dashboard.html`'s `coming_soon_message` branch. **Update (Milestone 5):** `employee.customers()` was later rewired the same way — see Employee Customers Module below. Neither route uses the `coming_soon_message` branch anymore.
 
 **Database**: no schema changes. `Enquiries` (`database/schema/005_create_enquiries.sql`) already existed and was already being written to by the customer site's product-enquiry and Contact forms (`services/enquiry_service.py:create_enquiry()`, used by `routes/customer.py`). This module only adds read queries.
 
@@ -328,7 +329,7 @@ Foundation (read-only) employee-facing view of the `Enquiries` table, replacing 
 
 **Route/template**: `routes/employee.py:enquiries()` follows the exact same pagination shape as `products()` (`per_page = 20`, `start_page`/`end_page` window, clamped `page`). `templates/employee/enquiries.html` is a new, self-contained page (own `page_css` block, own scoped class names — `.enquiries-table`, not `.products-table`) that structurally follows `products.html`'s list-page pattern (search bar → table → pagination → empty state), while reusing the Dashboard's *visual language*: card shadows/radii, the pill-badge convention, and the Operations panel's exact `.empty-state` CSS, copied in per the sprint's explicit instruction to reuse it (each employee page keeps its own inline styles — no shared CSS file was introduced, consistent with how `dashboard.html`/`products.html` already do this independently).
 
-**Dashboard integration**: `dashboard()` now also calls `get_enquiry_count({})` and passes `enquiry_count` to the template. The Overview stat card shows the real number instead of "Coming Soon", and the "View Enquiries" Quick Action card lost its `is-pending`/`.coming-soon` treatment — it now looks and behaves exactly like "View Products"/"Add Product". The Customers stat/card are untouched (still pending; Customers module is out of scope this sprint).
+**Dashboard integration**: `dashboard()` now also calls `get_enquiry_count({})` and passes `enquiry_count` to the template. The Overview stat card shows the real number instead of "Coming Soon", and the "View Enquiries" Quick Action card lost its `is-pending`/`.coming-soon` treatment — it now looks and behaves exactly like "View Products"/"Add Product". (The Customers stat/card were still pending at the time this module shipped; see Employee Customers Module for when that changed.)
 
 #### UI Polish (Milestone 4)
 
@@ -337,6 +338,24 @@ Foundation (read-only) employee-facing view of the `Enquiries` table, replacing 
 **Status badge palette expanded for future values.** `.status-badge` now has distinct styles for `status-pending` (amber), `status-in-progress` (blue), `status-resolved` (green), `status-closed` (gray), and `status-other` (neutral fallback) — only `status-pending` can appear today since nothing writes any other value to `Enquiries.Status` yet, but the CSS and the Jinja `status_class` selection logic (duplicated identically in the table row and the modal, both driven by the same `Status` string) already handle `Resolved`/`Closed`/`In Progress` so a future status-update feature can start writing those values without touching this page's CSS.
 
 **Convention for future employee list pages needing a read-only detail view**: reuse this per-row-modal pattern (loop after the table, `id="{{ prefix }}{{ row.PrimaryKey }}"`, `<dl>` body, Close-only footer) rather than inventing a new disclosure mechanism.
+
+### Employee Customers Module
+
+Foundation (read-only) employee-facing customer list, replacing the `/employee/customers` placeholder the same way Milestone 3 replaced Enquiries.
+
+**Data source — deliberately not the `Customers` table.** A `Customers` table exists in schema (`database/schema/004_create_customers.sql`: `CustomerID, Name, Phone, Email, Address, CreatedDate`), but a full-codebase grep confirmed **nothing writes to it** — no route, form, or service creates a row there. It is dead schema. Real, existing customer data lives entirely in `Enquiries` (`CustomerName`, `Phone`, `Email` on every row — both `Phone` and `Email` are mandatory per `enquiry_service.py:validate_enquiry()`). This module derives customers by grouping `Enquiries` by `Email`, not by querying `Customers`. **If a future milestone starts actually writing to the `Customers` table** (e.g. a real signup/account flow), this module should be revisited to read from it instead — grouping by `Email` was a deliberate stand-in for a data source that doesn't exist yet, not a permanent architectural choice.
+
+**Service layer** (`services/enquiry_service.py`, alongside the Enquiries functions — kept in the same file since the underlying data is Enquiries, not a separate concern): `get_customers(filters, page, per_page)` and `get_customer_count(filters)` treat one distinct `Email` as one customer. For each `Email`, the representative row (`CustomerName`, `Phone`) is the row with that email's `MAX(EnquiryDate)` — joined back via `agg.LastEnquiryDate = e.EnquiryDate` rather than a window function, to stay consistent with the rest of the codebase's plain-SQL style. This was verified against real data where the same person submitted under two different names ("Srikar" then later "Ravi", same email/phone): the customer correctly shows as one row using the more recent name. **Known edge case, intentionally unhandled**: if the same email has two enquiries with the exact same `EnquiryDate` to the second, both would match the join and the customer could appear twice; considered acceptable given realistic submission timing and the read-only, low-traffic nature of this admin page — flag if this becomes a real problem.
+
+**Search scope**: matches the representative (most recent) row's `CustomerName`/`Phone`/`Email` only, not every historical name/enquiry a customer ever used. In the "Srikar"/"Ravi" example above, searching "Ravi" matches the *other* still-separate "Ravi Kumar" customer but not "Srikar" (whose older enquiry happened to use "Ravi" as the name) — a deliberate simplification over re-deriving from full history on every search, consistent with keeping this a small read-only page rather than a bigger reporting feature.
+
+**Recent Products / Recent Messages (customer detail modal)**: `_add_recent_enquiries()` fetches all matching enquiries for the current page's customers in **one batched query** (`WHERE Email IN (...)`, same `IN (placeholders)` pattern as `product_service.py:_add_primary_images()`), then slices the newest 5 per customer in Python — not N+1 per-row queries, and not a SQL "top N per group" query, matching the codebase's existing preference for simple SQL plus a small Python grouping step.
+
+**Template**: `templates/employee/customers.html` follows the same structural/visual pattern as `enquiries.html` exactly (search bar → table → per-row Bootstrap modal → pagination → empty state, all in an inline `page_css` block with page-scoped class names). The customer modal's `id` is keyed by `loop.index` (not a `CustomerID`, since none exists) rather than `Email`, since raw emails aren't safe to embed directly as HTML `id` attribute values.
+
+**Dashboard integration**: `dashboard()` now also calls `get_customer_count({})` and passes `customer_count`. The Overview stat card shows the real distinct-customer count instead of "Coming Soon", and the "Customers" Quick Action card lost its `is-pending`/`.coming-soon` treatment — it now behaves exactly like the other fully-active cards.
+
+**Future extension points**: `Customers.Address` (unused, since the page is Enquiries-derived and Enquiries has no address field) and any real `Customers` table usage are natural follow-ups if a genuine customer-accounts feature is ever built. No customer status was introduced, per this sprint's explicit constraint.
 
 **Future extension points**: the table has plain `<th>` columns (Customer, Product, Date, Status, Actions) with no colspan/rowspan tricks, so future columns (Priority, Assigned Employee, Last Updated) can be appended without restructuring. `Status` currently only ever contains `'Pending'` (no UI writes to it yet — this module is read-only); `.status-badge`'s color mapping already handles `Resolved`/`Closed` and an "other" fallback so a future status-update feature can start writing new values without any CSS changes here.
 
@@ -515,6 +534,38 @@ Reasons:
 - browser semantics
 - screen reader compatibility
 - minimal JavaScript
+
+## Customer Module Data Source
+
+Current implementation intentionally derives customers from the Enquiries
+table because the Customers table exists in schema but has no write path.
+
+Current flow:
+
+Customer Enquiry
+        │
+        ▼
+ Enquiries Table
+        │
+        ▼
+ Employee Customers Module
+
+Future milestone:
+
+When customer registration/account creation or automatic customer creation
+is implemented, migrate the Employee Customers Module to use the Customers
+table as the authoritative data source.
+
+Future architecture:
+
+Customers
+    │
+    ├── Employee Customers Module
+    ├── Customer Login
+    └── Enquiries (linked via CustomerID)
+
+This migration should only affect the service layer.
+Dashboard, UI, pagination, search, and modal should remain unchanged.
 
 ---
 

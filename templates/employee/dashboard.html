@@ -389,7 +389,7 @@ Dashboard - Employee Portal - Sridevi Enterprises
                 <div class="stat-card">
                     <div class="stat-card-icon"><i class="fas fa-users"></i></div>
                     <div class="stat-card-body">
-                        <div class="stat-card-value stat-pending">Coming Soon</div>
+                        <div class="stat-card-value">{{ customer_count }}</div>
                         <p class="stat-card-label">Customers</p>
                     </div>
                 </div>
@@ -438,13 +438,12 @@ Dashboard - Employee Portal - Sridevi Enterprises
                     <p>Browse customer enquiries.</p>
                 </a>
 
-                <a href="{{ url_for('employee.customers') }}" class="dashboard-card is-pending">
+                <a href="{{ url_for('employee.customers') }}" class="dashboard-card">
                     <div class="dashboard-card-icon">
                         <i class="fas fa-users"></i>
                     </div>
                     <h3>Customers</h3>
-                    <p>View and manage customer information.</p>
-                    <div class="coming-soon">Coming Soon</div>
+                    <p>Browse customer records.</p>
                 </a>
 
                 <div class="dashboard-card is-pending is-disabled">

@@ -1,0 +1,543 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : customers.html
+Purpose : Employee customer management (read-only, derived from Enquiries).
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+Customers - Employee Portal - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee_nav.css') }}">
+<style>
+    .customers-container {
+        min-height: calc(100vh - 120px);
+        background-color: #f8f9fa;
+        padding: 0;
+    }
+
+    .customers-content {
+        padding: 2rem;
+    }
+
+    .customers-header {
+        margin-bottom: 2rem;
+    }
+
+    .customers-header h1 {
+        color: #333;
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .customers-count {
+        color: #666;
+        font-size: 0.95rem;
+    }
+
+    .search-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .search-bar-row {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .search-bar-row input {
+        flex: 1;
+        min-width: 200px;
+        padding: 0.6rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+
+    .search-bar-row input:focus {
+        border-color: #1E4FA3;
+        box-shadow: 0 0 0 0.2rem rgba(30, 79, 163, 0.25);
+        outline: none;
+    }
+
+    .search-btn {
+        background: #1E4FA3;
+        color: white;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .search-btn:hover {
+        background: #1565A0;
+    }
+
+    .refresh-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: #ccc;
+        color: #333;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: background 0.2s;
+    }
+
+    .refresh-btn:hover {
+        background: #bbb;
+        color: #333;
+    }
+
+    .customers-table-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        overflow-x: auto;
+    }
+
+    .customers-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .customers-table thead {
+        background: #f8f9fa;
+        border-bottom: 2px solid #1E4FA3;
+    }
+
+    .customers-table th {
+        padding: 1rem;
+        text-align: left;
+        color: #333;
+        font-weight: 600;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+
+    .customers-table tbody tr {
+        border-bottom: 1px solid #eee;
+        transition: background 0.2s;
+    }
+
+    .customers-table tbody tr:hover {
+        background: #f0f5ff;
+    }
+
+    .customers-table td {
+        padding: 1rem;
+        color: #333;
+        font-size: 0.9rem;
+        vertical-align: top;
+    }
+
+    .customer-name {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-weight: 500;
+        color: #333;
+    }
+
+    .customer-contact {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: #888;
+        font-size: 0.8rem;
+        margin-top: 0.3rem;
+    }
+
+    .customer-name i,
+    .customer-contact i {
+        width: 0.9em;
+        color: #aaa;
+        font-size: 0.85em;
+    }
+
+    .customer-enquiry-count {
+        color: #1E4FA3;
+        font-weight: 600;
+    }
+
+    .customers-table td.customer-actions-cell {
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .customer-detail-modal .modal-body dl {
+        margin: 0;
+    }
+
+    .customer-detail-modal .modal-body dt {
+        color: #666;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        margin-top: 1rem;
+    }
+
+    .customer-detail-modal .modal-body dt:first-child {
+        margin-top: 0;
+    }
+
+    .customer-detail-modal .modal-body dd {
+        margin: 0.25rem 0 0;
+        color: #333;
+        font-size: 0.95rem;
+    }
+
+    .customer-detail-modal .modal-body ul {
+        margin: 0.25rem 0 0;
+        padding-left: 1.2rem;
+    }
+
+    .customer-detail-modal .modal-body ul li {
+        margin-bottom: 0.4rem;
+    }
+
+    .recent-message-date {
+        display: block;
+        color: #999;
+        font-size: 0.78rem;
+    }
+
+    .enquiry-product-link {
+        color: #1E4FA3;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .enquiry-product-link:hover {
+        text-decoration: underline;
+    }
+
+    .enquiry-general {
+        color: #888;
+        font-style: italic;
+    }
+
+    /* Reused from the Dashboard Operations empty-state pattern. */
+    .empty-state {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        padding: 3rem 1.5rem;
+        color: #999;
+    }
+
+    .empty-state i {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        color: #ccc;
+    }
+
+    .empty-state p {
+        margin: 0;
+        font-size: 1rem;
+        color: #666;
+    }
+
+    .empty-state p.empty-state-subtext {
+        font-size: 0.85rem;
+        color: #999;
+        margin-top: 0.4rem;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 2rem;
+    }
+
+    .pagination a,
+    .pagination span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        height: 40px;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-decoration: none;
+        color: #333;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .pagination a:hover {
+        background: #1E4FA3;
+        color: white;
+        border-color: #1E4FA3;
+    }
+
+    .pagination .current {
+        background: #1E4FA3;
+        color: white;
+        border-color: #1E4FA3;
+        font-weight: 600;
+    }
+
+    .pagination .disabled {
+        color: #ccc;
+        cursor: not-allowed;
+    }
+
+    .pagination .disabled:hover {
+        background: white;
+        border-color: #ddd;
+    }
+
+    .customers-footer {
+        margin-top: 2rem;
+        padding: 1rem;
+        background: white;
+        border-radius: 8px;
+        text-align: center;
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+        .customers-content {
+            padding: 1rem;
+        }
+
+        .customers-header h1 {
+            font-size: 1.3rem;
+        }
+
+        .search-bar-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .refresh-btn {
+            justify-content: center;
+        }
+
+        .customers-table {
+            font-size: 0.8rem;
+        }
+
+        .customers-table th,
+        .customers-table td {
+            padding: 0.6rem 0.4rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="customers-container">
+    {% include 'components/employee_nav.html' %}
+
+    <!-- Customers Content -->
+    <div class="customers-content">
+        <div class="container">
+            <!-- Header -->
+            <div class="customers-header">
+                <h1><i class="fas fa-users"></i> Customers</h1>
+                {% if search %}
+                <p class="customers-count">Found {{ total_customers }} customer{% if total_customers != 1 %}s{% endif %}</p>
+                {% else %}
+                <p class="customers-count">Total Customers: {{ total_customers }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Search Section -->
+            <div class="search-section">
+                <form method="GET" action="{{ url_for('employee.customers') }}">
+                    <div class="search-bar-row">
+                        <input type="text" name="search" value="{{ search }}" placeholder="Search customers...">
+                        <button type="submit" class="search-btn">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <a href="{{ url_for('employee.customers') }}" class="refresh-btn">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Customers Table or Empty State -->
+            {% if customers %}
+            <div class="customers-table-container">
+                <table class="customers-table">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Total Enquiries</th>
+                            <th>Last Enquiry</th>
+                            <th class="customer-actions-cell">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for customer in customers %}
+                        <tr>
+                            <td>
+                                <span class="customer-name"><i class="fas fa-user"></i> {{ customer.CustomerName }}</span>
+                            </td>
+                            <td><i class="fas fa-phone"></i> {{ customer.Phone }}</td>
+                            <td><i class="fas fa-envelope"></i> {{ customer.Email }}</td>
+                            <td class="customer-enquiry-count">{{ customer.TotalEnquiries }}</td>
+                            <td>{{ customer.LastEnquiryDate.strftime("%d %b %Y, %I:%M %p") }}</td>
+                            <td class="customer-actions-cell">
+                                <button type="button" class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#customerModal{{ loop.index }}">
+                                    <i class="fas fa-eye"></i> View Details
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Customer Detail Modals (read-only) -->
+            {% for customer in customers %}
+            <div class="modal fade customer-detail-modal" id="customerModal{{ loop.index }}" tabindex="-1" aria-labelledby="customerModalLabel{{ loop.index }}" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="customerModalLabel{{ loop.index }}">Customer Details</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <dl>
+                                <dt>Customer Name</dt>
+                                <dd>{{ customer.CustomerName }}</dd>
+
+                                <dt>Phone</dt>
+                                <dd>{{ customer.Phone }}</dd>
+
+                                <dt>Email</dt>
+                                <dd>{{ customer.Email }}</dd>
+
+                                <dt>Total Enquiries</dt>
+                                <dd>{{ customer.TotalEnquiries }}</dd>
+
+                                <dt>Latest Enquiry Date</dt>
+                                <dd>{{ customer.LastEnquiryDate.strftime("%d %b %Y, %I:%M %p") }}</dd>
+
+                                <dt>Recent Products Enquired About</dt>
+                                <dd>
+                                    {% if customer.RecentEnquiries %}
+                                    <ul>
+                                        {% for item in customer.RecentEnquiries %}
+                                        <li>
+                                            {% if item.ProductID and item.ProductName %}
+                                            <a href="{{ url_for('employee.product_details', product_id=item.ProductID) }}" class="enquiry-product-link">{{ item.ProductName }}</a>
+                                            {% else %}
+                                            <span class="enquiry-general">General Enquiry</span>
+                                            {% endif %}
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <span class="enquiry-general">None</span>
+                                    {% endif %}
+                                </dd>
+
+                                <dt>Recent Messages</dt>
+                                <dd>
+                                    {% if customer.RecentEnquiries %}
+                                    <ul>
+                                        {% for item in customer.RecentEnquiries %}
+                                        <li>
+                                            {{ item.Message }}
+                                            <span class="recent-message-date">{{ item.EnquiryDate.strftime("%d %b %Y, %I:%M %p") }}</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <span class="enquiry-general">None</span>
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <div class="pagination">
+                {% if page > 1 %}
+                <a href="{{ url_for('employee.customers', page=1, search=search) }}">
+                    <i class="fas fa-chevron-left"></i> First
+                </a>
+                <a href="{{ url_for('employee.customers', page=page-1, search=search) }}">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </a>
+                {% else %}
+                <span class="disabled"><i class="fas fa-chevron-left"></i> First</span>
+                <span class="disabled"><i class="fas fa-chevron-left"></i> Previous</span>
+                {% endif %}
+
+                {% for page_num in range(start_page, end_page + 1) %}
+                {% if page_num == page %}
+                <span class="current">{{ page_num }}</span>
+                {% else %}
+                <a href="{{ url_for('employee.customers', page=page_num, search=search) }}">{{ page_num }}</a>
+                {% endif %}
+                {% endfor %}
+
+                {% if page < total_pages %}
+                <a href="{{ url_for('employee.customers', page=page+1, search=search) }}">
+                    Next <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="{{ url_for('employee.customers', page=total_pages, search=search) }}">
+                    Last <i class="fas fa-chevron-right"></i>
+                </a>
+                {% else %}
+                <span class="disabled">Next <i class="fas fa-chevron-right"></i></span>
+                <span class="disabled">Last <i class="fas fa-chevron-right"></i></span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Footer Info -->
+            <div class="customers-footer">
+                Showing page {{ page }} of {{ total_pages }} ({{ customers|length }} customer{% if customers|length != 1 %}s{% endif %} on this page)
+            </div>
+
+            {% else %}
+            <!-- Empty State (reused from Dashboard Operations pattern) -->
+            <div class="empty-state">
+                <i class="far fa-user"></i>
+                <p>No customers found.</p>
+                <p class="empty-state-subtext">Customers will appear here once enquiries are received.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -13,7 +13,7 @@ from math import ceil
 
 from flask import Blueprint, abort, flash, render_template, request, session, redirect, url_for
 from services.auth_service import authenticate_employee
-from services.enquiry_service import get_enquiries, get_enquiry_count
+from services.enquiry_service import get_customer_count, get_customers, get_enquiries, get_enquiry_count
 from services.image_service import validate_image_file, validate_image_files
 from services.product_service import (
     create_product,
@@ -105,6 +105,7 @@ def dashboard():
 
     product_count = get_product_count({})
     enquiry_count = get_enquiry_count({})
+    customer_count = get_customer_count({})
 
     # Reaching this line means the Catalog query above already succeeded,
     # so both of these are simply true at render time - no extra queries needed.
@@ -121,6 +122,7 @@ def dashboard():
         current_date=now.strftime("%A, %B %d, %Y"),
         product_count=product_count,
         enquiry_count=enquiry_count,
+        customer_count=customer_count,
         db_connected=db_connected,
         catalog_loaded=catalog_loaded,
     )
@@ -432,7 +434,7 @@ def enquiries():
 
 @employee_bp.route("/employee/customers", methods=["GET"])
 def customers():
-    """Placeholder customers route."""
+    """Display customers derived from enquiry records for employees."""
 
     if not session.get("UserID"):
         return redirect(url_for("employee.login"))
@@ -443,12 +445,34 @@ def customers():
     username = session.get("Username")
     role = session.get("Role")
 
+    page = request.args.get("page", 1, type=int)
+    search = request.args.get("search", "").strip()
+    filters = {"search": search}
+
+    per_page = 20
+    total_customers = get_customer_count(filters)
+    total_pages = ceil(total_customers / per_page) if total_customers > 0 else 1
+
+    if page < 1 or page > total_pages:
+        page = 1
+
+    customer_list = get_customers(filters, page, per_page)
+
+    start_page = max(1, page - 2)
+    end_page = min(total_pages, page + 2)
+
     return render_template(
-        "employee/dashboard.html",
+        "employee/customers.html",
         username=username,
         role=role,
         current_page="customers",
-        coming_soon_message="Customers module coming in next phase",
+        customers=customer_list,
+        search=search,
+        total_customers=total_customers,
+        total_pages=total_pages,
+        page=page,
+        start_page=start_page,
+        end_page=end_page,
     )
 
 
