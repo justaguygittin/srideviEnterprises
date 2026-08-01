@@ -1,7 +1,7 @@
 # AI_CONTEXT.md
 
 # Sridevi Enterprises
-Current Version: v0.8.0 — Customer Experience (Completed)
+Current Version: v0.9.0 — Employee Portal (Complete)
 
 ---
 
@@ -33,7 +33,7 @@ The current project is focused solely on the Sridevi Enterprises showroom applic
 
 The application must become a complete, deployable standalone system before any integration with external projects is considered.
 
-Receipt Generator integration and other shared-system work (shared authentication, inventory, invoices) are intentionally out of scope until after v1.0.0 — see Planned Roadmap > Future Roadmap for details.
+**Update:** a launch-only integration bridge to the Receipt Generator now exists (see Employee Receipt Generator Bridge) — the Employee Portal can link out to it, nothing more. Deeper shared-system work (shared authentication, shared invoice/inventory data, an API between the two projects) remains intentionally out of scope until after v1.0.0 — see Planned Roadmap > Future Roadmap for details.
 
 ## Technology Stack
 
@@ -380,6 +380,16 @@ The Receipt Generator is a **completely separate Flask project** (its own repo, 
 
 **Future integration roadmap**: if the two systems are ever meant to feel more integrated (e.g. showing recent invoice counts on the Dashboard, or single sign-on into the Receipt Generator), that requires the Receipt Generator to expose either an API or shared authentication — neither exists today. Until then, this launch-link bridge is the intended integration boundary; do not add direct queries against the Receipt Generator's own tables (e.g. its `invoices` table) from this codebase, since that would silently couple the two projects' schemas without either project agreeing to the contract.
 
+### Employee Portal Release Audit (v0.9.0)
+
+A polish/cleanup pass across every Employee Portal page — no new features, no redesign. Kept brief since nothing architectural changed:
+
+- **Pagination**: `products()`, `enquiries()`, and `customers()` in `routes/employee.py` had identical page-clamping/window arithmetic copy-pasted three times; extracted into `_paginate(page, total_items, per_page)`. Behavior is unchanged — verified identical output before/after.
+- **Accessibility**: added `scope="col"` to every list-table `<th>`, `aria-current="page"` to the active nav link and the current pagination page, visually-hidden `<label>`s on the Enquiries/Customers search inputs (Products already had visible labels — search inputs elsewhere didn't), and `aria-label`s on the previously-unlabeled spec-row inputs, per-image replace inputs, and the Admin-only delete-image button. Modal accessibility (`aria-labelledby`, `aria-hidden`, close button `aria-label`) was already correct.
+- **Fixed a real bug**: `customers.html` defined a `.customer-contact` class (muted icon + text, matching Enquiries' styling) but never applied it to the Phone/Email table cells — they were rendering as unstyled default text. Now applied; visually matches Enquiries.
+- **Removed dead files**: `templates/employee/inventory.html` and `templates/employee/reports.html` were 0-byte stub files from an early one-time `restructure_project.py` scaffolding run, never referenced by any route. Deleted. (`restructure_project.py` itself is a historical "run once only" migration script, left alone.)
+- **Not changed, deliberately**: the per-page inline `<style>` block duplication across `products.html`/`enquiries.html`/`customers.html`/`receipts.html` (search-section, empty-state, pagination CSS repeated per page) is real duplication but is the established, documented convention in this codebase (page isolation over a shared stylesheet) — extracting it would be a structural change out of scope for a polish sprint. The repeated `if not session.get("UserID")` / role-check guard at the top of every route was also left as-is rather than wrapped in a decorator, for the same reason.
+
 ---
 
 # 3. Architecture & Conventions
@@ -689,24 +699,24 @@ Remaining Phase 1 items require an actual HostyCare deployment and live verifica
 
 ## v0.9.0 — Employee Customer Management
 
-□ Customer List
-□ Customer Details
-□ Customer Search
+✓ Customer List
+✓ Customer Details
+✓ Customer Search
 □ Customer Notes
 □ Customer Management Dashboard
 
 ## v0.9.5 — Employee Enquiry Management
 
 Customer:
-□ Submit Product Enquiry
-□ Contact Form
+✓ Submit Product Enquiry
+✓ Contact Form
 □ Enquiry Tracking
 
 Employee:
-□ View Enquiries
+✓ View Enquiries
 □ Update Status
-□ Search & Filters
-□ Dashboard Widgets
+✓ Search (Filters not built — Enquiries has no dedicated filter dropdowns, only text search)
+□ Dashboard Widgets (the Dashboard's Operations panel shows a static "Recent Enquiries" empty state, not real widget data — see Employee Enquiries Module)
 
 ## v1.0.0 — Sridevi Enterprises Demonstration Release
 
@@ -794,6 +804,7 @@ Standard dropdowns become difficult to use when the catalog contains hundreds of
 Priority:
 Post-v0.8
 
+
 ---
 
 #### Searchable Category Filter
@@ -847,6 +858,21 @@ Potential improvements:
 
 Priority:
 Post-v0.8
+
+---
+
+#### Technical Debt (Post-v0.9)
+
+The following are intentional architectural conventions and should be
+revisited only if they become maintenance burdens:
+
+- Per-page inline CSS for Employee modules
+- Repeated authentication guards in employee routes
+- Standalone Receipt Generator integration (bridge architecture)
+- Customer module currently derived from Enquiries until the Customers
+  table receives a write path
+
+----
 
 #### Search Ranking
 

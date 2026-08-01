@@ -97,7 +97,7 @@ Author  : Srikar
                             <img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ product.product_name }} image {{ loop.index }}">
                             {% if role == 'Admin' and loop.index0 < images_with_ids|length %}
                             <form method="post" action="{{ url_for('employee.delete_image', product_id=product.id, image_id=images_with_ids[loop.index0].id) }}" class="gallery-delete-form" onsubmit="return confirm('Delete this image?');">
-                                <button type="submit" class="btn btn-danger gallery-delete-btn" title="Delete image">
+                                <button type="submit" class="btn btn-danger gallery-delete-btn" title="Delete image" aria-label="Delete image {{ loop.index }}">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </form>

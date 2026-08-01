@@ -371,7 +371,8 @@ Customers - Employee Portal - Sridevi Enterprises
             <div class="search-section">
                 <form method="GET" action="{{ url_for('employee.customers') }}">
                     <div class="search-bar-row">
-                        <input type="text" name="search" value="{{ search }}" placeholder="Search customers...">
+                        <label for="search" class="visually-hidden">Search customers</label>
+                        <input type="text" id="search" name="search" value="{{ search }}" placeholder="Search customers...">
                         <button type="submit" class="search-btn">
                             <i class="fas fa-search"></i> Search
                         </button>
@@ -388,12 +389,12 @@ Customers - Employee Portal - Sridevi Enterprises
                 <table class="customers-table">
                     <thead>
                         <tr>
-                            <th>Customer</th>
-                            <th>Phone</th>
-                            <th>Email</th>
-                            <th>Total Enquiries</th>
-                            <th>Last Enquiry</th>
-                            <th class="customer-actions-cell">Actions</th>
+                            <th scope="col">Customer</th>
+                            <th scope="col">Phone</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Total Enquiries</th>
+                            <th scope="col">Last Enquiry</th>
+                            <th scope="col" class="customer-actions-cell">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -402,8 +403,8 @@ Customers - Employee Portal - Sridevi Enterprises
                             <td>
                                 <span class="customer-name"><i class="fas fa-user"></i> {{ customer.CustomerName }}</span>
                             </td>
-                            <td><i class="fas fa-phone"></i> {{ customer.Phone }}</td>
-                            <td><i class="fas fa-envelope"></i> {{ customer.Email }}</td>
+                            <td><span class="customer-contact"><i class="fas fa-phone"></i> {{ customer.Phone }}</span></td>
+                            <td><span class="customer-contact"><i class="fas fa-envelope"></i> {{ customer.Email }}</span></td>
                             <td class="customer-enquiry-count">{{ customer.TotalEnquiries }}</td>
                             <td>{{ customer.LastEnquiryDate.strftime("%d %b %Y, %I:%M %p") }}</td>
                             <td class="customer-actions-cell">
@@ -504,7 +505,7 @@ Customers - Employee Portal - Sridevi Enterprises
 
                 {% for page_num in range(start_page, end_page + 1) %}
                 {% if page_num == page %}
-                <span class="current">{{ page_num }}</span>
+                <span class="current" aria-current="page">{{ page_num }}</span>
                 {% else %}
                 <a href="{{ url_for('employee.customers', page=page_num, search=search) }}">{{ page_num }}</a>
                 {% endif %}

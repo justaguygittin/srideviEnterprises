@@ -162,7 +162,7 @@ Author  : Srikar
                     <div class="existing-image-row">
                         <img src="{{ url_for('static', filename=image.image_path) }}" alt="Product image {{ loop.index }}">
                         <div class="replace-input">
-                            <input type="file" name="replace_image_{{ image.id }}" accept=".jpg,.jpeg,.png,.webp" class="form-control">
+                            <input type="file" name="replace_image_{{ image.id }}" accept=".jpg,.jpeg,.png,.webp" class="form-control" aria-label="Replace image {{ loop.index }}">
                         </div>
                     </div>
                     {% endfor %}
@@ -179,10 +179,10 @@ Author  : Srikar
                     {% for row in spec_rows %}
                     <div class="row g-3 mb-2">
                         <div class="col-md-5">
-                            <input name="spec_property" class="form-control" placeholder="Property (e.g., Material)" value="{{ row.property }}">
+                            <input name="spec_property" class="form-control" placeholder="Property (e.g., Material)" value="{{ row.property }}" aria-label="Specification {{ loop.index }} property">
                         </div>
                         <div class="col-md-7">
-                            <input name="spec_value" class="form-control" placeholder="Value (e.g., Solid Wood)" value="{{ row.value }}">
+                            <input name="spec_value" class="form-control" placeholder="Value (e.g., Solid Wood)" value="{{ row.value }}" aria-label="Specification {{ loop.index }} value">
                         </div>
                     </div>
                     {% endfor %}

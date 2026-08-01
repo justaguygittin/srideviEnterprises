@@ -390,7 +390,8 @@ Enquiries - Employee Portal - Sridevi Enterprises
             <div class="search-section">
                 <form method="GET" action="{{ url_for('employee.enquiries') }}">
                     <div class="search-bar-row">
-                        <input type="text" name="search" value="{{ search }}" placeholder="Search enquiries...">
+                        <label for="search" class="visually-hidden">Search enquiries</label>
+                        <input type="text" id="search" name="search" value="{{ search }}" placeholder="Search enquiries...">
                         <button type="submit" class="search-btn">
                             <i class="fas fa-search"></i> Search
                         </button>
@@ -407,11 +408,11 @@ Enquiries - Employee Portal - Sridevi Enterprises
                 <table class="enquiries-table">
                     <thead>
                         <tr>
-                            <th>Customer</th>
-                            <th>Product</th>
-                            <th>Date</th>
-                            <th>Status</th>
-                            <th class="enquiry-actions-cell">Actions</th>
+                            <th scope="col">Customer</th>
+                            <th scope="col">Product</th>
+                            <th scope="col">Date</th>
+                            <th scope="col">Status</th>
+                            <th scope="col" class="enquiry-actions-cell">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -526,7 +527,7 @@ Enquiries - Employee Portal - Sridevi Enterprises
 
                 {% for page_num in range(start_page, end_page + 1) %}
                 {% if page_num == page %}
-                <span class="current">{{ page_num }}</span>
+                <span class="current" aria-current="page">{{ page_num }}</span>
                 {% else %}
                 <a href="{{ url_for('employee.enquiries', page=page_num, search=search) }}">{{ page_num }}</a>
                 {% endif %}

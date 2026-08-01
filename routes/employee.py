@@ -45,6 +45,20 @@ def _pad_spec_rows(pairs) -> list[dict[str, str]]:
         rows.append({"property": "", "value": ""})
     return rows
 
+
+def _paginate(page: int, total_items: int, per_page: int) -> tuple[int, int, int, int]:
+    """Clamp the requested page and compute the pagination window shared by every list route."""
+
+    total_pages = ceil(total_items / per_page) if total_items > 0 else 1
+
+    if page < 1 or page > total_pages:
+        page = 1
+
+    start_page = max(1, page - 2)
+    end_page = min(total_pages, page + 2)
+
+    return page, total_pages, start_page, end_page
+
 employee_bp = Blueprint("employee", __name__)
 
 
@@ -158,15 +172,9 @@ def products():
 
     per_page = 20
     total_products = get_product_count(filters)
-    total_pages = ceil(total_products / per_page) if total_products > 0 else 1
-
-    if page < 1 or page > total_pages:
-        page = 1
+    page, total_pages, start_page, end_page = _paginate(page, total_products, per_page)
 
     product_list = get_products(filters, page, per_page)
-
-    start_page = max(1, page - 2)
-    end_page = min(total_pages, page + 2)
 
     return render_template(
         "employee/products.html",
@@ -409,15 +417,9 @@ def enquiries():
 
     per_page = 20
     total_enquiries = get_enquiry_count(filters)
-    total_pages = ceil(total_enquiries / per_page) if total_enquiries > 0 else 1
-
-    if page < 1 or page > total_pages:
-        page = 1
+    page, total_pages, start_page, end_page = _paginate(page, total_enquiries, per_page)
 
     enquiry_list = get_enquiries(filters, page, per_page)
-
-    start_page = max(1, page - 2)
-    end_page = min(total_pages, page + 2)
 
     return render_template(
         "employee/enquiries.html",
@@ -453,15 +455,9 @@ def customers():
 
     per_page = 20
     total_customers = get_customer_count(filters)
-    total_pages = ceil(total_customers / per_page) if total_customers > 0 else 1
-
-    if page < 1 or page > total_pages:
-        page = 1
+    page, total_pages, start_page, end_page = _paginate(page, total_customers, per_page)
 
     customer_list = get_customers(filters, page, per_page)
-
-    start_page = max(1, page - 2)
-    end_page = min(total_pages, page + 2)
 
     return render_template(
         "employee/customers.html",

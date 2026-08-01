@@ -5,7 +5,7 @@
 A Flask + MariaDB showroom management system for Sridevi Enterprises: a customer-facing
 digital showroom plus an internal employee portal for product management.
 
-Current Version: **v0.8.0** (in development)
+Current Version: **v0.9.0** — Employee Portal (Complete)
 
 For architecture, RBAC, and development rules, see [AI_CONTEXT.md](AI_CONTEXT.md).
 For deploying to production, see [DEPLOYMENT.md](DEPLOYMENT.md).
@@ -24,9 +24,13 @@ For deploying to production, see [DEPLOYMENT.md](DEPLOYMENT.md).
 **Employee Portal**
 - Employee login and session-based authentication
 - Role-based access (Employee / Admin)
+- Dashboard with real product/enquiry/customer counts and quick actions
 - Product listing, search, filters, and pagination
 - Add, edit, and view products, including image uploads
 - Delete products and product images (Admin only)
+- Customer enquiries (read-only list, search, detail view)
+- Customers (read-only list derived from enquiries, search, detail view)
+- Receipt Generator launch bridge (links out to the separately-hosted Receipt Generator)
 
 ---
 

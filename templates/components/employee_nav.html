@@ -12,27 +12,27 @@ Author  : Srikar
     <div class="container">
         <ul class="employee-nav-list">
             <li class="employee-nav-item">
-                <a href="{{ url_for('employee.dashboard') }}" class="employee-nav-link {% if current_page == 'dashboard' %}active{% endif %}">
+                <a href="{{ url_for('employee.dashboard') }}" class="employee-nav-link {% if current_page == 'dashboard' %}active{% endif %}" {% if current_page == 'dashboard' %}aria-current="page"{% endif %}>
                     <i class="fas fa-home"></i> Dashboard
                 </a>
             </li>
             <li class="employee-nav-item">
-                <a href="{{ url_for('employee.products') }}" class="employee-nav-link {% if current_page == 'products' %}active{% endif %}">
+                <a href="{{ url_for('employee.products') }}" class="employee-nav-link {% if current_page == 'products' %}active{% endif %}" {% if current_page == 'products' %}aria-current="page"{% endif %}>
                     <i class="fas fa-box"></i> Products
                 </a>
             </li>
             <li class="employee-nav-item">
-                <a href="{{ url_for('employee.enquiries') }}" class="employee-nav-link {% if current_page == 'enquiries' %}active{% endif %}">
+                <a href="{{ url_for('employee.enquiries') }}" class="employee-nav-link {% if current_page == 'enquiries' %}active{% endif %}" {% if current_page == 'enquiries' %}aria-current="page"{% endif %}>
                     <i class="fas fa-envelope"></i> Enquiries
                 </a>
             </li>
             <li class="employee-nav-item">
-                <a href="{{ url_for('employee.customers') }}" class="employee-nav-link {% if current_page == 'customers' %}active{% endif %}">
+                <a href="{{ url_for('employee.customers') }}" class="employee-nav-link {% if current_page == 'customers' %}active{% endif %}" {% if current_page == 'customers' %}aria-current="page"{% endif %}>
                     <i class="fas fa-users"></i> Customers
                 </a>
             </li>
             <li class="employee-nav-item">
-                <a href="{{ url_for('employee.receipts') }}" class="employee-nav-link {% if current_page == 'receipts' %}active{% endif %}">
+                <a href="{{ url_for('employee.receipts') }}" class="employee-nav-link {% if current_page == 'receipts' %}active{% endif %}" {% if current_page == 'receipts' %}aria-current="page"{% endif %}>
                     <i class="fas fa-receipt"></i> Receipts
                 </a>
             </li>
