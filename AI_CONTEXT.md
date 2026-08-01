@@ -1,7 +1,7 @@
 # AI_CONTEXT.md
 
 # Sridevi Enterprises
-Current Version: v0.8.0 — Customer Experience (in progress)
+Current Version: v0.8.0 — Customer Experience (Completed)
 
 ---
 
@@ -292,6 +292,30 @@ Route: `POST /employee/products/<id>/delete` (Admin only)
 Confirmation is a plain browser `confirm()` dialog on the delete form — the same lightweight pattern already used for Delete Product Image, no new UI component was introduced.
 
 Filesystem deletion (the upload folder) happens only AFTER the database transaction commits, never before or during — see Write Operation Pattern.
+
+### Employee Dashboard — Command Center
+
+The dashboard (`templates/employee/dashboard.html`, `routes/employee.py:dashboard()`) was restructured into three sections — Welcome Card, Statistics, Quick Actions — without touching `employee_nav.html` or any other employee page. Grep-confirmed the dashboard's CSS classes (`.dashboard-header`, `.dashboard-card`, `.coming-soon`, etc.) are used only in this one template, so all styling was edited in place rather than isolated behind new modifier classes.
+
+**Welcome Card**: greeting ("Good morning/afternoon/evening") and the formatted current date are computed server-side in `dashboard()` from `datetime.now()` — no JavaScript, no new dependency. Designation/role and username were already in the session and template context.
+
+**Statistics**: Products reuses the existing `get_product_count({})` (`services/product_service.py`, already used by the Products list page) for a real catalog count — no new query. Customers and Enquiries show "Coming Soon" and Receipt Generator shows "Available Soon" since none of those modules exist yet; no numbers are fabricated.
+
+**Quick Actions**: five cards — View Products, Add Product, View Enquiries, Customers (all link to existing routes), plus Receipt Generator, which is a static, non-link, visually "disabled" card (`.dashboard-card.is-disabled`) since no Receipt Generator route exists in this app (it remains a separate future project per Future Roadmap). Enquiries/Customers keep a "Coming Soon" badge since those routes currently render only a placeholder message, not the real module.
+
+No new routes, no schema changes, no auth changes. `coming_soon_message` branch (used by the placeholder `/employee/enquiries` and `/employee/customers` routes) is untouched.
+
+#### Dashboard Polish (Milestone 2)
+
+**"Pending module" convention**: any Quick Action card whose underlying module isn't built yet gets `.is-pending`, which mutes the icon, title, and description color (not just the "Coming Soon" badge), so unavailable actions read as visually secondary at a glance. `.is-disabled` is layered on top only for cards with no real route (currently just Receipt Generator) to drop the pointer cursor/hover lift, since it's a plain `<div>`, not an `<a>`. **When Enquiries or Customers gets built in a future milestone, remove `is-pending` from that card** (and update its stat card out of "Coming Soon") — that's the intended flip point for this convention.
+
+**Equal card heights**: `.dashboard-card` is now a flex column (`height: 100%`, so it fills its stretched CSS Grid row) with a reserved min-height on the title and a 2-line `-webkit-line-clamp` on the description, and `margin-top: auto` on the optional `.coming-soon` badge. This keeps all Quick Action cards the same height/alignment regardless of whether a card has a badge — reuse this pattern for any future card grid on this page instead of relying on padding alone.
+
+**Role badge**: `.role-badge` still displays the real `designation` (falling back to `role`) — no designation-to-category mapping was invented, since collapsing real job titles (e.g. "Warehouse Staff") into a fixed Manager/Sales/Admin enum would fabricate data not backed by `Employees.Designation`. Instead it was restyled as a pill, with a `role-badge-admin` accent variant driven by the session's authoritative `Role` (Employee/Admin) — the one designation-adjacent field RBAC already treats as ground truth.
+
+**System Status panel**: `db_connected`/`catalog_loaded` in `dashboard()` are set `True` directly after `get_product_count()` returns — no new health-check query. Reaching that line already proves the DB call succeeded, so this is a free-standing implication of an existing call, not fabricated status. If a real health-check becomes necessary later, replace this inline logic rather than assuming it already checks anything beyond that one query.
+
+**Recent Enquiries empty state**: intentionally static markup ("No enquiries available yet...") — does not query the `Enquiries` table. Wiring it to real data is Enquiry Management (v0.9.5), out of scope here.
 
 ---
 

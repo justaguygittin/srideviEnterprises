@@ -8,6 +8,7 @@ Author  : Srikar
 =========================================================
 """
 
+from datetime import datetime
 from math import ceil
 
 from flask import Blueprint, abort, flash, render_template, request, session, redirect, url_for
@@ -93,12 +94,32 @@ def dashboard():
     role = session.get("Role")
     designation = session.get("Designation")
 
+    now = datetime.now()
+    if now.hour < 12:
+        greeting = "Good morning"
+    elif now.hour < 17:
+        greeting = "Good afternoon"
+    else:
+        greeting = "Good evening"
+
+    product_count = get_product_count({})
+
+    # Reaching this line means the Catalog query above already succeeded,
+    # so both of these are simply true at render time - no extra queries needed.
+    db_connected = True
+    catalog_loaded = True
+
     return render_template(
         "employee/dashboard.html",
         username=username,
         role=role,
         designation=designation,
         current_page="dashboard",
+        greeting=greeting,
+        current_date=now.strftime("%A, %B %d, %Y"),
+        product_count=product_count,
+        db_connected=db_connected,
+        catalog_loaded=catalog_loaded,
     )
 
 
