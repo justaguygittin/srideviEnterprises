@@ -403,9 +403,14 @@ Products - Employee Portal - Sridevi Enterprises
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{{ url_for('employee.product_details', product_id=product.id) }}" class="action-link">
-                                    <i class="fas fa-eye"></i> View
-                                </a>
+                                <div class="d-flex gap-3 flex-wrap">
+                                    <a href="{{ url_for('employee.product_details', product_id=product.id) }}" class="action-link">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    <a href="{{ url_for('employee.edit_product', product_id=product.id) }}" class="action-link">
+                                        <i class="fas fa-pen"></i> Edit
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}

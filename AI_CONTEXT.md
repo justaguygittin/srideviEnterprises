@@ -268,6 +268,10 @@ Reuses `product_form.html` (Add and Edit share one template), and `validate_prod
 
 Specifications are fully replaced on every save (existing rows deleted, submitted rows re-inserted) rather than diffed row-by-row, since spec rows have no stable identity in the form.
 
+**Entry points (v0.9 Milestone 5):** Edit was previously only reachable from Product Details or a direct URL. The Products list (`templates/employee/products.html`) now also has an "Edit" `.action-link` next to "View" on every row, linking to the same `employee.edit_product` route — no new route, no new backend logic, purely an additional entry point using the page's existing action-link styling. `product_form.html` also gained an explicit "Cancel" button (`btn-outline-secondary`, next to Save Changes/Create Product) that returns to Product Details when editing or the Products list when adding — previously the only way back was the "Back to..." link at the top of the page. Both Add and Edit already shared 100% of their validation, image-handling, and transaction logic before this milestone (see Write Operation Pattern) — this sprint found nothing left to extract at the service layer, only these two UI entry-point gaps.
+
+**Note:** as of this milestone, Delete Product and Delete Product Image (Admin-only, see below) already exist and are unaffected by this sprint — Product Management (Add/Edit/Delete/Image management) is now a complete lifecycle end-to-end, not a future dependency.
+
 ### Product Image Management
 
 Employee can:

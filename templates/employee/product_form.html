@@ -187,7 +187,14 @@ Author  : Srikar
                     </div>
                     {% endfor %}
 
-                    <button class="btn btn-primary mt-4" type="submit">{% if product %}Save Changes{% else %}Create Product{% endif %}</button>
+                    <div class="d-flex gap-2 mt-4">
+                        <button class="btn btn-primary" type="submit">{% if product %}Save Changes{% else %}Create Product{% endif %}</button>
+                        {% if product %}
+                        <a href="{{ url_for('employee.product_details', product_id=product.id) }}" class="btn btn-outline-secondary">Cancel</a>
+                        {% else %}
+                        <a href="{{ url_for('employee.products') }}" class="btn btn-outline-secondary">Cancel</a>
+                        {% endif %}
+                    </div>
                 </form>
             </div>
         </div>
