@@ -17,17 +17,23 @@ from services.auth_service import authenticate_employee
 from services.enquiry_service import get_customer_count, get_customers, get_enquiries, get_enquiry_count
 from services.image_service import validate_image_file, validate_image_files
 from services.product_service import (
+    LOW_STOCK_THRESHOLD,
     create_product,
     delete_product as delete_product_service,
     delete_product_image,
     find_similar_product,
+    get_inventory_by_category,
+    get_inventory_by_department,
+    get_inventory_summary,
     get_product,
     get_product_count,
     get_product_filters,
     get_product_for_edit,
     get_product_images_with_ids,
     get_products,
+    get_products_by_stock_status,
     get_related_products,
+    get_stock_status_count,
     update_product,
     validate_product_form,
     validate_specifications,
@@ -121,6 +127,7 @@ def dashboard():
     product_count = get_product_count({})
     enquiry_count = get_enquiry_count({})
     customer_count = get_customer_count({})
+    inventory_summary = get_inventory_summary()
 
     # Reaching this line means the Catalog query above already succeeded,
     # so both of these are simply true at render time - no extra queries needed.
@@ -138,6 +145,7 @@ def dashboard():
         product_count=product_count,
         enquiry_count=enquiry_count,
         customer_count=customer_count,
+        inventory_summary=inventory_summary,
         db_connected=db_connected,
         catalog_loaded=catalog_loaded,
         receipt_generator_configured=bool(Config.RECEIPT_GENERATOR_URL),
@@ -395,6 +403,59 @@ def product_details(product_id):
         product=product,
         related_products=get_related_products(product),
         images_with_ids=get_product_images_with_ids(product_id),
+    )
+
+
+@employee_bp.route("/employee/inventory", methods=["GET"])
+def inventory():
+    """Display the read-only Inventory Summary page for employees."""
+
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+
+    if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
+        abort(403)
+
+    username = session.get("Username")
+    role = session.get("Role")
+
+    per_page = 10
+    low_stock_page = request.args.get("low_stock_page", 1, type=int)
+    out_of_stock_page = request.args.get("out_of_stock_page", 1, type=int)
+
+    total_low_stock = get_stock_status_count("low_stock")
+    low_stock_page, low_stock_total_pages, low_stock_start_page, low_stock_end_page = _paginate(
+        low_stock_page, total_low_stock, per_page
+    )
+    low_stock_products = get_products_by_stock_status("low_stock", low_stock_page, per_page)
+
+    total_out_of_stock = get_stock_status_count("out_of_stock")
+    out_of_stock_page, out_of_stock_total_pages, out_of_stock_start_page, out_of_stock_end_page = _paginate(
+        out_of_stock_page, total_out_of_stock, per_page
+    )
+    out_of_stock_products = get_products_by_stock_status("out_of_stock", out_of_stock_page, per_page)
+
+    return render_template(
+        "employee/inventory.html",
+        username=username,
+        role=role,
+        current_page="inventory",
+        summary=get_inventory_summary(),
+        department_summary=get_inventory_by_department(),
+        category_summary=get_inventory_by_category(),
+        low_stock_threshold=LOW_STOCK_THRESHOLD,
+        low_stock_products=low_stock_products,
+        low_stock_page=low_stock_page,
+        low_stock_total_pages=low_stock_total_pages,
+        low_stock_start_page=low_stock_start_page,
+        low_stock_end_page=low_stock_end_page,
+        total_low_stock=total_low_stock,
+        out_of_stock_products=out_of_stock_products,
+        out_of_stock_page=out_of_stock_page,
+        out_of_stock_total_pages=out_of_stock_total_pages,
+        out_of_stock_start_page=out_of_stock_start_page,
+        out_of_stock_end_page=out_of_stock_end_page,
+        total_out_of_stock=total_out_of_stock,
     )
 
 

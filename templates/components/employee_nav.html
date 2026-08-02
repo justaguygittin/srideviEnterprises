@@ -22,6 +22,11 @@ Author  : Srikar
                 </a>
             </li>
             <li class="employee-nav-item">
+                <a href="{{ url_for('employee.inventory') }}" class="employee-nav-link {% if current_page == 'inventory' %}active{% endif %}" {% if current_page == 'inventory' %}aria-current="page"{% endif %}>
+                    <i class="fas fa-warehouse"></i> Inventory
+                </a>
+            </li>
+            <li class="employee-nav-item">
                 <a href="{{ url_for('employee.enquiries') }}" class="employee-nav-link {% if current_page == 'enquiries' %}active{% endif %}" {% if current_page == 'enquiries' %}aria-current="page"{% endif %}>
                     <i class="fas fa-envelope"></i> Enquiries
                 </a>

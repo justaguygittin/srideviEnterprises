@@ -21,6 +21,12 @@ _SORT_OPTIONS = {
     "brand": "brand ASC",
 }
 
+# v1.0 Sprint 1 (Inventory Dashboard Foundation): temporary global threshold
+# used to classify every product's inventory status (see get_inventory_summary
+# and friends below). A later sprint will replace this with a per-product
+# `MinimumStock` column on Catalog - do not treat this as permanent.
+LOW_STOCK_THRESHOLD = 5
+
 
 def get_products(filters: dict[str, Any], page: int, per_page: int):
     """Return one paginated page of catalog products matching the supplied filters."""
@@ -97,6 +103,98 @@ def get_product_filters():
             WHERE brand IS NOT NULL AND TRIM(brand) NOT IN ('', 'NA') ORDER BY brand;
         """),
     }
+
+
+def get_inventory_summary() -> dict[str, int]:
+    """Return catalog-wide inventory counts using the temporary LOW_STOCK_THRESHOLD."""
+
+    result = fetch_one("""
+        SELECT
+            COUNT(*) AS total_products,
+            COALESCE(SUM(stock_quantity), 0) AS total_stock_units,
+            SUM(CASE WHEN stock_quantity > %s THEN 1 ELSE 0 END) AS healthy_count,
+            SUM(CASE WHEN stock_quantity BETWEEN 1 AND %s THEN 1 ELSE 0 END) AS low_stock_count,
+            SUM(CASE WHEN stock_quantity IS NULL OR stock_quantity = 0 THEN 1 ELSE 0 END) AS out_of_stock_count
+        FROM Catalog
+        WHERE product_name IS NOT NULL AND TRIM(product_name) <> '';
+    """, (LOW_STOCK_THRESHOLD, LOW_STOCK_THRESHOLD))
+    return {key: int(value) for key, value in result.items()}
+
+
+def get_inventory_by_department():
+    """Return per-department product counts, stock totals, and status breakdown."""
+
+    return _get_inventory_group_summary("Department")
+
+
+def get_inventory_by_category():
+    """Return per-category product counts, stock totals, and status breakdown."""
+
+    return _get_inventory_group_summary("category")
+
+
+def _get_inventory_group_summary(column: str) -> list[dict[str, Any]]:
+    """Shared aggregation query behind get_inventory_by_department/_category."""
+
+    rows = fetch_all(f"""
+        SELECT
+            {column} AS name,
+            COUNT(*) AS total_products,
+            COALESCE(SUM(stock_quantity), 0) AS total_stock_units,
+            SUM(CASE WHEN stock_quantity BETWEEN 1 AND %s THEN 1 ELSE 0 END) AS low_stock_count,
+            SUM(CASE WHEN stock_quantity IS NULL OR stock_quantity = 0 THEN 1 ELSE 0 END) AS out_of_stock_count
+        FROM Catalog
+        WHERE product_name IS NOT NULL AND TRIM(product_name) <> ''
+              AND {column} IS NOT NULL AND TRIM({column}) <> ''
+        GROUP BY {column}
+        ORDER BY {column};
+    """, (LOW_STOCK_THRESHOLD,))
+
+    for row in rows:
+        row["total_products"] = int(row["total_products"])
+        row["total_stock_units"] = int(row["total_stock_units"])
+        row["low_stock_count"] = int(row["low_stock_count"])
+        row["out_of_stock_count"] = int(row["out_of_stock_count"])
+    return rows
+
+
+def _stock_status_filter(status: str) -> tuple[str, list[Any]]:
+    """Return the WHERE fragment and params identifying one inventory status bucket."""
+
+    if status == "out_of_stock":
+        return "(stock_quantity IS NULL OR stock_quantity = 0)", []
+    if status == "low_stock":
+        return "stock_quantity BETWEEN 1 AND %s", [LOW_STOCK_THRESHOLD]
+    raise ValueError(f"Unknown stock status: {status}")
+
+
+def get_stock_status_count(status: str) -> int:
+    """Return how many catalog products fall into one inventory status bucket."""
+
+    clause, params = _stock_status_filter(status)
+    result = fetch_one(f"""
+        SELECT COUNT(*) AS total FROM Catalog
+        WHERE product_name IS NOT NULL AND TRIM(product_name) <> '' AND {clause};
+    """, tuple(params))
+    return result["total"]
+
+
+def get_products_by_stock_status(status: str, page: int, per_page: int):
+    """Return one paginated page of catalog products in one inventory status bucket."""
+
+    clause, params = _stock_status_filter(status)
+    products = fetch_all(f"""
+        SELECT id, product_name, Department, category, NULLIF(TRIM(brand), '') AS brand, stock_quantity
+        FROM Catalog
+        WHERE product_name IS NOT NULL AND TRIM(product_name) <> '' AND {clause}
+        ORDER BY stock_quantity ASC, product_name ASC
+        LIMIT %s OFFSET %s;
+    """, tuple(params + [per_page, (page - 1) * per_page]))
+
+    for product in products:
+        product["product_name"] = _normalise_catalog_text(product["product_name"])
+        product["stock_quantity"] = product["stock_quantity"] or 0
+    return products
 
 
 def get_product(product_id: int):

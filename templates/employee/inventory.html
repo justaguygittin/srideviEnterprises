@@ -1,0 +1,617 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : inventory.html
+Purpose : Employee Inventory Summary (read-only), derived entirely
+          from the existing Catalog table. See AI_CONTEXT.md ->
+          Business Rules for the temporary LOW_STOCK_THRESHOLD.
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+Inventory Summary - Employee Portal - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee_nav.css') }}">
+<style>
+    .inventory-container {
+        min-height: calc(100vh - 120px);
+        background-color: #f8f9fa;
+        padding: 0;
+    }
+
+    .inventory-content {
+        padding: 2rem;
+    }
+
+    .inventory-header {
+        margin-bottom: 2rem;
+    }
+
+    .inventory-header h1 {
+        color: #333;
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .inventory-count {
+        color: #666;
+        font-size: 0.95rem;
+    }
+
+    .section-heading {
+        color: #333;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 2rem 0 1rem;
+    }
+
+    .section-heading:first-of-type {
+        margin-top: 0;
+    }
+
+    .threshold-note {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+        background: #e3f2fd;
+        border: 1px solid #90caf9;
+        color: #1565c0;
+        padding: 0.9rem 1.1rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+    }
+
+    .threshold-note i {
+        margin-top: 0.15rem;
+    }
+
+    /* Inventory Overview cards - same Statistics card style as the Dashboard. */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.25rem;
+        margin-bottom: 1rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+    }
+
+    .stat-card-icon {
+        flex-shrink: 0;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: #f0f5ff;
+        color: #1E4FA3;
+        font-size: 1.3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .stat-card-body {
+        min-width: 0;
+    }
+
+    .stat-card-value {
+        color: #1E4FA3;
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .stat-card-label {
+        color: #666;
+        font-size: 0.8rem;
+        margin: 0.3rem 0 0;
+    }
+
+    .inventory-table-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        overflow-x: auto;
+        margin-bottom: 1rem;
+    }
+
+    .inventory-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .inventory-table thead {
+        background: #f8f9fa;
+        border-bottom: 2px solid #1E4FA3;
+    }
+
+    .inventory-table th {
+        padding: 1rem;
+        text-align: left;
+        color: #333;
+        font-weight: 600;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+
+    .inventory-table tbody tr {
+        border-bottom: 1px solid #eee;
+        transition: background 0.2s;
+    }
+
+    .inventory-table tbody tr:hover {
+        background: #f0f5ff;
+    }
+
+    .inventory-table td {
+        padding: 1rem;
+        color: #333;
+        font-size: 0.9rem;
+        vertical-align: top;
+    }
+
+    .inventory-product-link {
+        color: #1E4FA3;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .inventory-product-link:hover {
+        text-decoration: underline;
+    }
+
+    .inventory-product-meta {
+        color: #888;
+        font-size: 0.8rem;
+        margin-top: 0.2rem;
+    }
+
+    .stock-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .stock-status-badge::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+        flex-shrink: 0;
+    }
+
+    .stock-status-badge--healthy {
+        background: #ECFDF3;
+        color: #067647;
+    }
+
+    .stock-status-badge--low {
+        background: #FFFAEB;
+        color: #B54708;
+    }
+
+    .stock-status-badge--out {
+        background: #FEF3F2;
+        color: #B42318;
+    }
+
+    /* Reused from the Dashboard Operations empty-state pattern. */
+    .empty-state {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        padding: 3rem 1.5rem;
+        color: #999;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state i {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        color: #ccc;
+    }
+
+    .empty-state p {
+        margin: 0;
+        font-size: 1rem;
+        color: #666;
+    }
+
+    .empty-state p.empty-state-subtext {
+        font-size: 0.85rem;
+        color: #999;
+        margin-top: 0.4rem;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .pagination a,
+    .pagination span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        height: 40px;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-decoration: none;
+        color: #333;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .pagination a:hover {
+        background: #1E4FA3;
+        color: white;
+        border-color: #1E4FA3;
+    }
+
+    .pagination .current {
+        background: #1E4FA3;
+        color: white;
+        border-color: #1E4FA3;
+        font-weight: 600;
+    }
+
+    .pagination .disabled {
+        color: #ccc;
+        cursor: not-allowed;
+    }
+
+    .pagination .disabled:hover {
+        background: white;
+        border-color: #ddd;
+    }
+
+    .inventory-list-footer {
+        margin: 0.75rem 0 0;
+        text-align: center;
+        color: #666;
+        font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+        .inventory-content {
+            padding: 1rem;
+        }
+
+        .inventory-header h1 {
+            font-size: 1.3rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .inventory-table {
+            font-size: 0.8rem;
+        }
+
+        .inventory-table th,
+        .inventory-table td {
+            padding: 0.6rem 0.4rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="inventory-container">
+    {% include 'components/employee_nav.html' %}
+
+    <!-- Inventory Content -->
+    <div class="inventory-content">
+        <div class="container">
+            <!-- Header -->
+            <div class="inventory-header">
+                <h1><i class="fas fa-warehouse"></i> Inventory Summary</h1>
+                <p class="inventory-count">{{ summary.total_products }} products in catalog &middot; {{ summary.total_stock_units }} total stock units</p>
+            </div>
+
+            <!-- Inventory Overview Cards -->
+            <h2 class="section-heading">Inventory Overview</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-card-icon"><i class="fas fa-box"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-value">{{ summary.total_products }}</div>
+                        <p class="stat-card-label">Total Products</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-icon"><i class="fas fa-cubes"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-value">{{ summary.total_stock_units }}</div>
+                        <p class="stat-card-label">Total Stock Units</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-value">{{ summary.healthy_count }}</div>
+                        <p class="stat-card-label">Healthy Products</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-value">{{ summary.low_stock_count }}</div>
+                        <p class="stat-card-label">Low Stock Products</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-icon"><i class="fas fa-times-circle"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-value">{{ summary.out_of_stock_count }}</div>
+                        <p class="stat-card-label">Out of Stock Products</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Department Summary -->
+            <h2 class="section-heading">Department Summary</h2>
+            {% if department_summary %}
+            <div class="inventory-table-container">
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Department</th>
+                            <th scope="col">Total Products</th>
+                            <th scope="col">Total Stock Units</th>
+                            <th scope="col">Low Stock</th>
+                            <th scope="col">Out of Stock</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for department in department_summary %}
+                        <tr>
+                            <td><i class="fas fa-building"></i> {{ department.name }}</td>
+                            <td>{{ department.total_products }}</td>
+                            <td>{{ department.total_stock_units }}</td>
+                            <td>{{ department.low_stock_count }}</td>
+                            <td>{{ department.out_of_stock_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-building"></i>
+                <p>No departments found.</p>
+            </div>
+            {% endif %}
+
+            <!-- Category Summary -->
+            <h2 class="section-heading">Category Summary</h2>
+            {% if category_summary %}
+            <div class="inventory-table-container">
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Category</th>
+                            <th scope="col">Total Products</th>
+                            <th scope="col">Total Stock Units</th>
+                            <th scope="col">Low Stock</th>
+                            <th scope="col">Out of Stock</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in category_summary %}
+                        <tr>
+                            <td><i class="fas fa-tag"></i> {{ category.name }}</td>
+                            <td>{{ category.total_products }}</td>
+                            <td>{{ category.total_stock_units }}</td>
+                            <td>{{ category.low_stock_count }}</td>
+                            <td>{{ category.out_of_stock_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-tag"></i>
+                <p>No categories found.</p>
+            </div>
+            {% endif %}
+
+            <!-- Low Stock List -->
+            <h2 class="section-heading">Low Stock Products</h2>
+            <div class="threshold-note">
+                <i class="fas fa-info-circle"></i>
+                <span>
+                    Low stock threshold is currently a temporary global value ({{ low_stock_threshold }} units or fewer).
+                    It will be replaced with a per-product minimum stock setting in a future sprint.
+                </span>
+            </div>
+
+            {% if low_stock_products %}
+            <div class="inventory-table-container">
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Product</th>
+                            <th scope="col">Department</th>
+                            <th scope="col">Category</th>
+                            <th scope="col">Stock</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in low_stock_products %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('employee.product_details', product_id=product.id) }}" class="inventory-product-link">{{ product.product_name }}</a>
+                                {% if product.brand %}<div class="inventory-product-meta">{{ product.brand }}</div>{% endif %}
+                            </td>
+                            <td>{{ product.Department or "-" }}</td>
+                            <td>{{ product.category or "-" }}</td>
+                            <td>{{ product.stock_quantity }}</td>
+                            <td><span class="stock-status-badge stock-status-badge--low">Low Stock</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if low_stock_total_pages > 1 %}
+            <div class="pagination">
+                {% if low_stock_page > 1 %}
+                <a href="{{ url_for('employee.inventory', low_stock_page=1, out_of_stock_page=out_of_stock_page) }}">
+                    <i class="fas fa-chevron-left"></i> First
+                </a>
+                <a href="{{ url_for('employee.inventory', low_stock_page=low_stock_page-1, out_of_stock_page=out_of_stock_page) }}">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </a>
+                {% else %}
+                <span class="disabled"><i class="fas fa-chevron-left"></i> First</span>
+                <span class="disabled"><i class="fas fa-chevron-left"></i> Previous</span>
+                {% endif %}
+
+                {% for page_num in range(low_stock_start_page, low_stock_end_page + 1) %}
+                {% if page_num == low_stock_page %}
+                <span class="current" aria-current="page">{{ page_num }}</span>
+                {% else %}
+                <a href="{{ url_for('employee.inventory', low_stock_page=page_num, out_of_stock_page=out_of_stock_page) }}">{{ page_num }}</a>
+                {% endif %}
+                {% endfor %}
+
+                {% if low_stock_page < low_stock_total_pages %}
+                <a href="{{ url_for('employee.inventory', low_stock_page=low_stock_page+1, out_of_stock_page=out_of_stock_page) }}">
+                    Next <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="{{ url_for('employee.inventory', low_stock_page=low_stock_total_pages, out_of_stock_page=out_of_stock_page) }}">
+                    Last <i class="fas fa-chevron-right"></i>
+                </a>
+                {% else %}
+                <span class="disabled">Next <i class="fas fa-chevron-right"></i></span>
+                <span class="disabled">Last <i class="fas fa-chevron-right"></i></span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <p class="inventory-list-footer">
+                Showing page {{ low_stock_page }} of {{ low_stock_total_pages }} ({{ total_low_stock }} low stock product{% if total_low_stock != 1 %}s{% endif %} total)
+            </p>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-check-circle"></i>
+                <p>No low stock products.</p>
+                <p class="empty-state-subtext">Every product is either healthy or out of stock.</p>
+            </div>
+            {% endif %}
+
+            <!-- Out of Stock List -->
+            <h2 class="section-heading">Out of Stock Products</h2>
+            {% if out_of_stock_products %}
+            <div class="inventory-table-container">
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Product</th>
+                            <th scope="col">Department</th>
+                            <th scope="col">Category</th>
+                            <th scope="col">Stock</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in out_of_stock_products %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('employee.product_details', product_id=product.id) }}" class="inventory-product-link">{{ product.product_name }}</a>
+                                {% if product.brand %}<div class="inventory-product-meta">{{ product.brand }}</div>{% endif %}
+                            </td>
+                            <td>{{ product.Department or "-" }}</td>
+                            <td>{{ product.category or "-" }}</td>
+                            <td>{{ product.stock_quantity }}</td>
+                            <td><span class="stock-status-badge stock-status-badge--out">Out of Stock</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if out_of_stock_total_pages > 1 %}
+            <div class="pagination">
+                {% if out_of_stock_page > 1 %}
+                <a href="{{ url_for('employee.inventory', low_stock_page=low_stock_page, out_of_stock_page=1) }}">
+                    <i class="fas fa-chevron-left"></i> First
+                </a>
+                <a href="{{ url_for('employee.inventory', low_stock_page=low_stock_page, out_of_stock_page=out_of_stock_page-1) }}">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </a>
+                {% else %}
+                <span class="disabled"><i class="fas fa-chevron-left"></i> First</span>
+                <span class="disabled"><i class="fas fa-chevron-left"></i> Previous</span>
+                {% endif %}
+
+                {% for page_num in range(out_of_stock_start_page, out_of_stock_end_page + 1) %}
+                {% if page_num == out_of_stock_page %}
+                <span class="current" aria-current="page">{{ page_num }}</span>
+                {% else %}
+                <a href="{{ url_for('employee.inventory', low_stock_page=low_stock_page, out_of_stock_page=page_num) }}">{{ page_num }}</a>
+                {% endif %}
+                {% endfor %}
+
+                {% if out_of_stock_page < out_of_stock_total_pages %}
+                <a href="{{ url_for('employee.inventory', low_stock_page=low_stock_page, out_of_stock_page=out_of_stock_page+1) }}">
+                    Next <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="{{ url_for('employee.inventory', low_stock_page=low_stock_page, out_of_stock_page=out_of_stock_total_pages) }}">
+                    Last <i class="fas fa-chevron-right"></i>
+                </a>
+                {% else %}
+                <span class="disabled">Next <i class="fas fa-chevron-right"></i></span>
+                <span class="disabled">Last <i class="fas fa-chevron-right"></i></span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <p class="inventory-list-footer">
+                Showing page {{ out_of_stock_page }} of {{ out_of_stock_total_pages }} ({{ total_out_of_stock }} out of stock product{% if total_out_of_stock != 1 %}s{% endif %} total)
+            </p>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-check-circle"></i>
+                <p>No out of stock products.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

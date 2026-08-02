@@ -415,6 +415,50 @@ Dashboard - Employee Portal - Sridevi Enterprises
                 </div>
             </div>
 
+            <!-- Inventory Overview (v1.0 Sprint 1) -->
+            <h2 class="section-heading">Inventory Overview</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-card-icon"><i class="fas fa-box"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-value">{{ inventory_summary.total_products }}</div>
+                        <p class="stat-card-label">Total Products</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-icon"><i class="fas fa-cubes"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-value">{{ inventory_summary.total_stock_units }}</div>
+                        <p class="stat-card-label">Total Stock Units</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-value">{{ inventory_summary.healthy_count }}</div>
+                        <p class="stat-card-label">Healthy Products</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-value">{{ inventory_summary.low_stock_count }}</div>
+                        <p class="stat-card-label">Low Stock Products</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-icon"><i class="fas fa-times-circle"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-value">{{ inventory_summary.out_of_stock_count }}</div>
+                        <p class="stat-card-label">Out of Stock Products</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Quick Actions -->
             <h2 class="section-heading">Quick Actions</h2>
             <div class="dashboard-cards">
@@ -432,6 +476,14 @@ Dashboard - Employee Portal - Sridevi Enterprises
                     </div>
                     <h3>Add Product</h3>
                     <p>Create a new catalog listing.</p>
+                </a>
+
+                <a href="{{ url_for('employee.inventory') }}" class="dashboard-card">
+                    <div class="dashboard-card-icon">
+                        <i class="fas fa-warehouse"></i>
+                    </div>
+                    <h3>Inventory Summary</h3>
+                    <p>Review stock levels across departments.</p>
                 </a>
 
                 <a href="{{ url_for('employee.enquiries') }}" class="dashboard-card">

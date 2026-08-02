@@ -248,6 +248,7 @@ A holistic UX audit across the full customer journey (Homepage → Categories �
 ✓ Replace Product Images
 ✓ Delete Product Images (Admin)
 ✓ Delete Product (Admin)
+✓ Inventory Summary (read-only, v1.0 Sprint 1, see Employee Inventory Summary Module)
 
 This completes the Employee Product Management lifecycle: Add, Edit, Replace/Delete Images, and Delete Product all exist and share the same transaction and image-handling infrastructure (see Write Operation Pattern).
 
@@ -389,6 +390,26 @@ A polish/cleanup pass across every Employee Portal page — no new features, no 
 - **Fixed a real bug**: `customers.html` defined a `.customer-contact` class (muted icon + text, matching Enquiries' styling) but never applied it to the Phone/Email table cells — they were rendering as unstyled default text. Now applied; visually matches Enquiries.
 - **Removed dead files**: `templates/employee/inventory.html` and `templates/employee/reports.html` were 0-byte stub files from an early one-time `restructure_project.py` scaffolding run, never referenced by any route. Deleted. (`restructure_project.py` itself is a historical "run once only" migration script, left alone.)
 - **Not changed, deliberately**: the per-page inline `<style>` block duplication across `products.html`/`enquiries.html`/`customers.html`/`receipts.html` (search-section, empty-state, pagination CSS repeated per page) is real duplication but is the established, documented convention in this codebase (page isolation over a shared stylesheet) — extracting it would be a structural change out of scope for a polish sprint. The repeated `if not session.get("UserID")` / role-check guard at the top of every route was also left as-is rather than wrapped in a decorator, for the same reason.
+
+---
+
+### Employee Inventory Summary Module (v1.0 Sprint 1 — Inventory Dashboard Foundation)
+
+A read-only "inventory intelligence" layer over the existing `Catalog` table — not inventory management. No schema changes, no stock movement, no suppliers, no receipt-integration changes; this sprint only adds read queries and two new views over data that already existed.
+
+**Temporary global threshold.** `LOW_STOCK_THRESHOLD = 5` (`services/product_service.py`) classifies every product into Healthy (`stock_quantity > 5`), Low Stock (`1–5`), or Out of Stock (`0` or `NULL`) — a module-level constant, not a database column. **This is intentionally temporary**: a future sprint will add a per-product `MinimumStock` column to `Catalog` (schema change, deliberately out of scope here) and replace this constant with a real per-product comparison. The constant is commented in place as temporary; when that migration happens, `LOW_STOCK_THRESHOLD` and every function keyed off it (`get_inventory_summary`, `_get_inventory_group_summary`, `_stock_status_filter`) should be revisited together.
+
+**Service layer** (`services/product_service.py`, alongside the existing product-read functions — no new file, per the sprint's "reuse the Product Service" constraint): `get_inventory_summary()` (one aggregate query for the five headline counts), `get_inventory_by_department()` / `get_inventory_by_category()` (thin wrappers around one shared `_get_inventory_group_summary(column)` helper, since Department and Category needed identical aggregation SQL — avoids the duplicate-SQL trap explicitly called out in this sprint's brief), and `get_stock_status_count(status)` / `get_products_by_stock_status(status, page, per_page)`, both built on one shared `_stock_status_filter(status)` WHERE-clause helper (`"low_stock"` / `"out_of_stock"`) so the count and list queries can never drift out of sync with each other.
+
+**Dashboard integration**: `dashboard()` now also calls `get_inventory_summary()` and passes it to the template. A new "Inventory Overview" `.stats-grid` section (identical `.stat-card` markup/styling to the existing "Overview" section — no new card design) sits between Overview and Quick Actions, showing Total Products / Total Stock Units / Healthy / Low Stock / Out of Stock. A new "Inventory Summary" Quick Action card was added alongside the existing five, linking to the new page.
+
+**New page**: `GET /employee/inventory` (`routes/employee.py:inventory()`, `templates/employee/inventory.html`) follows the same structural pattern as Products/Enquiries/Customers (own inline `page_css` block, page-scoped class names, `.empty-state`/`.pagination` copied from the established convention) — page heading, Inventory Overview cards, Department Summary table, Category Summary table, Low Stock list, Out of Stock list.
+
+**New convention: two independently paginated lists on one page.** The Low Stock and Out of Stock lists each paginate via their own query parameter (`low_stock_page`, `out_of_stock_page`) rather than sharing one `page` param, so paging through one list never resets the other. Every pagination link on the page carries both current values (mirroring how existing single-list pages already carry `search` through every pagination link). `per_page = 10` for both lists — smaller than the usual 20, a deliberate choice to keep two tables plus two summary tables readable on one page. Department Summary and Category Summary are rendered as full (unpaginated) tables — at the current catalog scale (10 departments, ~150 categories) this is appropriate per the existing "Future Scalability Improvements" convention; revisit if the category count grows substantially. **Reuse this dual-pagination pattern for any future page that needs two independent lists together**, rather than inventing a different mechanism.
+
+**Status badge**: `.stock-status-badge` (page-scoped to `inventory.html`) extends the existing pill+dot visual language already established by `.availability-badge` (Product Cards/Details) and `.status-badge` (Enquiries) — reusing the exact same green/amber colors for Healthy/Low Stock, adding one new red variant for Out of Stock (`#FEF3F2`/`#B42318`) since no 3-state badge existed yet. Per the Component Isolation convention, this is a new page-scoped class, not a modification of `.availability-badge` or `.status-badge`.
+
+**Not built, deliberately** (explicitly out of scope for this sprint): inventory movement, stock history, suppliers, purchase orders, goods receipt notes, stock reservations, any `MinimumStock` column, and no changes to Receipt Generator integration, Product Editing, the customer website, or employee authentication.
 
 ---
 
@@ -732,6 +753,7 @@ Employee Portal:
 □ Product Management
 □ Customer Management
 □ Enquiry Management
+✓ Inventory Dashboard Foundation (Sprint 1, read-only — see Employee Inventory Summary Module)
 
 System:
 □ Responsive UI
