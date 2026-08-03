@@ -22,10 +22,32 @@ _SORT_OPTIONS = {
 }
 
 # v1.0 Sprint 1 (Inventory Dashboard Foundation): temporary global threshold
-# used to classify every product's inventory status (see get_inventory_summary
-# and friends below). A later sprint will replace this with a per-product
-# `MinimumStock` column on Catalog - do not treat this as permanent.
-LOW_STOCK_THRESHOLD = 5
+# used to classify every product's inventory status. A later sprint will
+# replace this with a per-product `MinimumStock` column on Catalog - do not
+# treat this as permanent. Private: nothing outside get_low_stock_threshold()
+# below should reference this constant directly.
+_LOW_STOCK_THRESHOLD = 5
+
+
+def get_low_stock_threshold() -> int:
+    """
+    Single source of truth for the "low stock" cutoff used by every inventory
+    query and by the Inventory Summary page's threshold note.
+
+    v1.0 Sprint 1/2: returns the temporary global _LOW_STOCK_THRESHOLD constant
+    above - the same number applies to every product regardless of department,
+    category, or typical turnover.
+
+    Future sprint (MinimumStock column): once Catalog gains a per-product
+    `MinimumStock` column, this is the ONLY function that needs to change.
+    It would stop returning a single int and the call sites below would move
+    from a literal `stock_quantity <= %s` comparison to a per-row column
+    comparison (e.g. `stock_quantity <= COALESCE(MinimumStock, <fallback>)`).
+    No other function in this file, and nothing in routes/employee.py or the
+    templates, would need to change.
+    """
+
+    return _LOW_STOCK_THRESHOLD
 
 
 def get_products(filters: dict[str, Any], page: int, per_page: int):
@@ -106,8 +128,9 @@ def get_product_filters():
 
 
 def get_inventory_summary() -> dict[str, int]:
-    """Return catalog-wide inventory counts using the temporary LOW_STOCK_THRESHOLD."""
+    """Return catalog-wide inventory counts using the temporary low-stock threshold."""
 
+    threshold = get_low_stock_threshold()
     result = fetch_one("""
         SELECT
             COUNT(*) AS total_products,
@@ -117,7 +140,7 @@ def get_inventory_summary() -> dict[str, int]:
             SUM(CASE WHEN stock_quantity IS NULL OR stock_quantity = 0 THEN 1 ELSE 0 END) AS out_of_stock_count
         FROM Catalog
         WHERE product_name IS NOT NULL AND TRIM(product_name) <> '';
-    """, (LOW_STOCK_THRESHOLD, LOW_STOCK_THRESHOLD))
+    """, (threshold, threshold))
     return {key: int(value) for key, value in result.items()}
 
 
@@ -148,7 +171,7 @@ def _get_inventory_group_summary(column: str) -> list[dict[str, Any]]:
               AND {column} IS NOT NULL AND TRIM({column}) <> ''
         GROUP BY {column}
         ORDER BY {column};
-    """, (LOW_STOCK_THRESHOLD,))
+    """, (get_low_stock_threshold(),))
 
     for row in rows:
         row["total_products"] = int(row["total_products"])
@@ -164,7 +187,7 @@ def _stock_status_filter(status: str) -> tuple[str, list[Any]]:
     if status == "out_of_stock":
         return "(stock_quantity IS NULL OR stock_quantity = 0)", []
     if status == "low_stock":
-        return "stock_quantity BETWEEN 1 AND %s", [LOW_STOCK_THRESHOLD]
+        return "stock_quantity BETWEEN 1 AND %s", [get_low_stock_threshold()]
     raise ValueError(f"Unknown stock status: {status}")
 
 

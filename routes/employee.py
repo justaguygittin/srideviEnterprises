@@ -17,7 +17,6 @@ from services.auth_service import authenticate_employee
 from services.enquiry_service import get_customer_count, get_customers, get_enquiries, get_enquiry_count
 from services.image_service import validate_image_file, validate_image_files
 from services.product_service import (
-    LOW_STOCK_THRESHOLD,
     create_product,
     delete_product as delete_product_service,
     delete_product_image,
@@ -25,6 +24,7 @@ from services.product_service import (
     get_inventory_by_category,
     get_inventory_by_department,
     get_inventory_summary,
+    get_low_stock_threshold,
     get_product,
     get_product_count,
     get_product_filters,
@@ -41,6 +41,15 @@ from services.product_service import (
 
 EMPLOYEE_PORTAL_ROLES = ("Employee", "Admin")
 SPEC_ROW_COUNT = 6
+RECENT_ENQUIRIES_LIMIT = 5
+
+_STATUS_BADGE_CLASSES = {
+    "pending": "status-pending",
+    "in progress": "status-in-progress",
+    "in-progress": "status-in-progress",
+    "resolved": "status-resolved",
+    "closed": "status-closed",
+}
 
 
 def _pad_spec_rows(pairs) -> list[dict[str, str]]:
@@ -66,6 +75,19 @@ def _paginate(page: int, total_items: int, per_page: int) -> tuple[int, int, int
     return page, total_pages, start_page, end_page
 
 employee_bp = Blueprint("employee", __name__)
+
+
+@employee_bp.app_template_filter("status_class")
+def status_class_filter(status: str | None) -> str:
+    """
+    Map an Enquiries.Status value to its .status-badge CSS modifier class.
+
+    Single source of truth for this mapping, reused by the Enquiries table,
+    the Enquiries detail modal, and the Dashboard's Recent Enquiries list -
+    previously duplicated inline in enquiries.html.
+    """
+
+    return _STATUS_BADGE_CLASSES.get((status or "").strip().lower(), "status-other")
 
 
 @employee_bp.route("/employee/login", methods=["GET", "POST"])
@@ -128,6 +150,9 @@ def dashboard():
     enquiry_count = get_enquiry_count({})
     customer_count = get_customer_count({})
     inventory_summary = get_inventory_summary()
+    # Reuses the same get_enquiries() the Enquiries page and its search use -
+    # no new query, just the existing newest-first list capped to 5 rows.
+    recent_enquiries = get_enquiries({}, 1, RECENT_ENQUIRIES_LIMIT)
 
     # Reaching this line means the Catalog query above already succeeded,
     # so both of these are simply true at render time - no extra queries needed.
@@ -146,6 +171,7 @@ def dashboard():
         enquiry_count=enquiry_count,
         customer_count=customer_count,
         inventory_summary=inventory_summary,
+        recent_enquiries=recent_enquiries,
         db_connected=db_connected,
         catalog_loaded=catalog_loaded,
         receipt_generator_configured=bool(Config.RECEIPT_GENERATOR_URL),
@@ -443,7 +469,7 @@ def inventory():
         summary=get_inventory_summary(),
         department_summary=get_inventory_by_department(),
         category_summary=get_inventory_by_category(),
-        low_stock_threshold=LOW_STOCK_THRESHOLD,
+        low_stock_threshold=get_low_stock_threshold(),
         low_stock_products=low_stock_products,
         low_stock_page=low_stock_page,
         low_stock_total_pages=low_stock_total_pages,

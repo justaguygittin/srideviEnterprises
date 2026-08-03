@@ -146,6 +146,24 @@ Dashboard - Employee Portal - Sridevi Enterprises
         margin: 0.3rem 0 0;
     }
 
+    /* Inventory status emphasis (v1.0 Sprint 2) - same badge colors used by
+       .stock-status-badge on the Inventory Summary page, applied to these
+       three cards' existing icon circle. Card layout is unchanged. */
+    .stat-card-icon--healthy {
+        background: #ECFDF3;
+        color: #067647;
+    }
+
+    .stat-card-icon--low {
+        background: #FFFAEB;
+        color: #B54708;
+    }
+
+    .stat-card-icon--out {
+        background: #FEF3F2;
+        color: #B42318;
+    }
+
     .dashboard-cards {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -262,6 +280,7 @@ Dashboard - Employee Portal - Sridevi Enterprises
         background: white;
         border-radius: 8px;
         padding: 1.5rem;
+        min-width: 0;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
@@ -317,6 +336,124 @@ Dashboard - Employee Portal - Sridevi Enterprises
 
     .status-item i {
         color: #2e7d32;
+    }
+
+    /* Recent Enquiries (v1.0 Sprint 2) - reuses enquiries.html's .status-badge
+       colors and the status_class template filter (routes/employee.py). */
+    .status-badge {
+        display: inline-block;
+        padding: 0.3rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+    }
+
+    .status-badge.status-pending {
+        background: #fff3cd;
+        color: #97710b;
+    }
+
+    .status-badge.status-in-progress {
+        background: #cfe2ff;
+        color: #0854a0;
+    }
+
+    .status-badge.status-resolved {
+        background: #d4edda;
+        color: #1e7e34;
+    }
+
+    .status-badge.status-closed {
+        background: #e2e3e5;
+        color: #41464b;
+    }
+
+    .status-badge.status-other {
+        background: #f1f1f1;
+        color: #777;
+    }
+
+    .recent-enquiry-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .recent-enquiry-item {
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .recent-enquiry-item:last-child {
+        border-bottom: none;
+    }
+
+    .recent-enquiry-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.6rem 0;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .recent-enquiry-link:hover .recent-enquiry-name {
+        color: #1E4FA3;
+    }
+
+    .recent-enquiry-main {
+        min-width: 0;
+    }
+
+    .recent-enquiry-name {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #333;
+        transition: color 0.2s;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .recent-enquiry-product {
+        display: block;
+        font-size: 0.8rem;
+        color: #888;
+        margin-top: 0.15rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .recent-enquiry-meta {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.3rem;
+        flex-shrink: 0;
+    }
+
+    .recent-enquiry-date {
+        font-size: 0.75rem;
+        color: #999;
+    }
+
+    .view-all-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-top: 1rem;
+        color: #1E4FA3;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .view-all-link:hover {
+        text-decoration: underline;
     }
 
     @media (max-width: 768px) {
@@ -435,7 +572,7 @@ Dashboard - Employee Portal - Sridevi Enterprises
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-card-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="stat-card-icon stat-card-icon--healthy"><i class="fas fa-check-circle"></i></div>
                     <div class="stat-card-body">
                         <div class="stat-card-value">{{ inventory_summary.healthy_count }}</div>
                         <p class="stat-card-label">Healthy Products</p>
@@ -443,7 +580,7 @@ Dashboard - Employee Portal - Sridevi Enterprises
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-card-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="stat-card-icon stat-card-icon--low"><i class="fas fa-exclamation-triangle"></i></div>
                     <div class="stat-card-body">
                         <div class="stat-card-value">{{ inventory_summary.low_stock_count }}</div>
                         <p class="stat-card-label">Low Stock Products</p>
@@ -451,7 +588,7 @@ Dashboard - Employee Portal - Sridevi Enterprises
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-card-icon"><i class="fas fa-times-circle"></i></div>
+                    <div class="stat-card-icon stat-card-icon--out"><i class="fas fa-times-circle"></i></div>
                     <div class="stat-card-body">
                         <div class="stat-card-value">{{ inventory_summary.out_of_stock_count }}</div>
                         <p class="stat-card-label">Out of Stock Products</p>
@@ -516,11 +653,39 @@ Dashboard - Employee Portal - Sridevi Enterprises
             <div class="info-grid">
                 <div class="info-panel">
                     <h3><i class="fas fa-envelope"></i> Recent Enquiries</h3>
+                    {% if recent_enquiries %}
+                    <ul class="recent-enquiry-list">
+                        {% for enquiry in recent_enquiries %}
+                        <li class="recent-enquiry-item">
+                            <a href="{{ url_for('employee.enquiries', search=enquiry.CustomerName) }}" class="recent-enquiry-link">
+                                <div class="recent-enquiry-main">
+                                    <span class="recent-enquiry-name">{{ enquiry.CustomerName }}</span>
+                                    <span class="recent-enquiry-product">
+                                        {% if enquiry.ProductID and enquiry.ProductName %}
+                                        {{ enquiry.ProductName }}
+                                        {% else %}
+                                        General Enquiry
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <div class="recent-enquiry-meta">
+                                    <span class="status-badge {{ enquiry.Status|status_class }}">{{ enquiry.Status or "Unknown" }}</span>
+                                    <span class="recent-enquiry-date">{{ enquiry.EnquiryDate.strftime("%d %b %Y") }}</span>
+                                </div>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <a href="{{ url_for('employee.enquiries') }}" class="view-all-link">
+                        View All Enquiries <i class="fas fa-arrow-right"></i>
+                    </a>
+                    {% else %}
                     <div class="empty-state">
                         <i class="far fa-envelope-open"></i>
                         <p>No enquiries available yet.</p>
                         <p class="empty-state-subtext">Customer enquiries will appear here.</p>
                     </div>
+                    {% endif %}
                 </div>
 
                 <div class="info-panel">

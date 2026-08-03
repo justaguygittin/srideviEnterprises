@@ -434,13 +434,7 @@ Enquiries - Employee Portal - Sridevi Enterprises
                             </td>
                             <td>{{ enquiry.EnquiryDate.strftime("%d %b %Y, %I:%M %p") }}</td>
                             <td>
-                                {% set status_lower = (enquiry.Status or "").lower() %}
-                                {% set status_class = "status-pending" if status_lower == "pending"
-                                    else "status-in-progress" if status_lower in ("in progress", "in-progress")
-                                    else "status-resolved" if status_lower == "resolved"
-                                    else "status-closed" if status_lower == "closed"
-                                    else "status-other" %}
-                                <span class="status-badge {{ status_class }}">
+                                <span class="status-badge {{ enquiry.Status|status_class }}">
                                     {{ enquiry.Status or "Unknown" }}
                                 </span>
                             </td>
@@ -489,13 +483,7 @@ Enquiries - Employee Portal - Sridevi Enterprises
 
                                 <dt>Status</dt>
                                 <dd>
-                                    {% set status_lower = (enquiry.Status or "").lower() %}
-                                    {% set status_class = "status-pending" if status_lower == "pending"
-                                        else "status-in-progress" if status_lower in ("in progress", "in-progress")
-                                        else "status-resolved" if status_lower == "resolved"
-                                        else "status-closed" if status_lower == "closed"
-                                        else "status-other" %}
-                                    <span class="status-badge {{ status_class }}">{{ enquiry.Status or "Unknown" }}</span>
+                                    <span class="status-badge {{ enquiry.Status|status_class }}">{{ enquiry.Status or "Unknown" }}</span>
                                 </dd>
 
                                 <dt>Message</dt>
