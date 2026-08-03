@@ -326,6 +326,22 @@ Inventory Summary - Employee Portal - Sridevi Enterprises
         font-size: 0.85rem;
     }
 
+    /* Category Summary collapse toggle (v1.0 Sprint 3) - reuses plain
+       Bootstrap btn-outline-primary, no custom button design. Bootstrap's
+       collapse plugin manages aria-expanded on this button automatically,
+       so the chevron can flip with pure CSS and no extra JavaScript. */
+    .category-summary-toggle .fa-chevron-down {
+        transition: transform 0.2s;
+    }
+
+    .category-summary-toggle[aria-expanded="true"] .fa-chevron-down {
+        transform: rotate(180deg);
+    }
+
+    .category-summary-table {
+        margin-top: 1rem;
+    }
+
     @media (max-width: 768px) {
         .inventory-content {
             padding: 1rem;
@@ -440,40 +456,6 @@ Inventory Summary - Employee Portal - Sridevi Enterprises
             <div class="empty-state">
                 <i class="fas fa-building"></i>
                 <p>No departments found.</p>
-            </div>
-            {% endif %}
-
-            <!-- Category Summary -->
-            <h2 class="section-heading">Category Summary</h2>
-            {% if category_summary %}
-            <div class="inventory-table-container">
-                <table class="inventory-table">
-                    <thead>
-                        <tr>
-                            <th scope="col">Category</th>
-                            <th scope="col">Total Products</th>
-                            <th scope="col">Total Stock Units</th>
-                            <th scope="col">Low Stock</th>
-                            <th scope="col">Out of Stock</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for category in category_summary %}
-                        <tr>
-                            <td><i class="fas fa-tag"></i> {{ category.name }}</td>
-                            <td>{{ category.total_products }}</td>
-                            <td>{{ category.total_stock_units }}</td>
-                            <td class="{{ 'inventory-figure--low' if category.low_stock_count > 0 else '' }}">{{ category.low_stock_count }}</td>
-                            <td class="{{ 'inventory-figure--out' if category.out_of_stock_count > 0 else '' }}">{{ category.out_of_stock_count }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="empty-state">
-                <i class="fas fa-tag"></i>
-                <p>No categories found.</p>
             </div>
             {% endif %}
 
@@ -639,6 +621,55 @@ Inventory Summary - Employee Portal - Sridevi Enterprises
                 <p>No out of stock products.</p>
             </div>
             {% endif %}
+
+            <!-- Category Summary (v1.0 Sprint 3: moved to the bottom and collapsed by
+                 default - 100+ rows previously forced employees to scroll past it to
+                 reach Low Stock/Out of Stock, the sections used most often day to day.
+                 Table markup/SQL below is unchanged from Sprint 2. -->
+            <h2 class="section-heading">Category Summary</h2>
+            <button
+                type="button"
+                class="btn btn-outline-primary category-summary-toggle"
+                data-bs-toggle="collapse"
+                data-bs-target="#categorySummaryCollapse"
+                aria-expanded="false"
+                aria-controls="categorySummaryCollapse"
+            >
+                <i class="fas fa-chevron-down"></i> Show Category Summary ({{ category_summary|length }} Categories)
+            </button>
+            <div class="collapse" id="categorySummaryCollapse">
+                {% if category_summary %}
+                <div class="inventory-table-container category-summary-table">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Category</th>
+                                <th scope="col">Total Products</th>
+                                <th scope="col">Total Stock Units</th>
+                                <th scope="col">Low Stock</th>
+                                <th scope="col">Out of Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category in category_summary %}
+                            <tr>
+                                <td><i class="fas fa-tag"></i> {{ category.name }}</td>
+                                <td>{{ category.total_products }}</td>
+                                <td>{{ category.total_stock_units }}</td>
+                                <td class="{{ 'inventory-figure--low' if category.low_stock_count > 0 else '' }}">{{ category.low_stock_count }}</td>
+                                <td class="{{ 'inventory-figure--out' if category.out_of_stock_count > 0 else '' }}">{{ category.out_of_stock_count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state category-summary-table">
+                    <i class="fas fa-tag"></i>
+                    <p>No categories found.</p>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>

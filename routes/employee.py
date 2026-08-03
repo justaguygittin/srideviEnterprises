@@ -174,7 +174,7 @@ def dashboard():
         recent_enquiries=recent_enquiries,
         db_connected=db_connected,
         catalog_loaded=catalog_loaded,
-        receipt_generator_configured=bool(Config.RECEIPT_GENERATOR_URL),
+        invoice_generator_configured=bool(Config.INVOICE_GENERATOR_URL),
     )
 
 
@@ -561,9 +561,9 @@ def customers():
     )
 
 
-@employee_bp.route("/employee/receipts", methods=["GET"])
-def receipts():
-    """Display the Receipt Generator integration page for employees."""
+@employee_bp.route("/employee/invoices", methods=["GET"])
+def invoices():
+    """Display the Invoice Generator integration page for employees."""
 
     if not session.get("UserID"):
         return redirect(url_for("employee.login"))
@@ -572,11 +572,11 @@ def receipts():
         abort(403)
 
     return render_template(
-        "employee/receipts.html",
+        "employee/invoices.html",
         username=session.get("Username"),
         role=session.get("Role"),
-        current_page="receipts",
-        receipt_generator_url=Config.RECEIPT_GENERATOR_URL,
+        current_page="invoices",
+        invoice_generator_url=Config.INVOICE_GENERATOR_URL,
     )
 
 

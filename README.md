@@ -30,7 +30,7 @@ For deploying to production, see [DEPLOYMENT.md](DEPLOYMENT.md).
 - Delete products and product images (Admin only)
 - Customer enquiries (read-only list, search, detail view)
 - Customers (read-only list derived from enquiries, search, detail view)
-- Receipt Generator launch bridge (links out to the separately-hosted Receipt Generator)
+- Invoice Generator launch bridge (links out to the separately-hosted invoice-generation project)
 
 ---
 

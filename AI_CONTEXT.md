@@ -33,7 +33,7 @@ The current project is focused solely on the Sridevi Enterprises showroom applic
 
 The application must become a complete, deployable standalone system before any integration with external projects is considered.
 
-**Update:** a launch-only integration bridge to the Receipt Generator now exists (see Employee Receipt Generator Bridge) — the Employee Portal can link out to it, nothing more. Deeper shared-system work (shared authentication, shared invoice/inventory data, an API between the two projects) remains intentionally out of scope until after v1.0.0 — see Planned Roadmap > Future Roadmap for details.
+**Update:** a launch-only integration bridge to the Invoice Generator now exists (see Employee Invoice Generator Bridge) — the Employee Portal can link out to it, nothing more. Deeper shared-system work (shared authentication, shared invoice/inventory data, an API between the two projects) remains intentionally out of scope until after v1.0.0 — see Planned Roadmap > Future Roadmap for details.
 
 ## Technology Stack
 
@@ -239,7 +239,7 @@ A holistic UX audit across the full customer journey (Homepage → Categories �
 ✓ Employee Dashboard
 ✓ Employee Enquiries (read-only)
 ✓ Employee Customers (read-only, derived from Enquiries)
-✓ Receipt Generator Integration Bridge (launch-only, see Employee Receipt Generator Bridge)
+✓ Invoice Generator Integration Bridge (launch-only, see Employee Invoice Generator Bridge)
 ✓ Product Listing (search, filters, pagination)
 ✓ Product Details
 ✓ Add Product
@@ -307,15 +307,15 @@ The dashboard (`templates/employee/dashboard.html`, `routes/employee.py:dashboar
 
 **Welcome Card**: greeting ("Good morning/afternoon/evening") and the formatted current date are computed server-side in `dashboard()` from `datetime.now()` — no JavaScript, no new dependency. Designation/role and username were already in the session and template context.
 
-**Statistics**: Products reuses the existing `get_product_count({})` (`services/product_service.py`, already used by the Products list page) for a real catalog count — no new query. Customers and Enquiries show "Coming Soon" and Receipt Generator shows "Available Soon" since none of those modules exist yet; no numbers are fabricated.
+**Statistics**: Products reuses the existing `get_product_count({})` (`services/product_service.py`, already used by the Products list page) for a real catalog count — no new query. Customers and Enquiries show "Coming Soon" and Invoice Generator shows "Available Soon" since none of those modules exist yet; no numbers are fabricated.
 
-**Quick Actions**: five cards — View Products, Add Product, View Enquiries, Customers (all link to existing routes), plus Receipt Generator, which is a static, non-link, visually "disabled" card (`.dashboard-card.is-disabled`) since no Receipt Generator route exists in this app (it remains a separate future project per Future Roadmap). Enquiries/Customers keep a "Coming Soon" badge since those routes currently render only a placeholder message, not the real module.
+**Quick Actions**: five cards — View Products, Add Product, View Enquiries, Customers (all link to existing routes), plus Invoice Generator, which is a static, non-link, visually "disabled" card (`.dashboard-card.is-disabled`) since no Invoice Generator route exists in this app (it remains a separate future project per Future Roadmap). Enquiries/Customers keep a "Coming Soon" badge since those routes currently render only a placeholder message, not the real module.
 
 No new routes, no schema changes, no auth changes. `coming_soon_message` branch (used by the placeholder `/employee/enquiries` and `/employee/customers` routes) is untouched.
 
 #### Dashboard Polish (Milestone 2)
 
-**"Pending module" convention**: any Quick Action card whose underlying module isn't built yet gets `.is-pending`, which mutes the icon, title, and description color (not just the "Coming Soon" badge), so unavailable actions read as visually secondary at a glance. `.is-disabled` is layered on top only for cards with no real route (currently just Receipt Generator) to drop the pointer cursor/hover lift, since it's a plain `<div>`, not an `<a>`. **When Enquiries or Customers gets built in a future milestone, remove `is-pending` from that card** (and update its stat card out of "Coming Soon") — that's the intended flip point for this convention.
+**"Pending module" convention**: any Quick Action card whose underlying module isn't built yet gets `.is-pending`, which mutes the icon, title, and description color (not just the "Coming Soon" badge), so unavailable actions read as visually secondary at a glance. `.is-disabled` is layered on top only for cards with no real route (currently just Invoice Generator) to drop the pointer cursor/hover lift, since it's a plain `<div>`, not an `<a>`. **When Enquiries or Customers gets built in a future milestone, remove `is-pending` from that card** (and update its stat card out of "Coming Soon") — that's the intended flip point for this convention.
 
 **Equal card heights**: `.dashboard-card` is now a flex column (`height: 100%`, so it fills its stretched CSS Grid row) with a reserved min-height on the title and a 2-line `-webkit-line-clamp` on the description, and `margin-top: auto` on the optional `.coming-soon` badge. This keeps all Quick Action cards the same height/alignment regardless of whether a card has a badge — reuse this pattern for any future card grid on this page instead of relying on padding alone.
 
@@ -365,21 +365,23 @@ Foundation (read-only) employee-facing customer list, replacing the `/employee/c
 
 **Future extension points**: the table has plain `<th>` columns (Customer, Product, Date, Status, Actions) with no colspan/rowspan tricks, so future columns (Priority, Assigned Employee, Last Updated) can be appended without restructuring. `Status` currently only ever contains `'Pending'` (no UI writes to it yet — this module is read-only); `.status-badge`'s color mapping already handles `Resolved`/`Closed` and an "other" fallback so a future status-update feature can start writing new values without any CSS changes here.
 
-### Employee Receipt Generator Bridge
+### Employee Invoice Generator Bridge
 
-The Receipt Generator is a **completely separate Flask project** (its own repo, `app.py`, dependencies, and process — found locally at a sibling directory outside this repo). It shares only the `Catalog` table in the same MariaDB database (already documented in `database/README.md`: "Catalog is the shared table with the Receipt Generator") and is deployed independently (it has its own `passenger_wsgi.py`/`render.yaml`, and even hardcodes its own local DB connection rather than reading this project's `.env`). This milestone adds only the **integration bridge** on the Employee Portal side — nothing in the Receipt Generator project was read into memory for reuse, copied, or modified.
+**Renamed in v1.0 Sprint 3** (Invoice Terminology Update): this module was originally shipped in v0.9.0 as "Employee Receipt Generator Bridge" — every Employee Portal reference (route, template, config var, nav label, dashboard copy) was renamed from "Receipt Generator"/"Receipts" to "Invoice Generator"/"Invoices". **The external project itself was NOT renamed** — it remains a separate codebase actually named "Receipt Generator" (see below); only how the Employee Portal *displays* it changed. Route: `GET /employee/invoices` (`routes/employee.py:invoices()`, was `receipts()`/`/employee/receipts`). Template: `templates/employee/invoices.html` (was `receipts.html`, including its `.invoices-*` CSS classes, was `.receipts-*`). Config: `Config.INVOICE_GENERATOR_URL` (was `RECEIPT_GENERATOR_URL` — the old env var name is still read as a fallback for backward compatibility, see config.py).
 
-**Why duplication/merging was rejected**: reverse-proxying, iframing, or re-implementing any invoice/GST logic here would (a) require running two Flask processes that already conflict on the same default port in local dev, (b) duplicate business logic (GST math, PDF generation) that already exists and works in the other project, and (c) blur a deployment boundary the two projects don't currently share (different hosting config, no shared session/auth). The Receipt Generator also has **no authentication of its own** — its routes are open once reached — so the only safe integration from the Portal side is a plain outbound link, never an embed that would imply it's protected by this app's login.
+The underlying external project is a **completely separate Flask project**, still actually named "Receipt Generator" (its own repo, `app.py`, dependencies, and process — found locally at a sibling directory outside this repo). It shares only the `Catalog` table in the same MariaDB database (already documented in `database/README.md`: "Catalog is the shared table with the Receipt Generator" — that note was deliberately left unrenamed, since it correctly names the real external project) and is deployed independently (it has its own `passenger_wsgi.py`/`render.yaml`, and even hardcodes its own local DB connection rather than reading this project's `.env`). This bridge adds only the **integration bridge** on the Employee Portal side — nothing in the external project was read into memory for reuse, copied, or modified.
 
-**Launch method — configurable external link**: `Config.RECEIPT_GENERATOR_URL` (`config.py`, read from a new optional `RECEIPT_GENERATOR_URL` env var, documented in `.env.example`) holds the deployed Receipt Generator's base URL. `routes/employee.py:receipts()` (`GET /employee/receipts`) passes it straight through to `templates/employee/receipts.html`:
-- **If set**: renders a primary "Launch Receipt Generator" button (`target="_blank" rel="noopener noreferrer"`) — opens in a new tab since it's a genuinely separate application/origin, not something to embed.
-- **If unset (the default, since no real deployment URL exists yet)**: renders a plain Bootstrap-styled "Receipt Generator Unavailable" info card — no stack trace, no technical detail exposed to the employee, just a professional "check back later or contact your administrator" message. This is the actual out-of-the-box state of this repo today.
+**Why duplication/merging was rejected**: reverse-proxying, iframing, or re-implementing any invoice/GST logic here would (a) require running two Flask processes that already conflict on the same default port in local dev, (b) duplicate business logic (GST math, PDF generation) that already exists and works in the other project, and (c) blur a deployment boundary the two projects don't currently share (different hosting config, no shared session/auth). The external project also has **no authentication of its own** — its routes are open once reached — so the only safe integration from the Portal side is a plain outbound link, never an embed that would imply it's protected by this app's login.
 
-**Dashboard integration**: the Receipt Generator Quick Action card is now a normal active link to `employee.receipts` (no more `is-pending`/`.coming-soon` — the module itself is real now, exactly like Enquiries/Customers before it). The Overview stat card shows `"Ready"` or `"Not Configured"` (computed from whether the URL is set) instead of the old static `"Available Soon"` label — this mirrors the System Status panel's existing convention of reporting real boolean state rather than fabricating a number; there is no meaningful count to show here since invoices are created and stored entirely inside the other project's own database, which this app deliberately does not query.
+**Launch method — configurable external link**: `Config.INVOICE_GENERATOR_URL` (`config.py`, read from `INVOICE_GENERATOR_URL`, falling back to the deprecated `RECEIPT_GENERATOR_URL` if unset, documented in `.env.example`) holds the deployed invoice-generation project's base URL. `routes/employee.py:invoices()` (`GET /employee/invoices`) passes it straight through to `templates/employee/invoices.html`:
+- **If set**: renders a primary "Launch Invoice Generator" button (`target="_blank" rel="noopener noreferrer"`) — opens in a new tab since it's a genuinely separate application/origin, not something to embed.
+- **If unset (the default, since no real deployment URL exists yet)**: renders a plain Bootstrap-styled "Invoice Generator Unavailable" info card — no stack trace, no technical detail exposed to the employee, just a professional "check back later or contact your administrator" message. This is the actual out-of-the-box state of this repo today.
 
-**Navigation**: `employee_nav.html` gained one more `<li>` ("Receipts", between Customers and Logout) — the same list-item pattern used by every other module link, not a nav redesign.
+**Dashboard integration**: the Invoice Generator Quick Action card is a normal active link to `employee.invoices` (no `is-pending`/`.coming-soon` — the module is real, exactly like Enquiries/Customers). The Overview stat card shows `"Ready"` or `"Not Configured"` (computed from whether the URL is set) instead of a static label — this mirrors the System Status panel's existing convention of reporting real boolean state rather than fabricating a number; there is no meaningful count to show here since invoices are created and stored entirely inside the other project's own database, which this app deliberately does not query.
 
-**Future integration roadmap**: if the two systems are ever meant to feel more integrated (e.g. showing recent invoice counts on the Dashboard, or single sign-on into the Receipt Generator), that requires the Receipt Generator to expose either an API or shared authentication — neither exists today. Until then, this launch-link bridge is the intended integration boundary; do not add direct queries against the Receipt Generator's own tables (e.g. its `invoices` table) from this codebase, since that would silently couple the two projects' schemas without either project agreeing to the contract.
+**Navigation**: `employee_nav.html` has one `<li>` for this module ("Invoices", between Customers and Logout) — the same list-item pattern used by every other module link, not a nav redesign.
+
+**Future integration roadmap**: if the two systems are ever meant to feel more integrated (e.g. showing recent invoice counts on the Dashboard, or single sign-on into the invoice-generation project), that requires the external project to expose either an API or shared authentication — neither exists today. Until then, this launch-link bridge is the intended integration boundary; do not add direct queries against the external project's own tables (e.g. its `invoices` table) from this codebase, since that would silently couple the two projects' schemas without either project agreeing to the contract.
 
 ### Employee Portal Release Audit (v0.9.0)
 
@@ -389,13 +391,13 @@ A polish/cleanup pass across every Employee Portal page — no new features, no 
 - **Accessibility**: added `scope="col"` to every list-table `<th>`, `aria-current="page"` to the active nav link and the current pagination page, visually-hidden `<label>`s on the Enquiries/Customers search inputs (Products already had visible labels — search inputs elsewhere didn't), and `aria-label`s on the previously-unlabeled spec-row inputs, per-image replace inputs, and the Admin-only delete-image button. Modal accessibility (`aria-labelledby`, `aria-hidden`, close button `aria-label`) was already correct.
 - **Fixed a real bug**: `customers.html` defined a `.customer-contact` class (muted icon + text, matching Enquiries' styling) but never applied it to the Phone/Email table cells — they were rendering as unstyled default text. Now applied; visually matches Enquiries.
 - **Removed dead files**: `templates/employee/inventory.html` and `templates/employee/reports.html` were 0-byte stub files from an early one-time `restructure_project.py` scaffolding run, never referenced by any route. Deleted. (`restructure_project.py` itself is a historical "run once only" migration script, left alone.)
-- **Not changed, deliberately**: the per-page inline `<style>` block duplication across `products.html`/`enquiries.html`/`customers.html`/`receipts.html` (search-section, empty-state, pagination CSS repeated per page) is real duplication but is the established, documented convention in this codebase (page isolation over a shared stylesheet) — extracting it would be a structural change out of scope for a polish sprint. The repeated `if not session.get("UserID")` / role-check guard at the top of every route was also left as-is rather than wrapped in a decorator, for the same reason.
+- **Not changed, deliberately**: the per-page inline `<style>` block duplication across `products.html`/`enquiries.html`/`customers.html`/`invoices.html` (search-section, empty-state, pagination CSS repeated per page) is real duplication but is the established, documented convention in this codebase (page isolation over a shared stylesheet) — extracting it would be a structural change out of scope for a polish sprint. The repeated `if not session.get("UserID")` / role-check guard at the top of every route was also left as-is rather than wrapped in a decorator, for the same reason.
 
 ---
 
 ### Employee Inventory Summary Module (v1.0 Sprint 1 — Inventory Dashboard Foundation)
 
-A read-only "inventory intelligence" layer over the existing `Catalog` table — not inventory management. No schema changes, no stock movement, no suppliers, no receipt-integration changes; this sprint only adds read queries and two new views over data that already existed.
+A read-only "inventory intelligence" layer over the existing `Catalog` table — not inventory management. No schema changes, no stock movement, no suppliers, no Invoice Generator integration changes; this sprint only adds read queries and two new views over data that already existed.
 
 **Temporary global threshold.** `_LOW_STOCK_THRESHOLD = 5` (`services/product_service.py`) classifies every product into Healthy (`stock_quantity > 5`), Low Stock (`1–5`), or Out of Stock (`0` or `NULL`) — a module-level constant, not a database column. **This is intentionally temporary**: a future sprint will add a per-product `MinimumStock` column to `Catalog` (schema change, deliberately out of scope here) and replace this constant with a real per-product comparison. **Update (v1.0 Sprint 2):** this constant is now private and only ever read through `get_low_stock_threshold()` — see "Threshold wrapper" below for the single-change-point convention this enables.
 
@@ -409,7 +411,7 @@ A read-only "inventory intelligence" layer over the existing `Catalog` table —
 
 **Status badge**: `.stock-status-badge` (page-scoped to `inventory.html`) extends the existing pill+dot visual language already established by `.availability-badge` (Product Cards/Details) and `.status-badge` (Enquiries) — reusing the exact same green/amber colors for Healthy/Low Stock, adding one new red variant for Out of Stock (`#FEF3F2`/`#B42318`) since no 3-state badge existed yet. Per the Component Isolation convention, this is a new page-scoped class, not a modification of `.availability-badge` or `.status-badge`.
 
-**Not built, deliberately** (explicitly out of scope for this sprint): inventory movement, stock history, suppliers, purchase orders, goods receipt notes, stock reservations, any `MinimumStock` column, and no changes to Receipt Generator integration, Product Editing, the customer website, or employee authentication.
+**Not built, deliberately** (explicitly out of scope for this sprint): inventory movement, stock history, suppliers, purchase orders, goods receipt notes, stock reservations, any `MinimumStock` column, and no changes to Invoice Generator integration, Product Editing, the customer website, or employee authentication.
 
 #### v1.0 Sprint 2 — Inventory Management Foundation
 
@@ -426,6 +428,16 @@ Builds usability on top of Sprint 1's read-only foundation. Still no stock movem
 **Regression bug found and fixed**: adding the Recent Enquiries list caused a real horizontal-scroll overflow on the Dashboard at mobile width (375px). Root cause: `.info-panel` is a CSS Grid item inside `.info-grid` (`grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))`) with no `min-width` override, so its default `min-width: auto` let a long `white-space: nowrap` product name (used for the ellipsis-truncation effect) force the whole card — and the page — wider than the viewport instead of truncating. Fixed by adding `min-width: 0` to `.info-panel`. **Convention for future grid items that contain nowrap/ellipsis text**: the grid item itself needs `min-width: 0`, not just the truncating element — `min-width: 0` on a descendant does nothing if an ancestor grid/flex item is still sized to content.
 
 **Dev workflow note**: this project's `FLASK_DEBUG=False` disables Jinja template auto-reload (see the existing Dev note under Products Page — Filtering Experience), so every template/CSS edit during this sprint's verification required restarting the `flask-dev` process before the browser would see it — a plain page reload was not enough and silently served the stale compiled template.
+
+#### v1.0 Sprint 3 — Inventory UX Refinement & Invoice Terminology
+
+UI/UX-only sprint: no schema changes, no stock movement, no CRUD, and no changes to the standalone (externally-named) Receipt Generator project itself.
+
+**Section reorder, same SQL/pagination.** On `templates/employee/inventory.html`, real employee use surfaced that Low Stock and Out of Stock — the two sections used most often day-to-day — sat below a 150+ row Category Summary table, forcing a long scroll past it every visit. The page order is now: Inventory Overview → Department Summary → Low Stock Products → Out of Stock Products → Category Summary. This was a pure `{% block content %}` reordering in the template — no route, service, query, or pagination logic changed; `low_stock_page`/`out_of_stock_page` still paginate independently exactly as in Sprint 2.
+
+**Category Summary collapsed by default.** Now wrapped in a Bootstrap `.collapse` (`id="categorySummaryCollapse"`), toggled by a plain `btn-outline-primary` button reading "Show Category Summary ({{ category_summary|length }} Categories)" — reuses Bootstrap's existing collapse plugin (already loaded via `bootstrap.bundle.min.js`, same as the Enquiries/Customers detail modals use its modal plugin) rather than adding any custom JavaScript. The chevron icon flips via a pure-CSS rule keyed off the `aria-expanded` attribute Bootstrap already manages on the toggle button (`[aria-expanded="true"] { transform: rotate(180deg) }`) — no click handler was written. The table markup/columns inside are byte-for-byte unchanged from Sprint 2.
+
+**Invoice terminology rename (Phase 2).** See Employee Invoice Generator Bridge above for the full before/after — in short, every Employee-Portal-facing "Receipt Generator"/"Receipts" string became "Invoice Generator"/"Invoices" (nav, dashboard card + stat label, page heading/buttons/empty states, route, template file, CSS class prefix, config var), while the actual external project keeps its real name, "Receipt Generator", unchanged. **Convention going forward**: when this codebase's prose or comments need to refer to the external invoice-generation project by its real name (e.g. explaining *why* two systems are separate), say so explicitly — don't assume "Invoice Generator" always means the external project, since inside this codebase it now means the Employee Portal's own display label for the bridge to it.
 
 ---
 
@@ -769,7 +781,7 @@ Employee Portal:
 □ Product Management
 □ Customer Management
 □ Enquiry Management
-✓ Inventory Dashboard Foundation (Sprints 1–2, read-only — see Employee Inventory Summary Module)
+✓ Inventory Dashboard Foundation (Sprints 1–3, read-only — see Employee Inventory Summary Module)
 
 System:
 □ Responsive UI
@@ -780,11 +792,11 @@ System:
 
 ## Future Roadmap (Post v1.0.0)
 
-Receipt Generator Integration — remains an independent project until after Sridevi Enterprises reaches a stable v1.0.0 release.
+Invoice Generator Integration — remains an independent project until after Sridevi Enterprises reaches a stable v1.0.0 release. (As of v1.0 Sprint 3, "Invoice Generator" is the Employee Portal's display name for this bridge; the external project itself is still actually named "Receipt Generator" — see Employee Invoice Generator Bridge above.)
 
 Current state:
 
-Employee Portal launches the independent Receipt Generator
+Employee Portal launches the independent invoice-generation project
 through a configurable URL.
 
 Future state (v1.0+):
@@ -801,20 +813,20 @@ Trusted launch token
 
 ↓
 
-Receipt Generator automatically authenticates
+Invoice Generator automatically authenticates
 the employee.
 
 Goal:
 
 Employees should never have to log in twice.
 
-Receipt Generator
+Invoice Generator
 
 ## Future Improvements
 
-□ Recent receipts
-□ Receipt search
-□ Open last receipt
+□ Recent invoices
+□ Invoice search
+□ Open last invoice
 □ Sales summary
 □ Invoice history
 □ Launch with selected customer
@@ -906,7 +918,7 @@ revisited only if they become maintenance burdens:
 
 - Per-page inline CSS for Employee modules
 - Repeated authentication guards in employee routes
-- Standalone Receipt Generator integration (bridge architecture)
+- Standalone Invoice Generator integration (bridge architecture)
 - Customer module currently derived from Enquiries until the Customers
   table receives a write path
 

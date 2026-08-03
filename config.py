@@ -40,9 +40,18 @@ class Config:
     # Debug mode must be explicitly enabled; defaults to False for safety.
     DEBUG = os.getenv("FLASK_DEBUG", "False").strip().lower() == "true"
 
-    # Base URL of the separately-hosted Receipt Generator project (its own Flask
-    # app, not part of this codebase - see AI_CONTEXT.md). Left unset until a
-    # deployment URL exists; the Employee Portal shows a graceful "unavailable"
+    # Base URL of the separately-hosted invoice-generation project (its own Flask
+    # app, not part of this codebase - see AI_CONTEXT.md; that project itself is
+    # still named "Receipt Generator" and is NOT being renamed). Left unset until
+    # a deployment URL exists; the Employee Portal shows a graceful "unavailable"
     # message when this is empty rather than guessing a URL.
-    RECEIPT_GENERATOR_URL = os.getenv("RECEIPT_GENERATOR_URL", "").strip()
+    #
+    # v1.0 Sprint 3: renamed from RECEIPT_GENERATOR_URL to INVOICE_GENERATOR_URL
+    # (display-terminology rename only). The old env var name is still read as a
+    # fallback so existing deployments keep working without an immediate .env
+    # change; prefer INVOICE_GENERATOR_URL in new configuration.
+    INVOICE_GENERATOR_URL = (
+        os.getenv("INVOICE_GENERATOR_URL", "").strip()
+        or os.getenv("RECEIPT_GENERATOR_URL", "").strip()
+    )
 

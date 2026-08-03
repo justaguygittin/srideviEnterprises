@@ -1,10 +1,12 @@
 <!--
 =========================================================
 Project : Sridevi Enterprises
-File    : receipts.html
-Purpose : Employee Portal bridge to the separately-hosted Receipt
-          Generator project. This page never generates invoices
-          itself - it only launches the external application.
+File    : invoices.html
+Purpose : Employee Portal bridge to the separately-hosted invoice-generation
+          project (displayed to employees as "Invoice Generator" - the
+          external project's own name, "Receipt Generator", is unchanged;
+          see AI_CONTEXT.md). This page never generates invoices itself -
+          it only launches the external application.
 
 Author  : Srikar
 =========================================================
@@ -13,40 +15,40 @@ Author  : Srikar
 {% extends "layout/base.html" %}
 
 {% block title %}
-Receipt Generator - Employee Portal - Sridevi Enterprises
+Invoice Generator - Employee Portal - Sridevi Enterprises
 {% endblock %}
 
 {% block page_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/employee_nav.css') }}">
 <style>
-    .receipts-container {
+    .invoices-container {
         min-height: calc(100vh - 120px);
         background-color: #f8f9fa;
         padding: 0;
     }
 
-    .receipts-content {
+    .invoices-content {
         padding: 2rem;
     }
 
-    .receipts-header {
+    .invoices-header {
         margin-bottom: 2rem;
     }
 
-    .receipts-header h1 {
+    .invoices-header h1 {
         color: #333;
         font-size: 1.8rem;
         font-weight: 600;
         margin-bottom: 0.5rem;
     }
 
-    .receipts-header p {
+    .invoices-header p {
         color: #666;
         font-size: 0.95rem;
         margin: 0;
     }
 
-    .receipts-card {
+    .invoices-card {
         background: white;
         border-radius: 8px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -54,7 +56,7 @@ Receipt Generator - Employee Portal - Sridevi Enterprises
         max-width: 700px;
     }
 
-    .receipts-card-icon {
+    .invoices-card-icon {
         width: 64px;
         height: 64px;
         border-radius: 50%;
@@ -67,26 +69,26 @@ Receipt Generator - Employee Portal - Sridevi Enterprises
         margin-bottom: 1.25rem;
     }
 
-    .receipts-card h2 {
+    .invoices-card h2 {
         color: #333;
         font-size: 1.25rem;
         font-weight: 600;
         margin-bottom: 0.75rem;
     }
 
-    .receipts-card p {
+    .invoices-card p {
         color: #555;
         font-size: 0.95rem;
         line-height: 1.6;
     }
 
-    .receipts-launch-note {
+    .invoices-launch-note {
         color: #999;
         font-size: 0.8rem;
         margin-top: 0.75rem;
     }
 
-    .receipts-unavailable {
+    .invoices-unavailable {
         background: #f8f9fa;
         border: 1px solid #e0e0e0;
         border-radius: 8px;
@@ -97,35 +99,35 @@ Receipt Generator - Employee Portal - Sridevi Enterprises
         align-items: flex-start;
     }
 
-    .receipts-unavailable i {
+    .invoices-unavailable i {
         color: #999;
         font-size: 1.4rem;
         margin-top: 0.15rem;
     }
 
-    .receipts-unavailable h3 {
+    .invoices-unavailable h3 {
         color: #333;
         font-size: 1rem;
         font-weight: 600;
         margin-bottom: 0.35rem;
     }
 
-    .receipts-unavailable p {
+    .invoices-unavailable p {
         color: #666;
         font-size: 0.9rem;
         margin: 0;
     }
 
     @media (max-width: 768px) {
-        .receipts-content {
+        .invoices-content {
             padding: 1rem;
         }
 
-        .receipts-header h1 {
+        .invoices-header h1 {
             font-size: 1.3rem;
         }
 
-        .receipts-card {
+        .invoices-card {
             padding: 1.25rem;
         }
     }
@@ -133,41 +135,41 @@ Receipt Generator - Employee Portal - Sridevi Enterprises
 {% endblock %}
 
 {% block content %}
-<div class="receipts-container">
+<div class="invoices-container">
     {% include 'components/employee_nav.html' %}
 
-    <div class="receipts-content">
+    <div class="invoices-content">
         <div class="container">
             <!-- Header -->
-            <div class="receipts-header">
-                <h1><i class="fas fa-receipt"></i> Receipt Generator</h1>
-                <p>Generate customer invoices using the existing Receipt Generator.</p>
+            <div class="invoices-header">
+                <h1><i class="fas fa-receipt"></i> Invoice Generator</h1>
+                <p>Generate customer invoices using the existing Invoice Generator.</p>
             </div>
 
             <!-- Module Card -->
-            <div class="receipts-card">
-                <div class="receipts-card-icon">
+            <div class="invoices-card">
+                <div class="invoices-card-icon">
                     <i class="fas fa-file-invoice"></i>
                 </div>
                 <h2>About this module</h2>
                 <p>
-                    The Receipt Generator creates GST-compliant invoices from the same product
+                    The Invoice Generator creates GST-compliant invoices from the same product
                     catalog used throughout this portal. It is a separate application maintained
                     independently of the Employee Portal - this page only launches it.
                 </p>
 
-                {% if receipt_generator_url %}
-                <a href="{{ receipt_generator_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-lg mt-3">
-                    <i class="fas fa-external-link-alt"></i> Launch Receipt Generator
+                {% if invoice_generator_url %}
+                <a href="{{ invoice_generator_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-lg mt-3">
+                    <i class="fas fa-external-link-alt"></i> Launch Invoice Generator
                 </a>
-                <p class="receipts-launch-note">Opens in a new tab.</p>
+                <p class="invoices-launch-note">Opens in a new tab.</p>
                 {% else %}
-                <div class="receipts-unavailable">
+                <div class="invoices-unavailable">
                     <i class="fas fa-info-circle"></i>
                     <div>
-                        <h3>Receipt Generator Unavailable</h3>
+                        <h3>Invoice Generator Unavailable</h3>
                         <p>
-                            The Receipt Generator hasn't been connected to this portal yet.
+                            The Invoice Generator hasn't been connected to this portal yet.
                             Please check back later or contact your administrator.
                         </p>
                     </div>
