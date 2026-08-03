@@ -82,6 +82,45 @@ Author  : Srikar
         flex: 1;
     }
 
+    /* Searchable Department/Category dropdown (v1.0 Sprint 4). Wraps a plain
+       .form-control input - same Bootstrap input styling as every other
+       field, just with an absolutely-positioned suggestion list underneath
+       so it never pushes the responsive grid/other fields around. */
+    .searchable-select {
+        position: relative;
+    }
+
+    .searchable-select-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        max-height: 220px;
+        overflow-y: auto;
+        margin-top: 2px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        border-radius: 6px;
+    }
+
+    .searchable-select-menu .list-group-item {
+        cursor: pointer;
+        font-size: 0.9rem;
+        padding: 0.5rem 0.85rem;
+    }
+
+    .searchable-select-menu .list-group-item.active,
+    .searchable-select-menu .list-group-item:hover {
+        background: #f0f5ff;
+        color: #1E4FA3;
+    }
+
+    .searchable-select-menu .list-group-item-empty {
+        cursor: default;
+        color: #999;
+        font-size: 0.85rem;
+    }
+
     @media (max-width: 768px) {
         .products-content {
             padding: 1rem;
@@ -111,28 +150,41 @@ Author  : Srikar
 
                 {% if errors.form %}<div class="alert alert-danger" role="alert">{{ errors.form }}</div>{% endif %}
 
-                <form method="post" enctype="multipart/form-data" novalidate>
+                <form method="post" enctype="multipart/form-data" novalidate id="product-form">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label for="product_name" class="form-label">Product Name</label>
-                            <input id="product_name" name="product_name" class="form-control {% if errors.product_name %}is-invalid{% endif %}" value="{{ form_data.product_name or '' }}" required>
-                            {% if errors.product_name %}<div class="invalid-feedback">{{ errors.product_name }}</div>{% endif %}
+                            <label for="product_name" class="form-label">Product Name <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input id="product_name" name="product_name" class="form-control {% if errors.product_name %}is-invalid{% endif %}" value="{{ form_data.product_name or '' }}" required autofocus autocomplete="off">
+                            {% if not errors.product_name %}<div id="product-name-live-feedback" class="invalid-feedback"></div>{% endif %}
+                            {% if errors.product_name %}<div class="invalid-feedback d-block">{{ errors.product_name }}</div>{% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label for="department" class="form-label">Department</label>
-                            <input id="department" name="department" list="department-list" class="form-control {% if errors.department %}is-invalid{% endif %}" value="{{ form_data.department or '' }}" required>
-                            <datalist id="department-list">
-                                {% for department in filter_options.departments %}<option value="{{ department.value }}">{% endfor %}
-                            </datalist>
-                            {% if errors.department %}<div class="invalid-feedback">{{ errors.department }}</div>{% endif %}
+                            <label for="department" class="form-label">Department <span class="text-danger" aria-hidden="true">*</span></label>
+                            <div class="searchable-select">
+                                <input
+                                    id="department" name="department"
+                                    class="form-control {% if errors.department %}is-invalid{% endif %}"
+                                    value="{{ form_data.department or '' }}"
+                                    required autocomplete="off"
+                                    role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="department-options"
+                                >
+                                <ul class="searchable-select-menu list-group" id="department-options" role="listbox" hidden></ul>
+                            </div>
+                            {% if errors.department %}<div class="invalid-feedback d-block">{{ errors.department }}</div>{% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label for="category" class="form-label">Category</label>
-                            <input id="category" name="category" list="category-list" class="form-control {% if errors.category %}is-invalid{% endif %}" value="{{ form_data.category or '' }}" required>
-                            <datalist id="category-list">
-                                {% for category in filter_options.categories %}<option value="{{ category.value }}">{% endfor %}
-                            </datalist>
-                            {% if errors.category %}<div class="invalid-feedback">{{ errors.category }}</div>{% endif %}
+                            <label for="category" class="form-label">Category <span class="text-danger" aria-hidden="true">*</span></label>
+                            <div class="searchable-select">
+                                <input
+                                    id="category" name="category"
+                                    class="form-control {% if errors.category %}is-invalid{% endif %}"
+                                    value="{{ form_data.category or '' }}"
+                                    required autocomplete="off"
+                                    role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="category-options"
+                                >
+                                <ul class="searchable-select-menu list-group" id="category-options" role="listbox" hidden></ul>
+                            </div>
+                            {% if errors.category %}<div class="invalid-feedback d-block">{{ errors.category }}</div>{% endif %}
                         </div>
                         <div class="col-md-6">
                             <label for="brand" class="form-label">Brand <span class="text-muted">(optional)</span></label>
@@ -168,7 +220,7 @@ Author  : Srikar
                     {% endfor %}
                     <label for="images" class="form-label mt-3">Add More Images <span class="text-muted">(optional)</span></label>
                     {% else %}
-                    <label for="images" class="form-label">Product Images</label>
+                    <label for="images" class="form-label">Product Images <span class="text-danger" aria-hidden="true">*</span></label>
                     {% endif %}
                     <input id="images" type="file" name="images" multiple accept=".jpg,.jpeg,.png,.webp" class="form-control {% if errors.images %}is-invalid{% endif %}" {% if not product %}required{% endif %}>
                     <p class="product-form-hint">{% if product %}Up to 10 images total.{% else %}1–10 images.{% endif %} JPG, JPEG, PNG, or WEBP only, 10MB max per image.</p>
@@ -188,7 +240,7 @@ Author  : Srikar
                     {% endfor %}
 
                     <div class="d-flex gap-2 mt-4">
-                        <button class="btn btn-primary" type="submit">{% if product %}Save Changes{% else %}Create Product{% endif %}</button>
+                        <button class="btn btn-primary" type="submit" id="product-form-save-btn">{% if product %}Save Changes{% else %}Create Product{% endif %}</button>
                         {% if product %}
                         <a href="{{ url_for('employee.product_details', product_id=product.id) }}" class="btn btn-outline-secondary">Cancel</a>
                         {% else %}
@@ -200,4 +252,207 @@ Author  : Srikar
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    "use strict";
+
+    // Data embedded server-side (v1.0 Sprint 4) - avoids a second round-trip
+    // just to populate the dropdowns/duplicate check.
+    var departments = {{ filter_options.departments | map(attribute='value') | list | tojson }};
+    var departmentCategoryMap = {{ filter_options.department_category_map | tojson }};
+    var existingProductNames = {{ existing_product_names | tojson }};
+
+    function normaliseName(value) {
+        return value.trim().replace(/\s+/g, " ").toLowerCase();
+    }
+
+    var existingNameSet = {};
+    existingProductNames.forEach(function (p) {
+        existingNameSet[normaliseName(p.product_name)] = true;
+    });
+
+    // ---- Searchable Select (Department / Category) ----
+    // A plain .form-control input with a filtered, keyboard-navigable
+    // Bootstrap .list-group suggestion menu underneath. Free text is still
+    // allowed on submit (matches the datalist behavior it replaces) so a
+    // brand-new department/category can still be entered - this only adds
+    // search + filtering + a proper dropdown UI on top.
+    function initSearchableSelect(inputId, menuId, getOptions) {
+        var input = document.getElementById(inputId);
+        var menu = document.getElementById(menuId);
+        if (!input || !menu) return null;
+
+        var activeIndex = -1;
+
+        function items() {
+            return menu.querySelectorAll(".list-group-item[data-value]");
+        }
+
+        function highlight(index) {
+            var list = items();
+            list.forEach(function (item, i) {
+                item.classList.toggle("active", i === index);
+            });
+            if (list[index]) {
+                list[index].scrollIntoView({ block: "nearest" });
+            }
+        }
+
+        function selectOption(value) {
+            input.value = value;
+            close();
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+
+        function close() {
+            menu.hidden = true;
+            input.setAttribute("aria-expanded", "false");
+            activeIndex = -1;
+        }
+
+        function open(filterText) {
+            var options = getOptions();
+            var query = (filterText || "").trim().toLowerCase();
+            var matches = query
+                ? options.filter(function (opt) { return opt.toLowerCase().indexOf(query) !== -1; })
+                : options;
+
+            menu.innerHTML = "";
+            activeIndex = -1;
+
+            if (options.length === 0) {
+                close();
+                return;
+            }
+
+            if (matches.length === 0) {
+                var empty = document.createElement("li");
+                empty.className = "list-group-item list-group-item-empty";
+                empty.textContent = "No matches - you can still type a new value";
+                menu.appendChild(empty);
+            } else {
+                matches.forEach(function (opt) {
+                    var item = document.createElement("li");
+                    item.className = "list-group-item list-group-item-action";
+                    item.setAttribute("role", "option");
+                    item.setAttribute("data-value", opt);
+                    item.textContent = opt;
+                    // mousedown (not click) fires before the input's blur closes the menu.
+                    item.addEventListener("mousedown", function (e) {
+                        e.preventDefault();
+                        selectOption(opt);
+                    });
+                    menu.appendChild(item);
+                });
+            }
+
+            menu.hidden = false;
+            input.setAttribute("aria-expanded", "true");
+        }
+
+        input.addEventListener("input", function () {
+            open(input.value);
+        });
+
+        input.addEventListener("focus", function () {
+            open(input.value);
+        });
+
+        input.addEventListener("keydown", function (e) {
+            if (menu.hidden) return;
+            var list = items();
+            if (list.length === 0) return;
+
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                activeIndex = Math.min(activeIndex + 1, list.length - 1);
+                highlight(activeIndex);
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                activeIndex = Math.max(activeIndex - 1, 0);
+                highlight(activeIndex);
+            } else if (e.key === "Enter") {
+                if (activeIndex >= 0 && list[activeIndex]) {
+                    e.preventDefault();
+                    selectOption(list[activeIndex].getAttribute("data-value"));
+                }
+            } else if (e.key === "Escape") {
+                close();
+            }
+        });
+
+        input.addEventListener("blur", function () {
+            // Delayed so a mousedown-selected option registers before the menu closes.
+            window.setTimeout(close, 100);
+        });
+
+        return { refresh: function () { if (!menu.hidden) open(input.value); } };
+    }
+
+    var departmentInput = document.getElementById("department");
+    var categoryInput = document.getElementById("category");
+
+    initSearchableSelect("department", "department-options", function () {
+        return departments;
+    });
+    var categorySelect = initSearchableSelect("category", "category-options", function () {
+        return departmentCategoryMap[departmentInput.value.trim()] || [];
+    });
+
+    // Category options are scoped to the selected Department. Changing
+    // Department clears whatever Category was picked for the old one, since
+    // it's very unlikely to still apply.
+    var lastDepartmentValue = departmentInput.value;
+    departmentInput.addEventListener("change", function () {
+        if (departmentInput.value !== lastDepartmentValue) {
+            categoryInput.value = "";
+            lastDepartmentValue = departmentInput.value;
+            if (categorySelect) categorySelect.refresh();
+        }
+    });
+
+    // ---- Live duplicate Product Name check (Phase 2) ----
+    var nameInput = document.getElementById("product_name");
+    var nameFeedback = document.getElementById("product-name-live-feedback");
+
+    function checkDuplicateName() {
+        var normalised = normaliseName(nameInput.value);
+        var isDuplicate = normalised.length > 0 && existingNameSet.hasOwnProperty(normalised);
+        nameInput.classList.toggle("is-invalid", isDuplicate);
+        nameInput.setCustomValidity(isDuplicate ? "Duplicate product name" : "");
+        if (nameFeedback) {
+            nameFeedback.textContent = isDuplicate ? "A product with this name already exists." : "";
+            nameFeedback.classList.toggle("d-block", isDuplicate);
+        }
+        return !isDuplicate;
+    }
+
+    // ---- Disable Save while invalid/submitting (Phase 4) ----
+    var form = document.getElementById("product-form");
+    var saveButton = document.getElementById("product-form-save-btn");
+
+    function updateSaveButtonState() {
+        var nameOk = checkDuplicateName();
+        saveButton.disabled = !form.checkValidity() || !nameOk;
+    }
+
+    nameInput.addEventListener("input", updateSaveButtonState);
+    form.addEventListener("input", updateSaveButtonState);
+    form.addEventListener("change", updateSaveButtonState);
+
+    form.addEventListener("submit", function (e) {
+        if (!checkDuplicateName()) {
+            e.preventDefault();
+            nameInput.focus();
+            return;
+        }
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Saving...';
+    });
+
+    updateSaveButtonState();
+})();
+</script>
 {% endblock %}

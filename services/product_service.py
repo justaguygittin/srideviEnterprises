@@ -8,6 +8,7 @@ Author  : Srikar
 =========================================================
 """
 
+import re
 from typing import Any
 
 from database.db import execute, fetch_all, fetch_one, transaction
@@ -109,7 +110,7 @@ def _build_product_filters(filters: dict[str, Any]) -> tuple[str, list[Any]]:
 
 
 def get_product_filters():
-    """Return database-driven values for product listing filters."""
+    """Return database-driven values for product listing/form filters."""
 
     return {
         "departments": fetch_all("""
@@ -124,7 +125,31 @@ def get_product_filters():
             SELECT DISTINCT TRIM(brand) AS value FROM Catalog
             WHERE brand IS NOT NULL AND TRIM(brand) NOT IN ('', 'NA') ORDER BY brand;
         """),
+        "department_category_map": _get_department_category_map(),
     }
+
+
+def _get_department_category_map() -> dict[str, list[str]]:
+    """
+    Group distinct categories by department, for the Add/Edit Product form's
+    cascading Department -> Category searchable dropdown (v1.0 Sprint 4).
+
+    Not used by the customer Products page filter, which keeps its own flat
+    `categories` list above (unchanged) - this is an additive key only.
+    """
+
+    rows = fetch_all("""
+        SELECT DISTINCT Department AS department, category
+        FROM Catalog
+        WHERE Department IS NOT NULL AND TRIM(Department) <> ''
+              AND category IS NOT NULL AND TRIM(category) <> ''
+        ORDER BY Department, category;
+    """)
+
+    department_category_map: dict[str, list[str]] = {}
+    for row in rows:
+        department_category_map.setdefault(row["department"], []).append(row["category"])
+    return department_category_map
 
 
 def get_inventory_summary() -> dict[str, int]:
@@ -435,6 +460,56 @@ def find_similar_product(
     return fetch_one(f"""
         SELECT id, product_name FROM Catalog WHERE {" AND ".join(where_clauses)} LIMIT 1;
     """, tuple(params))
+
+
+_MULTI_SPACE_PATTERN = re.compile(r"\s+")
+
+
+def _normalise_name_for_comparison(name: str) -> str:
+    """
+    Case-insensitive, whitespace-collapsed comparison key for product names
+    (v1.0 Sprint 4) - shared logic mirrored by the Add/Edit Product form's
+    client-side live duplicate check, so both agree on what counts as "the
+    same name".
+    """
+
+    return _MULTI_SPACE_PATTERN.sub(" ", name.strip()).lower()
+
+
+def get_all_product_names(exclude_id: int | None = None) -> list[dict[str, Any]]:
+    """
+    Return every catalog product's id/name (v1.0 Sprint 4). Powers both the
+    Add/Edit Product form's client-side live duplicate-name hint and the
+    authoritative server-side check below, from one shared query.
+    """
+
+    where_clause = "product_name IS NOT NULL AND TRIM(product_name) <> ''"
+    params: list[Any] = []
+    if exclude_id is not None:
+        where_clause += " AND id <> %s"
+        params.append(exclude_id)
+
+    return fetch_all(f"SELECT id, product_name FROM Catalog WHERE {where_clause};", tuple(params))
+
+
+def find_duplicate_product_name(product_name: str, exclude_id: int | None = None) -> dict[str, Any] | None:
+    """
+    Return an existing catalog product whose name matches product_name once
+    both are case-insensitively compared with whitespace collapsed
+    (v1.0 Sprint 4). This is the authoritative, final duplicate-name check
+    enforced on every submit - the client-side live check is a hint only and
+    can never be trusted on its own.
+
+    Distinct from find_similar_product() above: that function compares
+    name+brand+model together and only produces a soft "looks similar"
+    warning: this function compares name alone and blocks the save.
+    """
+
+    target = _normalise_name_for_comparison(product_name)
+    for candidate in get_all_product_names(exclude_id):
+        if _normalise_name_for_comparison(candidate["product_name"]) == target:
+            return candidate
+    return None
 
 
 def create_product(

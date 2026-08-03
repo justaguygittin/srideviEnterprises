@@ -20,7 +20,9 @@ from services.product_service import (
     create_product,
     delete_product as delete_product_service,
     delete_product_image,
+    find_duplicate_product_name,
     find_similar_product,
+    get_all_product_names,
     get_inventory_by_category,
     get_inventory_by_department,
     get_inventory_summary,
@@ -259,6 +261,14 @@ def add_product():
             errors["images"] = image_error
 
         if not errors:
+            name_duplicate = find_duplicate_product_name(form_data["product_name"])
+            if name_duplicate:
+                errors["product_name"] = (
+                    f'A product named "{form_data["product_name"]}" already exists '
+                    f'(#{name_duplicate["id"]}).'
+                )
+
+        if not errors:
             duplicate = find_similar_product(
                 form_data["product_name"], form_data["brand"], form_data["model"]
             )
@@ -286,6 +296,7 @@ def add_product():
         errors=errors,
         spec_rows=spec_rows,
         filter_options=get_product_filters(),
+        existing_product_names=get_all_product_names(),
     )
 
 
@@ -345,6 +356,14 @@ def edit_product(product_id):
                     replacement_images[image["id"]] = file
 
         if not errors:
+            name_duplicate = find_duplicate_product_name(form_data["product_name"], exclude_id=product_id)
+            if name_duplicate:
+                errors["product_name"] = (
+                    f'A product named "{form_data["product_name"]}" already exists '
+                    f'(#{name_duplicate["id"]}).'
+                )
+
+        if not errors:
             try:
                 update_product(product_id, form_data, specifications, new_images, replacement_images)
             except Exception:
@@ -364,6 +383,7 @@ def edit_product(product_id):
         spec_rows=spec_rows,
         existing_images=existing_images,
         filter_options=get_product_filters(),
+        existing_product_names=get_all_product_names(exclude_id=product_id),
     )
 
 
