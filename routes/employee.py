@@ -11,7 +11,7 @@ Author  : Srikar
 from datetime import datetime
 from math import ceil
 
-from flask import Blueprint, abort, flash, render_template, request, session, redirect, url_for
+from flask import Blueprint, abort, current_app, flash, render_template, request, session, redirect, url_for
 from config import Config
 from services.auth_service import authenticate_employee, get_employee_id_for_user
 from services.department_service import (
@@ -603,7 +603,23 @@ def edit_department(department_name):
     if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
         abort(403)
 
+    # --- TEMPORARY DIAGNOSTIC LOGGING: remove once the production 404 is root-caused ---
+    current_app.logger.warning("DIAG: edit_department() entered")
+    current_app.logger.warning(
+        "DIAG edit_department: repr=%r type=%s len=%d utf8_bytes=%r",
+        department_name,
+        type(department_name).__name__,
+        len(department_name),
+        list(department_name.encode("utf-8")),
+    )
+    # --- END TEMPORARY DIAGNOSTIC LOGGING ---
+
     department = get_department_for_edit(department_name)
+
+    # --- TEMPORARY DIAGNOSTIC LOGGING ---
+    current_app.logger.warning("DIAG edit_department: get_department_for_edit() -> %r", department)
+    # --- END TEMPORARY DIAGNOSTIC LOGGING ---
+
     if department is None:
         abort(404)
 
