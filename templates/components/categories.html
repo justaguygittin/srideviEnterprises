@@ -4,11 +4,10 @@ Project : Sridevi Enterprises
 File    : categories.html
 Purpose : Homepage Featured Categories slider.
           The dedicated /categories page is separate and unaffected by this.
+          Images are sourced from DepartmentImages (Department Image
+          Management) via customer_service.get_home_departments().
 
 Author  : Srikar
-
-TODO:
-- Replace the fallback category image with a department-specific image.
 =========================================================
 -->
 
@@ -20,7 +19,7 @@ TODO:
 
         <div class="section-heading text-center">
 
-            <h2>Shop by Category</h2>
+            <h2>Shop by Department</h2>
 
             <p>
                 Explore our product departments and find the perfect products for your home.
@@ -33,11 +32,11 @@ TODO:
         {% if departments %}
         <div class="featured-categories-slider-wrapper">
 
-            <button type="button" class="slider-arrow slider-arrow-prev" aria-label="Previous categories">
+            <button type="button" class="slider-arrow slider-arrow-prev" aria-label="Previous departments">
                 <i class="fa-solid fa-chevron-left"></i>
             </button>
 
-            <div class="featured-categories-slider" role="region" aria-label="Featured categories" aria-live="polite">
+            <div class="featured-categories-slider" role="region" aria-label="Featured departments" aria-live="polite">
 
                 {% for department in departments %}
                 <article class="category-slide">
@@ -51,7 +50,7 @@ TODO:
                         <p>{{ department.total_products }} product{{ '' if department.total_products == 1 else 's' }}</p>
 
                         <a href="{{ url_for('customer.products', department=department.Department) }}" class="btn btn-primary btn-sm">
-                            Explore
+                            Browse
                         </a>
 
                     </div>
@@ -61,13 +60,13 @@ TODO:
 
             </div>
 
-            <button type="button" class="slider-arrow slider-arrow-next" aria-label="Next categories">
+            <button type="button" class="slider-arrow slider-arrow-next" aria-label="Next departments">
                 <i class="fa-solid fa-chevron-right"></i>
             </button>
 
         </div>
         {% else %}
-        <p class="text-center text-muted">No categories available yet.</p>
+        <p class="text-center text-muted">No departments available yet.</p>
         {% endif %}
 
     </div>

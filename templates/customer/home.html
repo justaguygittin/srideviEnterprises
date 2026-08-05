@@ -43,8 +43,7 @@ Home
             {% for product in featured_products %}
             <div class="col-lg-3 col-md-6">
                 <article class="product-card h-100">
-                    <!-- TODO: Replace with product-specific images when image data is available. -->
-                    <img src="{{ url_for('static', filename='images/placeholder.png') }}" alt="{{ product.product_name }}" class="product-card-image">
+                    <img src="{{ url_for('static', filename=product.image_path) }}" alt="{{ product.product_name }}" class="product-card-image">
                     <div class="product-card-body">
                         <p class="product-brand">{{ product.brand or 'Sridevi Enterprises' }}</p>
                         <h3>{{ product.product_name }}</h3>

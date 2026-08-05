@@ -69,7 +69,7 @@ Version Control
 ✓ Home Page (see Homepage below for section detail)
 ✓ Products Page (search, filters, pagination)
 ✓ Product Details Page
-✓ Categories Page (see Categories Page below for section detail)
+✓ Departments Page (customer-facing label; internal route/template still `/categories` — see Categories Page below and Department Image Management)
 ✓ Search
 ✓ Contact Page (general enquiry form)
 
@@ -95,6 +95,8 @@ The Featured Products section displays 8 products from `get_featured_products()`
 
 Regression tested: Homepage, Products page, Categories navigation, Mobile, Desktop, no JS console errors, no route changes.
 
+**Bug fix (Department Image Management sprint): Featured Products images were never real.** `home.html` hardcoded every card to `images/placeholder.png` with a `<!-- TODO: Replace with product-specific images when image data is available -->` comment — stale even at the time, since Add Product/ProductImages had already shipped. `get_featured_products()` never called the shared image-attaching helper any other product listing uses. Fixed by calling `product_service.add_primary_images()` (see below) after the query and rendering `product.image_path` instead of the hardcoded path. Products that genuinely have no uploaded images still correctly show the placeholder — this is not a bug, most of the current demo catalog has zero `ProductImages` rows (verified via `SELECT COUNT(*) FROM ProductImages` during this fix).
+
 ### Categories Page
 
 `/categories` is a premium, standalone category browsing page — not a variant of the homepage slider. It reuses `get_home_departments()` (`services/customer_service.py`), the same data source as the homepage Featured Categories slider, so category names, product counts, and images stay consistent across both. No new service function or API endpoint was introduced.
@@ -111,6 +113,8 @@ Styling lives in `static/css/categories.css` (new `.categories-page-hero`, `.cat
 
 Both the navbar's and footer's "Categories" links now point to `url_for('customer.categories')`.
 
+**Update (Department Image Management sprint) — "Category" deprecated in favor of "Department" as the customer-facing browsing concept**, per explicit user clarification mid-sprint. Renamed everywhere a customer sees the word: navbar link, footer link, this page's `<title>`, `<h1>` ("Shop by Category" → "Shop by Department"), the homepage slider's heading, both pages' search label/placeholder/empty-state text, the Explore button ("Explore" → "Browse", matching the sprint's literal wording), and the Products page empty-state's "Browse Categories" suggestion link. **Deliberately NOT renamed**: the `/categories` URL and the `customer.categories` endpoint name (left as-is to avoid a breaking route/bookmark/SEO change without more explicit instruction), the internal CSS classes (`.category-grid`, `.categories-page-hero`, etc.) and JS (`initCategorySearch()` in `main.js`, keyed off unchanged `#category-search`/`#category-grid`/`#category-empty-state` ids) — all of which are implementation details invisible to a customer, not the thing that was asked to change. **Also NOT touched**: the Products page's separate "Category" filter dropdown (`Catalog.category`, the finer-grained field, distinct from `Catalog.Department`) — the deprecation is about the *browsing/navigation* concept this page and the homepage slider represent, not a mandate to remove the existing, working `category` field filter, which is out of scope here and would be a separate, larger change if ever needed.
+
 #### Navbar Active-Page Highlighting
 
 `templates/components/navbar.html` now sets the `active` class per link by comparing `request.endpoint` against each route's endpoint (e.g. `request.endpoint == 'customer.categories'`), instead of hardcoding `active` on Home. This was a pre-existing gap (previously Home always showed active, regardless of the current page) surfaced while verifying the Categories page's active nav state, and is now correct on every customer page (Home, Products, Categories, Contact). Compare has no route yet, so it never highlights.
@@ -118,6 +122,8 @@ Both the navbar's and footer's "Categories" links now point to `url_for('custome
 #### Category Image Fallback
 
 `_resolve_category_image()` in `services/customer_service.py` now checks that a mapped category image file actually exists **and is non-empty** before using it; otherwise it falls back to the placeholder. This fixed a real bug found while verifying image fallbacks: `electronics.jpg`, `furniture.jpg`, and `miscellaneous.jpg` under `static/images/categories/` are committed as 0-byte stub files, which the browser can't decode — they rendered as broken images instead of the placeholder. Since `get_home_departments()` is shared, this fix also corrects the homepage Featured Categories slider, which had the same broken images. The underlying stub image files still need to be replaced with real photography; until then, all categories correctly show the placeholder.
+
+**Update — superseded:** `_resolve_category_image()` and the hardcoded `_CATEGORY_IMAGES` dict it read from (only 4 of the catalog's 10 departments, ever) were fully removed and replaced by Department Image Management (see below) — `get_home_departments()` now delegates to `department_service.get_active_department_cards()`, which reads real, employee-uploaded images from the `DepartmentImages` table instead. The 0-byte stub files under `static/images/categories/` are no longer read by any code path; they can be deleted in a future cleanup pass (left alone here since deleting unrelated dead files wasn't this sprint's scope).
 
 ### Products Page — Filtering Experience
 
@@ -250,6 +256,7 @@ A holistic UX audit across the full customer journey (Homepage → Categories �
 ✓ Delete Product (Admin)
 ✓ Inventory Summary (read-only, v1.0 Sprint 1, see Employee Inventory Summary Module)
 ✓ Inventory Transactions — Stock In / Stock Out / Adjustment (v1.0 Sprint 5.1, see Employee Inventory Summary Module)
+✓ Departments — Department Image Management (see Department Image Management)
 
 This completes the Employee Product Management lifecycle: Add, Edit, Replace/Delete Images, and Delete Product all exist and share the same transaction and image-handling infrastructure (see Write Operation Pattern).
 
@@ -317,6 +324,8 @@ Route: `POST /employee/products/<id>/delete` (Admin only)
 Confirmation is a plain browser `confirm()` dialog on the delete form — the same lightweight pattern already used for Delete Product Image, no new UI component was introduced.
 
 Filesystem deletion (the upload folder) happens only AFTER the database transaction commits, never before or during — see Write Operation Pattern.
+
+**Planned (roadmap only, not implemented — see Planned Roadmap > Soft Delete Product):** this hard-delete behavior (`DELETE FROM ProductDetails/ProductImages/Catalog`, folder removed from disk) is intended to be replaced by an archive/deactivate flow in a future sprint, so `StockHistory`, `Enquiries`, and any future invoice references to a product survive its removal from active listings. No hard `DELETE` should be introduced anywhere else in the meantime, and this existing one should be revisited when that sprint lands, not extended.
 
 ### Employee Dashboard — Command Center
 
@@ -478,6 +487,35 @@ The first write-capable inventory module. Every transaction updates `Catalog.sto
 
 **Out of scope, deliberately not built** (per the sprint's explicit list): Purchase Orders, Goods Receipts, Supplier Management, Barcode Scanning, multi-location inventory, batch/serial numbers, CSV import/export, undo transaction, inventory reports. `ReferenceType`/`ReferenceID` exist on the table specifically so a future sprint building any of these can link a `StockHistory` row back to its originating record without another migration.
 
+### Department Image Management
+
+New feature (one new table, `DepartmentImages` — see Data & Storage Conventions below for the full column list and the "why no FK to Catalog" reasoning, same pattern already established for `StockHistory.EmployeeID`). **Permanently replaces** the old hardcoded `_CATEGORY_IMAGES` dict in `customer_service.py`, which only covered 4 of the catalog's 10 departments and silently fell back to a placeholder for the rest. `Catalog.Department` remains the sole source of truth for product classification — `DepartmentImages` is presentation-only, matched to a real Catalog department by `DepartmentName` (a UNIQUE string), never a foreign key, since `Catalog.Department` is free text with no id of its own.
+
+**New service file: `services/department_service.py`** — the first new employee-facing service file since `image_service.py`. Houses everything Department Image Management needs: `get_catalog_department_names()` / `get_department_product_counts()` (the two small queries every other function here is built from), `get_departments_for_management()` (every Catalog department, joined with its `DepartmentImages` row if one exists — departments with no row yet still appear, so employees can see what still needs an image), `get_department_for_edit()`, `upsert_department_image()` (single-table Write Operation Pattern: save new file → write DB row → delete old file only after success, mirroring `update_product()`'s established refinement), and `get_active_department_cards()` (the customer-facing read, active+configured only).
+
+**Employee Departments module** (`GET /employee/departments`, `GET/POST /employee/departments/<department_name>/edit`) — new nav entry (between Products and Inventory) and Dashboard Quick Action card, matching every other module. The list table (`templates/employee/departments.html`) mirrors `products.html`'s table conventions; the edit form (`templates/employee/department_form.html`) mirrors `product_form.html`'s card/label conventions. **Departments are never freely nameable**: `department_name` in the edit route is validated against `get_catalog_department_names()` (404 if it isn't a real Catalog department), so there is no code path that can create a `DepartmentImages` row for a name that doesn't exist in `Catalog.Department` — this, plus the column's own `UNIQUE` constraint, is what satisfies "do not allow duplicate department entries" without needing extra duplicate-checking logic. Image upload is optional when editing an already-configured department (keeps its current image if none is chosen) and required when configuring one for the first time (enforced both client-side via `required` and server-side, verified by direct POST bypassing the client check).
+
+**Image storage**: a new `static/uploads/departments/` folder (parallel to the existing `static/uploads/products/<id>/`), added to `services/image_service.py` (`save_department_image()`, `delete_department_image_file()`, `department_image_path()`). Unlike `ProductImages.ImageURL` (a full relative path, since products have per-product subfolders), `DepartmentImages.ImageFilename` stores a bare filename only — matching the sprint's own schema field name literally, since every department image lives flat in one shared folder rather than a per-department folder (one department = one image, no gallery, so a subfolder per department would be unnecessary structure).
+
+**Customer-facing behavior change, deliberate**: a department only appears on the homepage slider / `/categories` page once an employee has uploaded an image **and** enabled it — previously every Catalog department showed unconditionally (falling back to a placeholder if unmapped). This is intentional: it's what makes the Enable/disable control in the Employee Departments module actually mean something. Until employees configure departments, the customer-facing section may legitimately be empty — both templates already have an existing empty state ("No categories available yet.") for this, no new one was needed. `get_home_departments()` (`customer_service.py`) keeps its exact old return shape (`Department`, `total_products`, `image_path`) so neither customer template needed structural changes — see "Explore→Browse" scoping note under Categories Page above for what *was* and wasn't renamed.
+
+**Seed data**: the four sample images the user supplied mid-sprint (Office Supplies, Computer & IT, Kitchen & Dining, Home Appliances) were saved via the real `upsert_department_image()` path (not a raw SQL insert), exercising the actual write path end-to-end. The other 6 catalog departments (Electrical, Electronics, Furniture, Miscellaneous, Safety & Industrial, Sports & Fitness) remain unconfigured — an employee needs to add images for them through the new module before they'll appear on the customer site.
+
+**Public helper promoted**: `product_service._add_primary_images()` was renamed to `add_primary_images()` (dropped the leading underscore) so `customer_service.py` could reuse it for the Featured Products bug fix above, instead of duplicating the batched-image-lookup query a second time.
+
+#### Pre-Commit Fix — Lookup Normalization
+
+Every `Catalog.Department` ↔ `DepartmentImages.DepartmentName` comparison originally used exact string matching. Two different mechanisms were involved and only one was actually safe: SQL `WHERE DepartmentName = %s` happened to ride on the column's case-insensitive collation (`utf8mb4_uca1400_ai_ci`), but every **Python-side** comparison (`get_departments_for_management()`'s dict join, `get_active_department_cards()`'s `counts.get(row["DepartmentName"])`) was a plain case-sensitive, whitespace-sensitive `dict`/`==` lookup — silently dependent on a DB collation setting that nothing enforces will stay that way, and that never accounted for leading/trailing whitespace either way (collation doesn't trim). A `DepartmentImages` row saved with different casing or stray whitespace than the live `Catalog.Department` string would join correctly in the SQL layer but silently fail to join in the Python layer — showing as "Not Configured" in the Employee module, or a `0` product count on the customer site, despite a real row existing.
+
+**Fixed by centralizing normalization in one place**: `department_service._normalise_department_name(name)` (`.strip().lower()`) is now the single comparison key every lookup and write goes through — nowhere else in the codebase does its own case/whitespace handling for department names. Concretely:
+- `_find_department_image_row(department_name)` (new, replaces the old exact-match `SELECT ... WHERE DepartmentName = %s`) fetches all `DepartmentImages` rows (a handful of rows — this table will never be large, since it's one row per Catalog department) and matches in Python via the normalized key. Used by both `get_department_for_edit()` and `upsert_department_image()`, so there's one lookup implementation, not two.
+- `_get_canonical_department_names()` (new) returns `{normalised_name: real Catalog.Department string}`. Every function that needs to resolve a `DepartmentImages` row back to a real Catalog department — `get_department_for_edit()`, `get_active_department_cards()` — goes through this, so the value that ends up in a `?department=` filter link or gets stored in a new `DepartmentImages` row is always the canonical Catalog casing, never a normalized (lowercased) or otherwise-drifted variant.
+- `routes/employee.py:edit_department()` was updated to pass `department["department_name"]` (the canonical name `get_department_for_edit()` already resolved) to `upsert_department_image()`, instead of the raw URL segment — so a newly-created row is always stored with clean Catalog casing regardless of what casing/spacing appeared in the URL.
+
+**No schema change, no new table, no FK, no route/URL change** — exactly as constrained. `DepartmentImages.DepartmentName` itself is still stored verbatim (whatever was canonical at write time); this fix is entirely about how it's *looked up*, not what's stored.
+
+**Verified**: a row was deliberately inserted with mismatched casing and stray whitespace (`'  ELECTRICAL  '` against the real `'Electrical'`) and confirmed to correctly join in the management list, resolve via both canonical and mismatched-case URL input in `get_department_for_edit()` (including live through the actual route, not just the service function), resolve to the canonical name with the correct product count in the customer-facing cards, and get updated in place (not duplicated) by `upsert_department_image()` — then removed before finishing, so the four real seeded departments remain the only rows.
+
 ---
 
 # 3. Architecture & Conventions
@@ -571,7 +609,7 @@ The website is a digital showroom, not an e-commerce website.
 
 ### Primary Tables
 
-Users, Catalog, ProductImages, Enquiries, StockHistory. Additional tables should follow existing naming conventions.
+Users, Catalog, ProductImages, Enquiries, StockHistory, DepartmentImages. Additional tables should follow existing naming conventions.
 
 ### Product-to-Image Relationship
 
@@ -600,11 +638,31 @@ Migration convention used: a new numbered file appended to `database/schema/` (`
 
 Categories should never have dedicated images. Instead, each category automatically displays one representative image from a product belonging to that category. No CategoryImages table should be created.
 
+**Still true, and distinct from Department Images below — do not conflate the two.** This rule is about `Catalog.category` (the finer-grained field, e.g. "Counter Chair (Bar / Pub)") and remains unimplemented/unneeded as stated. `DepartmentImages` (Department Image Management, new) is about the coarser `Catalog.Department` field (e.g. "Furniture") and is a deliberate exception created for the customer site's department showcase section - the two fields, and their image conventions, are independent decisions.
+
+### Department Images
+
+`DepartmentImages` (`database/schema/010_create_departmentimages.sql`, Department Image Management) is presentation-only data for `Catalog.Department` values — one row per department, matched by `DepartmentName` (`UNIQUE`), never a foreign key (`Catalog.Department` is free text with no id of its own).
+
+```
+DepartmentImages
+----------------
+DepartmentID      INT AUTO_INCREMENT PRIMARY KEY
+DepartmentName    VARCHAR(100) NOT NULL UNIQUE
+ImageFilename     VARCHAR(255) NOT NULL
+DisplayOrder      INT NOT NULL DEFAULT 0
+IsActive          BOOLEAN NOT NULL DEFAULT TRUE
+```
+
+One table only — no separate `Departments` table, no per-department image history. `Catalog.Department` remains the sole source of truth for product classification; a department can exist in `Catalog` with no `DepartmentImages` row (shows as "Not Configured" in the Employee Departments module, not shown at all on the customer site), but a `DepartmentImages` row can never exist for a department that isn't in `Catalog` (enforced by the edit route validating against `get_catalog_department_names()`, not by a DB constraint). See Department Image Management above for the full service/route/template detail.
+
 ### Image Storage
 
 Images should be stored inside `static/uploads/products/`.
 
 Recommended structure: `static/uploads/products/<ProductID>/image1.jpg`, `image2.jpg`, ...
+
+**Department images are the one exception**: `static/uploads/departments/<filename>` — flat, not per-department subfolders, since each department has exactly one image (no gallery), and `DepartmentImages.ImageFilename` stores a bare filename rather than a relative path (unlike `ProductImages.ImageURL`).
 
 Database stores only relative paths.
 
@@ -878,6 +936,16 @@ Goal:
 Employees should never have to log in twice.
 
 Invoice Generator
+
+## Product Management Roadmap
+
+□ **Soft Delete Product** (added during the Department Image Management sprint, not implemented). Products should never be permanently removed from the database. A future sprint should replace `delete_product()`'s current hard `DELETE FROM ProductDetails/ProductImages/Catalog` (see Product Deletion above) with an archive/deactivate flow — likely a status flag on `Catalog` (schema change, out of scope for this note) rather than actually removing rows — that preserves:
+  - Product history (the Catalog row itself)
+  - Inventory history (`StockHistory` rows referencing the product — these would orphan or lose meaning if the product row disappeared)
+  - Customer enquiries (`Enquiries.ProductID` rows referencing the product)
+  - Invoice references (once the Invoice Generator integration deepens beyond a launch-only bridge — see Employee Invoice Generator Bridge — any future invoice line pointing at a `Catalog.id` needs that id to keep existing)
+
+  No hard `DELETE` operation should be introduced anywhere else in the codebase in the meantime, and the existing Delete Product route should be migrated to this pattern rather than extended further as-is.
 
 ## Future Improvements
 

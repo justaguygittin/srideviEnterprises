@@ -8,55 +8,31 @@ Author  : Srikar
 =========================================================
 """
 
-import os
-
 from database.db import fetch_all
-
-
-_CATEGORY_IMAGES = {
-    "electronics": "images/categories/electronics.jpg",
-    "furniture": "images/categories/furniture.jpg",
-    "miscellaneous": "images/categories/miscellaneous.jpg",
-    "utility": "images/categories/utility.jpg",
-}
-_PLACEHOLDER_IMAGE = "images/placeholder.png"
-_STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
-
-
-def _resolve_category_image(department_name):
-    """Return the mapped category image, or the placeholder if it is missing or empty."""
-
-    image_path = _CATEGORY_IMAGES.get(department_name.strip().lower())
-
-    if image_path:
-        full_path = os.path.join(_STATIC_DIR, *image_path.split("/"))
-        if os.path.isfile(full_path) and os.path.getsize(full_path) > 0:
-            return image_path
-
-    return _PLACEHOLDER_IMAGE
+from services.department_service import get_active_department_cards
+from services.product_service import add_primary_images
 
 
 def get_home_departments():
-    """Return catalog departments with product totals and available images."""
+    """
+    Return active, employee-configured departments with product totals and
+    images, for the homepage Featured Categories slider and the standalone
+    Categories page.
 
-    departments = fetch_all("""
-        SELECT Department, COUNT(*) AS total_products
-        FROM Catalog
-        WHERE Department IS NOT NULL AND TRIM(Department) <> ''
-        GROUP BY Department
-        ORDER BY Department;
-    """)
+    Delegates to department_service.get_active_department_cards() (Department
+    Image Management) - the old hardcoded _CATEGORY_IMAGES lookup (which only
+    covered 4 of the catalog's 10 departments, silently falling back to a
+    placeholder for the rest) has been fully replaced by the
+    employee-managed DepartmentImages table.
+    """
 
-    for department in departments:
-        department["image_path"] = _resolve_category_image(department["Department"])
-
-    return departments
+    return get_active_department_cards()
 
 
 def get_featured_products():
-    """Return eight randomly selected catalog products for the homepage."""
+    """Return eight randomly selected catalog products, with their real images."""
 
-    return fetch_all("""
+    products = fetch_all("""
         SELECT
             id,
             product_name,
@@ -70,6 +46,12 @@ def get_featured_products():
         ORDER BY RAND()
         LIMIT 8;
     """)
+
+    # Bug fix: this previously left every card on a hardcoded placeholder
+    # image (see home.html) even though real ProductImages rows existed -
+    # every other product listing already attaches images this way.
+    add_primary_images(products)
+    return products
 
 
 def get_popular_brands():

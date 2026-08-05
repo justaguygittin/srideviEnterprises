@@ -68,7 +68,7 @@ def get_products(filters: dict[str, Any], page: int, per_page: int):
         LIMIT %s OFFSET %s;
     """, tuple(params + [per_page, (page - 1) * per_page]))
 
-    _add_primary_images(products)
+    add_primary_images(products)
     return products
 
 
@@ -289,11 +289,11 @@ def get_related_products(product: dict[str, Any]):
         LIMIT 4;
     """, (product["id"], product["Department"], product["category"]))
 
-    _add_primary_images(related_products)
+    add_primary_images(related_products)
     return related_products
 
 
-def _add_primary_images(products: list[dict[str, Any]]) -> None:
+def add_primary_images(products: list[dict[str, Any]]) -> None:
     """Attach each product's first image path with a single gallery query."""
 
     if not products:

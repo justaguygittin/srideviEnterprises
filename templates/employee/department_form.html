@@ -1,0 +1,166 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : department_form.html
+Purpose : Add/Edit Department Image form (Department Image Management).
+          Department name is fixed (sourced from Catalog.Department) - only
+          the image, display order, and active flag are editable here.
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+{% if department.is_configured %}Edit{% else %}Add Image —{% endif %} {{ department.department_name }} - Employee Portal - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee_nav.css') }}">
+<style>
+    .products-container {
+        min-height: calc(100vh - 120px);
+        background-color: #f8f9fa;
+        padding: 0;
+    }
+
+    .products-content {
+        padding: 2rem;
+    }
+
+    .product-form-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        max-width: 700px;
+    }
+
+    .product-form-card h1 {
+        color: #333;
+        font-size: 1.6rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .department-form-subtitle {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .product-form-hint {
+        color: #666;
+        font-size: 0.85rem;
+        margin-top: 0.3rem;
+    }
+
+    .department-current-image {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        margin-bottom: 0.5rem;
+    }
+
+    .department-current-image img {
+        width: 90px;
+        height: 90px;
+        object-fit: cover;
+        background: #f8f9fa;
+        border: 1px solid #D0D5DD;
+        border-radius: 6px;
+        flex-shrink: 0;
+    }
+
+    .department-current-image img.is-placeholder {
+        object-fit: contain;
+        padding: 8px;
+        opacity: 0.7;
+    }
+
+    .form-check-label {
+        color: #333;
+    }
+
+    @media (max-width: 768px) {
+        .products-content {
+            padding: 1rem;
+        }
+
+        .product-form-card {
+            padding: 1.25rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="products-container">
+    {% include 'components/employee_nav.html' %}
+
+    <div class="products-content">
+        <div class="container">
+            <a href="{{ url_for('employee.departments') }}" class="back-link"><i class="fa-solid fa-arrow-left me-2"></i>Back to Departments</a>
+
+            <div class="product-form-card mt-3">
+                <h1>{% if department.is_configured %}Edit Department{% else %}Add Department Image{% endif %}</h1>
+                <p class="department-form-subtitle">{{ department.department_name }} &middot; {{ department.total_products }} product{% if department.total_products != 1 %}s{% endif %} in this department</p>
+
+                {% if errors.form %}<div class="alert alert-danger" role="alert">{{ errors.form }}</div>{% endif %}
+
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    <div class="mb-3">
+                        <label class="form-label d-block">Current Image</label>
+                        <div class="department-current-image">
+                            <img
+                                src="{{ url_for('static', filename=department.image_path) }}"
+                                alt="{{ department.department_name }}"
+                                class="{{ 'is-placeholder' if not department.is_configured else '' }}"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="image" class="form-label">
+                            {% if department.is_configured %}Replace Image{% else %}Department Image{% endif %}
+                            {% if not department.is_configured %}<span class="text-danger" aria-hidden="true">*</span>{% endif %}
+                        </label>
+                        <input
+                            type="file" id="image" name="image" accept=".jpg,.jpeg,.png,.webp"
+                            class="form-control {% if errors.image %}is-invalid{% endif %}"
+                            {% if not department.is_configured %}required{% endif %}
+                        >
+                        <p class="product-form-hint">JPG, JPEG, PNG, or WEBP only, 10MB max. {% if department.is_configured %}Leave blank to keep the current image.{% endif %}</p>
+                        {% if errors.image %}<div class="invalid-feedback d-block">{{ errors.image }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="display_order" class="form-label">Display Order <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input
+                            type="number" id="display_order" name="display_order" min="0" step="1"
+                            class="form-control {% if errors.display_order %}is-invalid{% endif %}"
+                            value="{{ form_data.display_order if form_data.display_order is not none else 0 }}"
+                            required
+                        >
+                        <p class="product-form-hint">Lower numbers appear first on the customer website. Ties break alphabetically.</p>
+                        {% if errors.display_order %}<div class="invalid-feedback d-block">{{ errors.display_order }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" id="is_active" name="is_active" class="form-check-input" {% if form_data.is_active %}checked{% endif %}>
+                        <label for="is_active" class="form-check-label">Show this department on the customer website</label>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button class="btn btn-primary" type="submit">Save</button>
+                        <a href="{{ url_for('employee.departments') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

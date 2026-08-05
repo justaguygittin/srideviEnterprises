@@ -22,6 +22,7 @@ MIN_IMAGES = 1
 MAX_IMAGES = 10
 
 _UPLOAD_SUBPATH = os.path.join("uploads", "products")
+_DEPARTMENT_UPLOAD_SUBPATH = os.path.join("uploads", "departments")
 
 
 def validate_image_files(files: list[FileStorage], existing_count: int = 0) -> str | None:
@@ -84,6 +85,40 @@ def delete_product_folder(product_id: int) -> None:
 
     product_folder = os.path.join(current_app.static_folder, _UPLOAD_SUBPATH, str(product_id))
     shutil.rmtree(product_folder, ignore_errors=True)
+
+
+def save_department_image(file: FileStorage) -> str:
+    """
+    Save one validated department image to disk (Department Image
+    Management) and return just its filename - matching
+    DepartmentImages.ImageFilename, which (unlike ProductImages.ImageURL)
+    stores a bare filename, not a relative path, since every department
+    image lives flat in one shared folder rather than a per-product folder.
+    """
+
+    department_folder = os.path.join(current_app.static_folder, _DEPARTMENT_UPLOAD_SUBPATH)
+    os.makedirs(department_folder, exist_ok=True)
+
+    extension = _get_extension(file.filename)
+    filename = secure_filename(f"department_{uuid4().hex}.{extension}")
+    file.save(os.path.join(department_folder, filename))
+    return filename
+
+
+def delete_department_image_file(filename: str) -> None:
+    """Remove one department image file by its filename, ignoring a missing file."""
+
+    file_path = os.path.join(current_app.static_folder, _DEPARTMENT_UPLOAD_SUBPATH, filename)
+    try:
+        os.remove(file_path)
+    except OSError:
+        pass
+
+
+def department_image_path(filename: str) -> str:
+    """Return a department image filename's static-relative path for url_for()."""
+
+    return f"uploads/departments/{filename}"
 
 
 def delete_image_file(relative_path: str) -> None:

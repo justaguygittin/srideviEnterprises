@@ -14,6 +14,11 @@ from math import ceil
 from flask import Blueprint, abort, flash, render_template, request, session, redirect, url_for
 from config import Config
 from services.auth_service import authenticate_employee, get_employee_id_for_user
+from services.department_service import (
+    get_department_for_edit,
+    get_departments_for_management,
+    upsert_department_image,
+)
 from services.enquiry_service import get_customer_count, get_customers, get_enquiries, get_enquiry_count
 from services.image_service import validate_image_file, validate_image_files
 from services.product_service import (
@@ -562,6 +567,94 @@ def inventory_transaction():
         form_data=form_data,
         errors=errors,
         products=get_products_for_transaction(),
+    )
+
+
+@employee_bp.route("/employee/departments", methods=["GET"])
+def departments():
+    """Display every Catalog department and its Department Image Management status."""
+
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+
+    if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
+        abort(403)
+
+    return render_template(
+        "employee/departments.html",
+        username=session.get("Username"),
+        role=session.get("Role"),
+        current_page="departments",
+        departments=get_departments_for_management(),
+    )
+
+
+@employee_bp.route("/employee/departments/<department_name>/edit", methods=["GET", "POST"])
+def edit_department(department_name):
+    """
+    Display and handle the Add/Edit Department Image form for Employee and
+    Admin roles. department_name must already exist in Catalog - departments
+    are never freely nameable here, which is what prevents duplicates.
+    """
+
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+
+    if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
+        abort(403)
+
+    department = get_department_for_edit(department_name)
+    if department is None:
+        abort(404)
+
+    form_data = {
+        "display_order": department["display_order"],
+        "is_active": department["is_active"],
+    }
+    errors: dict = {}
+
+    if request.method == "POST":
+        display_order_raw = request.form.get("display_order", "").strip()
+        is_active = "is_active" in request.form
+        form_data = {"display_order": display_order_raw, "is_active": is_active}
+
+        if not display_order_raw.isdigit():
+            errors["display_order"] = "Display order must be a non-negative whole number."
+        else:
+            form_data["display_order"] = int(display_order_raw)
+
+        image_file = request.files.get("image")
+        image_file = image_file if image_file and image_file.filename else None
+        if image_file:
+            image_error = validate_image_file(image_file)
+            if image_error:
+                errors["image"] = image_error
+        elif not department["is_configured"]:
+            errors["image"] = "Please upload an image for this department."
+
+        if not errors:
+            try:
+                # Use the canonical Catalog.Department string resolved by
+                # get_department_for_edit() above, not the raw URL segment -
+                # keeps DepartmentImages.DepartmentName consistently
+                # canonical even if the URL had different casing/spacing.
+                upsert_department_image(
+                    department["department_name"], form_data["display_order"], is_active, image_file
+                )
+            except Exception:
+                errors["form"] = "Could not save this department. Please try again."
+            else:
+                flash(f'"{department["department_name"]}" saved successfully.', "success")
+                return redirect(url_for("employee.departments"))
+
+    return render_template(
+        "employee/department_form.html",
+        username=session.get("Username"),
+        role=session.get("Role"),
+        current_page="departments",
+        department=department,
+        form_data=form_data,
+        errors=errors,
     )
 
 
