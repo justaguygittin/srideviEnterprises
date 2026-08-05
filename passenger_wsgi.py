@@ -19,7 +19,7 @@ from urllib.parse import unquote
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app import app as flask_app
+from app import app
 
 
 class PassengerPathFix:
@@ -49,4 +49,4 @@ class PassengerPathFix:
         return self.app(environ, start_response)
 
 
-application = PassengerPathFix(flask_app)
+application = PassengerPathFix(app)
