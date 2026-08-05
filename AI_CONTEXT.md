@@ -761,6 +761,16 @@ Customers
 This migration should only affect the service layer.
 Dashboard, UI, pagination, search, and modal should remain unchanged.
 
+
+## HostyCare Compatibility
+
+Passenger on HostyCare passes PATH_INFO still percent-encoded.
+passenger_wsgi.py contains a small middleware that decodes PATH_INFO
+before Flask routing.
+
+This workaround is production-only and does not affect local
+development.
+
 ---
 
 # 4. Development Workflow
@@ -804,6 +814,8 @@ Root cause: Production database created from an outdated schema.
 Resolution: Updated HostyCare database to match the canonical local schema. Verified all customer routes successfully.
 
 Rule: The canonical database schema is the schema stored under `database/schema/`. Any deployment must create the database from these schema files. Never manually modify production schema without reflecting the changes back into version control.
+
+HostyCare's Passenger/LiteSpeed hands Flask a still percent-encoded `PATH_INFO` (e.g. `Computer%20&%20IT` instead of `Computer & IT`) instead of decoding it first, as WSGI/PEP 3333 requires (a known Passenger bug, [phusion/passenger#1828](https://github.com/phusion/passenger/issues/1828)). Route segments containing spaces or other percent-encoded characters therefore arrive at view functions still encoded, breaking lookups like `get_department_for_edit()`. `passenger_wsgi.py` wraps the app in a small `PassengerPathFix` middleware that decodes `PATH_INFO` once before Flask routing runs. This is production-only: `passenger_wsgi.py` is never executed by the Flask development server, which already receives correctly-decoded paths.
 
 ---
 

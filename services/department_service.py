@@ -138,28 +138,7 @@ def get_department_for_edit(department_name: str) -> dict[str, Any] | None:
     below - never store a non-canonical variant.
     """
 
-    normalised = _normalise_department_name(department_name)
-    canonical_map = _get_canonical_department_names()
-    canonical_name = canonical_map.get(normalised)
-
-    # --- TEMPORARY DIAGNOSTIC LOGGING: remove once the production 404 is root-caused ---
-    from flask import current_app
-    current_app.logger.warning(
-        "DIAG get_department_for_edit: input=%r normalised=%r canonical_map.get(normalised)=%r",
-        department_name, normalised, canonical_name,
-    )
-    if canonical_name is None:
-        # canonical_map's values are exactly the rows get_catalog_department_names()
-        # fetched via `SELECT DISTINCT Department FROM Catalog ... ORDER BY Department`
-        # above - logging them here is equivalent to re-running that query, without a
-        # second round-trip.
-        for dept in canonical_map.values():
-            current_app.logger.warning(
-                "DIAG Catalog.Department row: repr=%r len=%d utf8_bytes=%r",
-                dept, len(dept), dept.encode("utf-8"),
-            )
-    # --- END TEMPORARY DIAGNOSTIC LOGGING ---
-
+    canonical_name = _get_canonical_department_names().get(_normalise_department_name(department_name))
     if canonical_name is None:
         return None
 
