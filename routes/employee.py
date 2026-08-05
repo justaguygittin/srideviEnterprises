@@ -13,10 +13,11 @@ from math import ceil
 
 from flask import Blueprint, abort, flash, render_template, request, session, redirect, url_for
 from config import Config
-from services.auth_service import authenticate_employee
+from services.auth_service import authenticate_employee, get_employee_id_for_user
 from services.enquiry_service import get_customer_count, get_customers, get_enquiries, get_enquiry_count
 from services.image_service import validate_image_file, validate_image_files
 from services.product_service import (
+    apply_stock_transaction,
     create_product,
     delete_product as delete_product_service,
     delete_product_image,
@@ -34,11 +35,13 @@ from services.product_service import (
     get_product_images_with_ids,
     get_products,
     get_products_by_stock_status,
+    get_products_for_transaction,
     get_related_products,
     get_stock_status_count,
     update_product,
     validate_product_form,
     validate_specifications,
+    validate_stock_transaction_form,
 )
 
 EMPLOYEE_PORTAL_ROLES = ("Employee", "Admin")
@@ -502,6 +505,63 @@ def inventory():
         out_of_stock_start_page=out_of_stock_start_page,
         out_of_stock_end_page=out_of_stock_end_page,
         total_out_of_stock=total_out_of_stock,
+    )
+
+
+@employee_bp.route("/employee/inventory/transaction", methods=["GET", "POST"])
+def inventory_transaction():
+    """
+    Display and handle the unified Stock In / Stock Out / Adjustment form
+    for Employee and Admin roles (v1.0 Sprint 5.1).
+
+    One route/template for all three transaction types - see
+    apply_stock_transaction() in product_service.py for why.
+    """
+
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+
+    if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
+        abort(403)
+
+    default_type = request.args.get("type", "stock_in")
+    form_data: dict = {"transaction_type": default_type}
+    errors: dict = {}
+
+    if request.method == "POST":
+        form_data, errors = validate_stock_transaction_form(request.form)
+
+        if not errors:
+            employee_id = get_employee_id_for_user(session["UserID"])
+            if employee_id is None:
+                errors["form"] = (
+                    "Your account is not linked to an employee record, so this transaction "
+                    "cannot be recorded. Contact your administrator."
+                )
+
+        if not errors:
+            try:
+                apply_stock_transaction(
+                    form_data["product_id"],
+                    form_data["transaction_type"],
+                    form_data["quantity_input"],
+                    form_data["reason"],
+                    employee_id,
+                )
+            except ValueError as error:
+                errors["form"] = str(error)
+            else:
+                flash("Inventory transaction recorded successfully.", "success")
+                return redirect(url_for("employee.inventory"))
+
+    return render_template(
+        "employee/inventory_transaction.html",
+        username=session.get("Username"),
+        role=session.get("Role"),
+        current_page="inventory",
+        form_data=form_data,
+        errors=errors,
+        products=get_products_for_transaction(),
     )
 
 

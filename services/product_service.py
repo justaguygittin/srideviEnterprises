@@ -693,3 +693,170 @@ def delete_product(product_id: int) -> None:
             cursor.close()
 
     delete_product_folder(product_id)
+
+
+# =========================================================
+# Inventory Transactions (v1.0 Sprint 5.1: Stock In / Stock Out / Adjustment)
+#
+# One reusable transaction, not three separate features - "transaction_type"
+# is one of the keys in _TRANSACTION_TYPE_LABELS below, and every write goes
+# through apply_stock_transaction() so Catalog.stock_quantity and
+# StockHistory can never drift out of sync (see Write Operation Pattern).
+# =========================================================
+
+_TRANSACTION_TYPE_LABELS = {
+    "stock_in": "Stock In",
+    "stock_out": "Stock Out",
+    "adjustment": "Adjustment",
+}
+
+# The actual StockHistory.TransactionType values written to the database.
+# ALL_CAPS to match this column's own DEFAULT 'ADJUSTMENT' (see
+# 009_alter_stockhistory_add_transaction_columns.sql / AI_CONTEXT.md for the
+# schema-drift note explaining why - the live column defaults were hardened
+# to NOT NULL with specific defaults after the migration file was written).
+_TRANSACTION_TYPE_DB_VALUES = {
+    "stock_in": "STOCK_IN",
+    "stock_out": "STOCK_OUT",
+    "adjustment": "ADJUSTMENT",
+}
+
+# Every Sprint 5.1 transaction is directly employee-initiated - there is no
+# Purchase Order/Goods Receipt/Sales Invoice to point back to yet (see
+# AI_CONTEXT.md Out of Scope), so ReferenceType is always this sentinel
+# (matching StockHistory.ReferenceType's own DEFAULT) and ReferenceID stays
+# NULL.
+_MANUAL_REFERENCE_TYPE = "MANUAL"
+
+
+def get_products_for_transaction() -> list[dict[str, Any]]:
+    """
+    Return every catalog product's id/name/department/category/stock, for
+    the Inventory Transaction form's searchable product selector and its
+    client-side current-stock preview (v1.0 Sprint 5.1). Unpaginated and
+    deliberately minimal - reuses the same "valid product" WHERE clause as
+    every other product-listing query.
+    """
+
+    products = fetch_all("""
+        SELECT id, product_name, Department, category, stock_quantity
+        FROM Catalog
+        WHERE product_name IS NOT NULL AND TRIM(product_name) <> ''
+        ORDER BY product_name;
+    """)
+
+    for product in products:
+        product["product_name"] = _normalise_catalog_text(product["product_name"])
+        product["stock_quantity"] = product["stock_quantity"] or 0
+    return products
+
+
+def validate_stock_transaction_form(form_data: dict[str, str]) -> tuple[dict[str, Any], dict[str, str]]:
+    """
+    Validate and normalize the Inventory Transaction form (v1.0 Sprint 5.1).
+
+    quantity_input means different things depending on transaction_type: the
+    amount to add/remove for Stock In/Stock Out, or the new absolute stock
+    level for Adjustment - apply_stock_transaction() below is what turns it
+    into an actual OldStock/NewStock/QuantityChanged triple. This function
+    only checks shape (present, numeric, in-range) - it does not touch the
+    database, matching validate_product_form()'s existing split between pure
+    field validation and the separate DB-backed checks (find_similar_product,
+    find_duplicate_product_name) called from the route.
+    """
+
+    cleaned_data: dict[str, Any] = {
+        "product_id": form_data.get("product_id", "").strip(),
+        "transaction_type": form_data.get("transaction_type", "").strip(),
+        "quantity_input": form_data.get("quantity_input", "").strip(),
+        "reason": form_data.get("reason", "").strip(),
+    }
+    errors: dict[str, str] = {}
+
+    if cleaned_data["transaction_type"] not in _TRANSACTION_TYPE_LABELS:
+        errors["transaction_type"] = "Please choose a transaction type."
+
+    if not cleaned_data["product_id"].isdigit():
+        errors["product_id"] = "Please select a product."
+    else:
+        cleaned_data["product_id"] = int(cleaned_data["product_id"])
+
+    if not cleaned_data["quantity_input"].isdigit():
+        errors["quantity_input"] = "Please enter a quantity."
+    else:
+        cleaned_data["quantity_input"] = int(cleaned_data["quantity_input"])
+        if cleaned_data["transaction_type"] == "adjustment":
+            if cleaned_data["quantity_input"] < 0:
+                errors["quantity_input"] = "New stock quantity cannot be negative."
+        elif cleaned_data["quantity_input"] <= 0:
+            errors["quantity_input"] = "Quantity must be greater than 0."
+
+    if not cleaned_data["reason"]:
+        errors["reason"] = "Please enter a reason."
+    elif len(cleaned_data["reason"]) > 255:
+        errors["reason"] = "Reason must be 255 characters or fewer."
+
+    return cleaned_data, errors
+
+
+def apply_stock_transaction(
+    product_id: int, transaction_type: str, quantity_input: int, reason: str, employee_id: int
+) -> tuple[int, int]:
+    """
+    Atomically update Catalog.stock_quantity and insert exactly one
+    StockHistory row - the two writes always happen together or not at all
+    (see Write Operation Pattern in AI_CONTEXT.md). Returns (old_stock,
+    new_stock) on success.
+
+    Raises ValueError with a user-facing message, and writes nothing at all,
+    if the product doesn't exist or a Stock Out would produce negative
+    stock. The current stock is re-read here with FOR UPDATE (not trusted
+    from an earlier page load) so two concurrent Stock Out requests for the
+    same product can never both succeed and push stock negative.
+    """
+
+    if transaction_type not in _TRANSACTION_TYPE_LABELS:
+        raise ValueError("Unknown transaction type.")
+
+    with transaction() as conn:
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute("SELECT stock_quantity FROM Catalog WHERE id = %s FOR UPDATE;", (product_id,))
+            row = cursor.fetchone()
+            if row is None:
+                raise ValueError("This product could not be found.")
+            old_stock = row["stock_quantity"] or 0
+
+            if transaction_type == "stock_in":
+                new_stock = old_stock + quantity_input
+            elif transaction_type == "stock_out":
+                new_stock = old_stock - quantity_input
+                if new_stock < 0:
+                    raise ValueError(
+                        f"Cannot stock out {quantity_input} units - only {old_stock} currently in stock."
+                    )
+            else:  # adjustment
+                new_stock = quantity_input
+
+            quantity_changed = new_stock - old_stock
+
+            cursor.execute("UPDATE Catalog SET stock_quantity = %s WHERE id = %s;", (new_stock, product_id))
+            cursor.execute("""
+                INSERT INTO StockHistory
+                    (ProductID, EmployeeID, TransactionType, OldStock, NewStock,
+                     QuantityChanged, Reason, ReferenceType)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+            """, (
+                product_id,
+                employee_id,
+                _TRANSACTION_TYPE_DB_VALUES[transaction_type],
+                old_stock,
+                new_stock,
+                quantity_changed,
+                reason,
+                _MANUAL_REFERENCE_TYPE,
+            ))
+        finally:
+            cursor.close()
+
+    return old_stock, new_stock

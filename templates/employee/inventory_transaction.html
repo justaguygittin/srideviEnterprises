@@ -1,0 +1,384 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : inventory_transaction.html
+Purpose : Unified Stock In / Stock Out / Adjustment form (v1.0 Sprint 5.1).
+          One form for all three transaction types - see
+          apply_stock_transaction() in services/product_service.py.
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+Inventory Transaction - Employee Portal - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee_nav.css') }}">
+<style>
+    .inventory-transaction-container {
+        min-height: calc(100vh - 120px);
+        background-color: #f8f9fa;
+        padding: 0;
+    }
+
+    .inventory-transaction-content {
+        padding: 2rem;
+    }
+
+    .transaction-form-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        max-width: 700px;
+    }
+
+    .transaction-form-card h1 {
+        color: #333;
+        font-size: 1.6rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+    }
+
+    .transaction-form-hint {
+        color: #666;
+        font-size: 0.85rem;
+        margin-top: 0.3rem;
+    }
+
+    .transaction-form-hint.text-danger {
+        color: #dc3545 !important;
+    }
+
+    /* Reused searchable-dropdown look (v1.0 Sprint 4/5.1) - same component,
+       same visual language, page-scoped copy per this codebase's existing
+       "each page keeps its own inline styles" convention. */
+    .searchable-select {
+        position: relative;
+    }
+
+    .searchable-select-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        max-height: 260px;
+        overflow-y: auto;
+        margin-top: 2px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        border-radius: 6px;
+    }
+
+    .searchable-select-menu .list-group-item {
+        cursor: pointer;
+        font-size: 0.9rem;
+        padding: 0.5rem 0.85rem;
+    }
+
+    .searchable-select-menu .list-group-item.active,
+    .searchable-select-menu .list-group-item:hover {
+        background: #f0f5ff;
+        color: #1E4FA3;
+    }
+
+    .searchable-select-menu .list-group-item-empty {
+        cursor: default;
+        color: #999;
+        font-size: 0.85rem;
+    }
+
+    .transaction-type-group .btn-check:checked + .btn-outline-primary {
+        color: #fff;
+        background-color: #1E4FA3;
+        border-color: #1E4FA3;
+    }
+
+    @media (max-width: 768px) {
+        .inventory-transaction-content {
+            padding: 1rem;
+        }
+
+        .transaction-form-card {
+            padding: 1.25rem;
+        }
+
+        .transaction-type-group {
+            flex-direction: column;
+        }
+
+        .transaction-type-group .btn {
+            border-radius: 4px !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="inventory-transaction-container">
+    {% include 'components/employee_nav.html' %}
+
+    <div class="inventory-transaction-content">
+        <div class="container">
+            <a href="{{ url_for('employee.inventory') }}" class="back-link"><i class="fa-solid fa-arrow-left me-2"></i>Back to Inventory Summary</a>
+
+            <div class="transaction-form-card mt-3">
+                <h1>Inventory Transaction</h1>
+
+                {% if errors.form %}<div class="alert alert-danger" role="alert">{{ errors.form }}</div>{% endif %}
+
+                <form method="post" id="inventory-transaction-form" novalidate>
+                    <div class="mb-3">
+                        <label class="form-label d-block">Transaction Type <span class="text-danger" aria-hidden="true">*</span></label>
+                        <div class="btn-group transaction-type-group" role="group" aria-label="Transaction type">
+                            <input type="radio" class="btn-check" name="transaction_type" id="type-stock-in" value="stock_in" autocomplete="off" {% if form_data.transaction_type == 'stock_in' %}checked{% endif %}>
+                            <label class="btn btn-outline-primary" for="type-stock-in"><i class="fas fa-arrow-down"></i> Stock In</label>
+
+                            <input type="radio" class="btn-check" name="transaction_type" id="type-stock-out" value="stock_out" autocomplete="off" {% if form_data.transaction_type == 'stock_out' %}checked{% endif %}>
+                            <label class="btn btn-outline-primary" for="type-stock-out"><i class="fas fa-arrow-up"></i> Stock Out</label>
+
+                            <input type="radio" class="btn-check" name="transaction_type" id="type-adjustment" value="adjustment" autocomplete="off" {% if form_data.transaction_type == 'adjustment' %}checked{% endif %}>
+                            <label class="btn btn-outline-primary" for="type-adjustment"><i class="fas fa-sliders-h"></i> Adjust Stock</label>
+                        </div>
+                        {% if errors.transaction_type %}<div class="invalid-feedback d-block">{{ errors.transaction_type }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="product-search" class="form-label">Product <span class="text-danger" aria-hidden="true">*</span></label>
+                        <div class="searchable-select">
+                            <input
+                                type="text" id="product-search"
+                                class="form-control {% if errors.product_id %}is-invalid{% endif %}"
+                                placeholder="Search products by name..."
+                                role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="product-options"
+                                autocomplete="off" required
+                            >
+                            <ul class="searchable-select-menu list-group" id="product-options" role="listbox" hidden></ul>
+                        </div>
+                        <input type="hidden" name="product_id" id="product_id" value="{{ form_data.product_id or '' }}">
+                        {% if errors.product_id %}<div class="invalid-feedback d-block">{{ errors.product_id }}</div>{% endif %}
+                        <p class="transaction-form-hint" id="current-stock-hint"></p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="quantity_input" class="form-label" id="quantity-label">Quantity <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input
+                            type="number" id="quantity_input" name="quantity_input" min="1" step="1"
+                            class="form-control {% if errors.quantity_input %}is-invalid{% endif %}"
+                            value="{{ form_data.quantity_input if form_data.quantity_input is not none else '' }}"
+                            required
+                        >
+                        {% if errors.quantity_input %}<div class="invalid-feedback d-block">{{ errors.quantity_input }}</div>{% endif %}
+                        <p class="transaction-form-hint" id="new-stock-hint"></p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">Reason <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input
+                            type="text" id="reason" name="reason" maxlength="255"
+                            class="form-control {% if errors.reason %}is-invalid{% endif %}"
+                            value="{{ form_data.reason or '' }}"
+                            required
+                        >
+                        {% if errors.reason %}<div class="invalid-feedback d-block">{{ errors.reason }}</div>{% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="button" class="btn btn-primary" id="review-transaction-btn">Review Transaction</button>
+                        <a href="{{ url_for('employee.inventory') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal - same per-page-modal convention already used by
+     Enquiries/Customers detail modals (see AI_CONTEXT.md), just populated
+     from the form's current values instead of server-rendered per row. -->
+<div class="modal fade" id="transactionConfirmModal" tabindex="-1" aria-labelledby="transactionConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="transactionConfirmModalLabel">Confirm Transaction</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="mb-0">
+                    <dt>Product</dt>
+                    <dd id="confirm-product"></dd>
+
+                    <dt>Current Stock</dt>
+                    <dd id="confirm-current-stock"></dd>
+
+                    <dt>Transaction</dt>
+                    <dd id="confirm-type"></dd>
+
+                    <dt id="confirm-quantity-label">Quantity</dt>
+                    <dd id="confirm-quantity"></dd>
+
+                    <dt>New Stock</dt>
+                    <dd id="confirm-new-stock"></dd>
+
+                    <dt>Reason</dt>
+                    <dd id="confirm-reason"></dd>
+                </dl>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="inventory-transaction-form" class="btn btn-primary" id="confirm-submit-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/components/searchable_select.js') }}"></script>
+<script>
+(function () {
+    "use strict";
+
+    var products = {{ products | tojson }};
+    var TYPE_LABELS = { stock_in: "Stock In", stock_out: "Stock Out", adjustment: "Adjustment" };
+
+    var productById = {};
+    products.forEach(function (p) { productById[p.id] = p; });
+
+    function productLabel(p) {
+        return p.product_name + " — " + p.Department + " / " + p.category;
+    }
+
+    var productSearchInput = document.getElementById("product-search");
+    var productIdInput = document.getElementById("product_id");
+    var currentStockHint = document.getElementById("current-stock-hint");
+
+    window.initSearchableSelect("product-search", "product-options", function () {
+        return products.map(function (p) {
+            return { value: String(p.id), label: productLabel(p) };
+        });
+    }, function (value) {
+        productIdInput.value = value;
+        productIdInput.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    // Pre-select the product on reload after a validation error.
+    if (productIdInput.value && productById[productIdInput.value]) {
+        productSearchInput.value = productLabel(productById[productIdInput.value]);
+    }
+
+    var quantityInput = document.getElementById("quantity_input");
+    var quantityLabel = document.getElementById("quantity-label");
+    var newStockHint = document.getElementById("new-stock-hint");
+    var reasonInput = document.getElementById("reason");
+    var form = document.getElementById("inventory-transaction-form");
+    var reviewBtn = document.getElementById("review-transaction-btn");
+
+    function selectedType() {
+        var checked = document.querySelector('input[name="transaction_type"]:checked');
+        return checked ? checked.value : "";
+    }
+
+    function currentProduct() {
+        return productById[productIdInput.value] || null;
+    }
+
+    function computeNewStock(type, product, qty) {
+        if (!product || isNaN(qty)) return null;
+        if (type === "stock_in") return product.stock_quantity + qty;
+        if (type === "stock_out") return product.stock_quantity - qty;
+        if (type === "adjustment") return qty;
+        return null;
+    }
+
+    function updateFieldLabels() {
+        var type = selectedType();
+        if (type === "adjustment") {
+            quantityLabel.childNodes[0].textContent = "New Stock Quantity ";
+            quantityInput.min = "0";
+        } else {
+            quantityLabel.childNodes[0].textContent = "Quantity ";
+            quantityInput.min = "1";
+        }
+    }
+
+    // Returns false (and shows an inline warning) when a Stock Out would
+    // produce negative stock - "Cannot stock out more than available".
+    function updateStockPreview() {
+        var product = currentProduct();
+        var type = selectedType();
+        var qty = parseInt(quantityInput.value, 10);
+
+        currentStockHint.textContent = product ? ("Current stock: " + product.stock_quantity + " units.") : "";
+
+        if (!product || isNaN(qty) || !type) {
+            newStockHint.textContent = "";
+            newStockHint.classList.remove("text-danger");
+            return true;
+        }
+
+        var newStock = computeNewStock(type, product, qty);
+        var wouldGoNegative = type === "stock_out" && newStock < 0;
+
+        if (wouldGoNegative) {
+            newStockHint.textContent = "Cannot stock out " + qty + " units — only " + product.stock_quantity + " currently in stock.";
+            newStockHint.classList.add("text-danger");
+        } else {
+            newStockHint.textContent = "New stock will be " + newStock + " units.";
+            newStockHint.classList.remove("text-danger");
+        }
+
+        return !wouldGoNegative;
+    }
+
+    function updateReviewButtonState() {
+        var stockOk = updateStockPreview();
+        reviewBtn.disabled = !form.checkValidity() || !currentProduct() || !stockOk;
+    }
+
+    document.querySelectorAll('input[name="transaction_type"]').forEach(function (input) {
+        input.addEventListener("change", function () {
+            updateFieldLabels();
+            updateReviewButtonState();
+        });
+    });
+    quantityInput.addEventListener("input", updateReviewButtonState);
+    reasonInput.addEventListener("input", updateReviewButtonState);
+    productIdInput.addEventListener("change", updateReviewButtonState);
+
+    updateFieldLabels();
+    updateReviewButtonState();
+
+    // ---- Review / Confirm ----
+    var modalEl = document.getElementById("transactionConfirmModal");
+    var confirmSubmitBtn = document.getElementById("confirm-submit-btn");
+
+    reviewBtn.addEventListener("click", function () {
+        var product = currentProduct();
+        var type = selectedType();
+        var qty = parseInt(quantityInput.value, 10);
+        var newStock = computeNewStock(type, product, qty);
+
+        document.getElementById("confirm-product").textContent = product.product_name;
+        document.getElementById("confirm-current-stock").textContent = product.stock_quantity;
+        document.getElementById("confirm-type").textContent = TYPE_LABELS[type];
+        document.getElementById("confirm-quantity-label").textContent = type === "adjustment" ? "New Stock Quantity" : "Quantity";
+        document.getElementById("confirm-quantity").textContent = qty;
+        document.getElementById("confirm-new-stock").textContent = newStock;
+        document.getElementById("confirm-reason").textContent = reasonInput.value.trim();
+
+        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    });
+
+    form.addEventListener("submit", function () {
+        confirmSubmitBtn.disabled = true;
+        confirmSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Saving...';
+        reviewBtn.disabled = true;
+    });
+})();
+</script>
+{% endblock %}

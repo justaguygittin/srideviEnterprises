@@ -51,8 +51,8 @@ pip install -r requirements.txt
    grant that user all privileges on the database.
 2. Open **phpMyAdmin**, select the new database, and import each file in
    `database/schema/` **in numeric order** (`001_create_catalog.sql` through
-   `008_create_stockhistory.sql`) using phpMyAdmin's Import tab, or run them via the
-   phpMyAdmin SQL tab one at a time in order.
+   `009_alter_stockhistory_add_transaction_columns.sql`) using phpMyAdmin's Import tab, or
+   run them via the phpMyAdmin SQL tab one at a time in order.
 
 ### 1.5 Configure Environment Variables
 

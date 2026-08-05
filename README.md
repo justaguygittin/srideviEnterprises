@@ -78,8 +78,8 @@ cp .env.example .env
 ```
 
 The database schema lives in `database/schema/` — import each file in numeric order
-(`001_create_catalog.sql` through `008_create_stockhistory.sql`) into your local MariaDB
-instance.
+(`001_create_catalog.sql` through `009_alter_stockhistory_add_transaction_columns.sql`) into
+your local MariaDB instance.
 
 ---
 

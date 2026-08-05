@@ -30,5 +30,5 @@ gsrikari_Sridevi_Enterprises
 - Department is used for homepage category grouping.
 - ProductDetails stores specifications.
 - ProductImages stores image paths.
-- StockHistory is employee-only.
+- StockHistory is employee-only. Extended in `009_alter_stockhistory_add_transaction_columns.sql` (v1.0 Sprint 5 foundation) with `TransactionType`, `QuantityChanged`, `ReferenceType`, `ReferenceID` - no new table, no rename, no existing columns/data touched.
 - Users manages authentication.

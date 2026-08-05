@@ -45,3 +45,15 @@ def authenticate_employee(
 
     del user["Password"]
     return user
+
+
+def get_employee_id_for_user(user_id: int) -> int | None:
+    """
+    Return the Employees.EmployeeID linked to a Users.UserID, or None if this
+    account has no linked Employees row (v1.0 Sprint 5.1: StockHistory's
+    EmployeeID foreign key requires a real Employees row, which is a
+    different id than the session's UserID).
+    """
+
+    row = fetch_one("SELECT EmployeeID FROM Employees WHERE UserID = %s;", (user_id,))
+    return row["EmployeeID"] if row else None

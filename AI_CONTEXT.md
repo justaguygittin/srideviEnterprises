@@ -249,6 +249,7 @@ A holistic UX audit across the full customer journey (Homepage → Categories �
 ✓ Delete Product Images (Admin)
 ✓ Delete Product (Admin)
 ✓ Inventory Summary (read-only, v1.0 Sprint 1, see Employee Inventory Summary Module)
+✓ Inventory Transactions — Stock In / Stock Out / Adjustment (v1.0 Sprint 5.1, see Employee Inventory Summary Module)
 
 This completes the Employee Product Management lifecycle: Add, Edit, Replace/Delete Images, and Delete Product all exist and share the same transaction and image-handling infrastructure (see Write Operation Pattern).
 
@@ -455,6 +456,28 @@ UI/UX-only sprint: no schema changes, no stock movement, no CRUD, and no changes
 
 **Invoice terminology rename (Phase 2).** See Employee Invoice Generator Bridge above for the full before/after — in short, every Employee-Portal-facing "Receipt Generator"/"Receipts" string became "Invoice Generator"/"Invoices" (nav, dashboard card + stat label, page heading/buttons/empty states, route, template file, CSS class prefix, config var), while the actual external project keeps its real name, "Receipt Generator", unchanged. **Convention going forward**: when this codebase's prose or comments need to refer to the external invoice-generation project by its real name (e.g. explaining *why* two systems are separate), say so explicitly — don't assume "Invoice Generator" always means the external project, since inside this codebase it now means the Employee Portal's own display label for the bridge to it.
 
+#### v1.0 Sprint 5.1 — Inventory Transactions (Stock In / Stock Out / Adjustment)
+
+The first write-capable inventory module. Every transaction updates `Catalog.stock_quantity` and inserts exactly one `StockHistory` row atomically (see Write Operation Pattern) — there is no code path that touches one without the other.
+
+**Schema-drift discovery (found before writing any transaction logic).** The previous sprint's `009_alter_stockhistory_add_transaction_columns.sql` added `TransactionType`/`QuantityChanged`/`ReferenceType` as nullable with `DEFAULT NULL`. Live-schema verification at the start of this sprint found the actual database already had all three hardened to `NOT NULL` with specific defaults (`'ADJUSTMENT'`, `0`, `'MANUAL'`) — a deliberate-looking change made directly against the database, outside that file, between sprints. Per this project's own documented rule ("never manually modify schema without reflecting the change back into version control" — see Deployment Lessons), **the migration file was updated to match the verified live schema** rather than the drift being silently reverted or ignored. Two concrete consequences for any code touching this table:
+- `StockHistory.TransactionType` values are `'STOCK_IN'` / `'STOCK_OUT'` / `'ADJUSTMENT'` (ALL_CAPS, matching the column's own default) — not the Title Case labels (`"Stock In"` etc.) used for on-screen text. `services/product_service.py` keeps these as two separate maps (`_TRANSACTION_TYPE_LABELS` for display, `_TRANSACTION_TYPE_DB_VALUES` for storage) — don't collapse them into one.
+- `StockHistory.ReferenceType` is always explicitly written as `'MANUAL'` for every Sprint 5.1 transaction (matching the column's default, but written explicitly rather than relied on implicitly, since "populate all available fields" was an explicit requirement) — `ReferenceID` stays `NULL`, since none of these transactions have a Purchase Order/Goods Receipt/Sales Invoice to point back to yet (see Out of Scope below).
+
+**One reusable form, not three pages.** `GET/POST /employee/inventory/transaction` (`routes/employee.py:inventory_transaction()`, `templates/employee/inventory_transaction.html`) handles Stock In, Stock Out, and Adjustment through one route/template, switched by a `transaction_type` radio group (Bootstrap `.btn-check`/`.btn-outline-primary`, not a redesign — same button-group pattern Bootstrap already ships). A `?type=stock_in`/`stock_out`/`adjustment` query param pre-selects the radio so each of the Inventory Summary page's three new entry-point cards still feels distinct, without three separate implementations existing underneath. The same numeric `quantity_input` field is reinterpreted per type: an amount to add/remove for Stock In/Stock Out, or the new absolute stock level for Adjustment — its label and `min` attribute swap via JS depending on the selected type.
+
+**New shared JS component: `static/js/components/searchable_select.js`.** The Department/Category combobox built in v1.0 Sprint 4 was extracted out of `product_form.html`'s inline `<script>` into this file (generalized to accept `{value, label}` option objects instead of plain strings, so the submitted value can differ from the displayed text) and reused as-is for this form's Product selector — "reuse the searchable product selector already used throughout the Employee module, do not build another product search component" was taken literally. **Convention going forward**: this is the first entry in `static/js/components/`, mirroring the existing `static/css/components/` convention (sitewide-reusable pieces get their own file, loaded via `<script src="...">` per page that needs them) — extract any future interactive widget here the moment a second page needs it, rather than copy-pasting.
+
+**Product/current-stock data embedded, not fetched via AJAX.** `get_products_for_transaction()` (new, `product_service.py`) returns every product's id/name/department/category/stock_quantity in one query, embedded as JSON in the page (`{{ products | tojson }}`) — same pattern as Sprint 4's `existing_product_names`. This is what lets the confirmation modal compute and display "Current Stock"/"New Stock" instantly without a round-trip. The server never trusts this client-side snapshot for the actual write: `apply_stock_transaction()` re-reads `Catalog.stock_quantity` with `SELECT ... FOR UPDATE` inside the write transaction, so two concurrent Stock Out requests for the same product can never both succeed and push stock negative — the page-load snapshot is a UI convenience only.
+
+**Confirmation modal, populated client-side.** Follows the existing per-page-modal convention (see Employee Enquiries Module) but is populated from the form's current values via JS immediately before showing it, rather than server-rendered per row (there's only one transaction being composed, not a list). "Confirm" is a real `<button type="submit" form="inventory-transaction-form">` outside the `<form>` tag (HTML5's `form` attribute) — clicking it submits the actual form with no extra JS required for the submission itself, only for populating and showing the modal beforehand.
+
+**EmployeeID mapping.** `StockHistory.EmployeeID` has a foreign key to `Employees.EmployeeID` (added last sprint) — a *different* id than the session's `Users.UserID`. `services/auth_service.py:get_employee_id_for_user(user_id)` (new) does the lookup; if a logged-in account has no linked `Employees` row, the route shows a clear error and writes nothing, rather than letting the FK constraint fail as a raw 500.
+
+**Validation, client-side hint + server-side authority.** `validate_stock_transaction_form()` (pure field-shape checks, no DB access — same split as `validate_product_form()`) plus `apply_stock_transaction()`'s own checks (product exists, Stock Out can't go negative) together guarantee **no invalid request can ever modify `Catalog` or `StockHistory`** — verified by direct POST testing seven invalid-input cases (missing product, missing reason, zero quantity, negative adjustment, non-numeric quantity, unknown transaction type, nonexistent product id) and confirming stock and history row counts were byte-for-byte unchanged after all seven. The client-side live preview (same "Cannot stock out N units — only M in stock" message shown in both places) is a UX hint only; it can be bypassed and the server still catches everything.
+
+**Out of scope, deliberately not built** (per the sprint's explicit list): Purchase Orders, Goods Receipts, Supplier Management, Barcode Scanning, multi-location inventory, batch/serial numbers, CSV import/export, undo transaction, inventory reports. `ReferenceType`/`ReferenceID` exist on the table specifically so a future sprint building any of these can link a `StockHistory` row back to its originating record without another migration.
+
 ---
 
 # 3. Architecture & Conventions
@@ -548,13 +571,30 @@ The website is a digital showroom, not an e-commerce website.
 
 ### Primary Tables
 
-Users, Catalog, ProductImages, Enquiries. Additional tables should follow existing naming conventions.
+Users, Catalog, ProductImages, Enquiries, StockHistory. Additional tables should follow existing naming conventions.
 
 ### Product-to-Image Relationship
 
 Images are NOT stored inside Catalog.
 
 Catalog.ProductID → ProductImages (ImageID, ProductID, ImageURL, UploadDate). One Product → Many Images.
+
+### Inventory Audit Table (StockHistory)
+
+`StockHistory` (`database/schema/008_create_stockhistory.sql`) is the **permanent** inventory audit/history table for v1.0 — do not create a separate inventory log table, and do not rename it. It existed since v0.9 but had never been written to or read from by any route or service (verified by grep before extending it) - it was pure unused schema until v1.0 Sprint 5.
+
+**Extended in `009_alter_stockhistory_add_transaction_columns.sql`** (v1.0 Sprint 5 foundation, applied before any Stock In/Stock Out logic was written) with four new columns, added additively - no existing column, data, or the table's name was touched:
+- `TransactionType` (`VARCHAR(50)`, nullable) - the kind of movement (e.g. Stock In / Stock Out / Adjustment); exact values are a future sprint's decision, not fixed here.
+- `QuantityChanged` (`INT`, nullable) - signed net change, complementing the existing `OldStock`/`NewStock` snapshot pair. **Not backfilled** for any historical row (there were none - table was empty) and won't be computed retroactively from `OldStock`/`NewStock` either, per "do not modify existing data."
+- `ReferenceType` / `ReferenceID` (`VARCHAR(50)` / `INT`, both nullable) - a polymorphic pointer back to whatever business event caused the change (e.g. a future PurchaseOrder or SalesInvoice row). Deliberately has no foreign key, since which table `ReferenceID` points to depends on `ReferenceType` - a single FK constraint can't target more than one table.
+
+**Indexes added**: `idx_stockhistory_productid` (ProductID), `idx_stockhistory_employeeid` (EmployeeID), `idx_stockhistory_reference` (ReferenceType, ReferenceID) - one for each query shape future Stock In/Stock Out screens will need (history for one product, one employee, or one originating reference). Verified none of these existed before adding them (the table only had its PRIMARY KEY).
+
+**Foreign key added on EmployeeID only, deliberately NOT on ProductID.** `StockHistory.EmployeeID` now has `FOREIGN KEY ... REFERENCES Employees (EmployeeID)`. `ProductID` intentionally does **not** get a foreign key to `Catalog.id`, to stay consistent with an existing, deliberate pattern already followed by `ProductImages`, `ProductDetails`, and `Enquiries`: none of those reference `Catalog.id` with a real constraint either, because `Catalog` is shared with the independently-deployed Receipt Generator project (see Employee Invoice Generator Bridge) and this project doesn't own it exclusively. Employees is fully internal, and `Employees.UserID → Users.UserID` already establishes FK usage as the norm for internal-only relationships, so the new `EmployeeID` FK extends that convention rather than introducing a new one. **Follow this same asymmetry (FK to internal-only tables, no FK to Catalog) for any future table that also references both.**
+
+Migration convention used: a new numbered file appended to `database/schema/` (`009_...`), following the same sequential-file convention as `001`-`008`, applied directly against the target database (same process already used for the original schema - see Deployment Lessons above) rather than introducing a new migration-runner tool. `README.md`/`DEPLOYMENT.md`'s "import 001 through NNN" instructions were updated to reference `009`.
+
+**Update (v1.0 Sprint 5.1):** implemented. `StockHistory` is now actively written to by `services/product_service.py:apply_stock_transaction()` (Stock In/Stock Out/Adjustment) — see the Sprint 5.1 write-up under Employee Inventory Summary Module below for the full detail, including a schema-drift discovery (the live column defaults for `TransactionType`/`QuantityChanged`/`ReferenceType` no longer matched this migration file, and the file was updated to match reality rather than the drift being reverted).
 
 ### Category Images
 
@@ -798,6 +838,7 @@ Employee Portal:
 □ Customer Management
 □ Enquiry Management
 ✓ Inventory Dashboard Foundation (Sprints 1–3, read-only — see Employee Inventory Summary Module)
+✓ Inventory Transactions (Sprint 5.1, write-capable — Stock In/Stock Out/Adjustment, see Employee Inventory Summary Module)
 
 System:
 □ Responsive UI
