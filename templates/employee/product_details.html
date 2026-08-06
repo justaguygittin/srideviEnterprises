@@ -32,6 +32,24 @@ Author  : Srikar
         .products-content {
             padding: 1rem;
         }
+
+        .product-details-actions .btn-sm {
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        /* Per-thumbnail delete control (Admin only): kept smaller than the
+           44px baseline deliberately - it overlays a compact gallery
+           thumbnail and a full 44px circle would cover most of the image
+           and increase accidental-delete risk between adjacent thumbnails.
+           Bumped modestly from 22px for an easier tap without changing the
+           gallery's layout or thumbnail size. */
+        .gallery-delete-btn {
+            width: 30px;
+            height: 30px;
+            font-size: 0.85rem;
+        }
     }
 
     .product-details-actions {

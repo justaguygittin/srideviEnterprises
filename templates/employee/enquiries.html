@@ -353,8 +353,10 @@ Enquiries - Employee Portal - Sridevi Enterprises
             align-items: stretch;
         }
 
+        .search-btn,
         .refresh-btn {
             justify-content: center;
+            min-height: 44px;
         }
 
         .enquiries-table {
@@ -364,6 +366,33 @@ Enquiries - Employee Portal - Sridevi Enterprises
         .enquiries-table th,
         .enquiries-table td {
             padding: 0.6rem 0.4rem;
+        }
+
+        .pagination {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .pagination a,
+        .pagination span {
+            min-width: 44px;
+            height: 44px;
+            padding: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .btn-sm {
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .btn-close {
+            padding: 0.75rem;
+        }
+
+        .modal-footer .btn {
+            min-height: 44px;
         }
     }
 </style>

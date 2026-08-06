@@ -138,6 +138,28 @@ File    : navbar.css
 
 }
 
+/* Very narrow phones only (320px): Bootstrap's .navbar-brand sets
+   white-space:nowrap, which the logo wordmark/tagline inherit. At the
+   narrowest supported width the unwrapped tagline is a few pixels
+   wider than the viewport, causing sitewide horizontal scroll. Letting
+   just the tagline wrap (and the text column shrink) fixes it without
+   changing anything at 360px and up. */
+@media(max-width:350px) {
+
+    .navbar-brand > div {
+
+        min-width: 0;
+
+    }
+
+    .brand-tagline {
+
+        white-space: normal;
+
+    }
+
+}
+
 /* ===========================================
    Active Navigation Link
 =========================================== */

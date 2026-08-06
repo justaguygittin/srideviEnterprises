@@ -4,6 +4,21 @@ Project : Sridevi Enterprises
 File    : employee_nav.css
 Purpose : Shared employee portal navigation bar.
 
+           Desktop (above the existing max-width: 768px breakpoint used
+           throughout the Employee Portal): unchanged horizontal bar,
+           always visible. Mobile (<=768px, same breakpoint as every
+           other employee page): collapses to a compact bar with a
+           hamburger toggle; the link list becomes a Bootstrap Collapse
+           panel (the same data-bs-toggle="collapse" mechanism already
+           used by the customer navbar's own toggle and by the
+           Inventory Summary page's Category Summary toggle - see
+           employee_nav.html). No custom JavaScript: height animation,
+           aria-expanded, and keyboard operability all come from
+           Bootstrap's own Collapse component (already loaded
+           globally). The icon rotation below reuses the exact
+           aria-expanded CSS selector pattern already established by
+           .category-summary-toggle in inventory.html.
+
 Author  : Srikar
 =========================================================
 */
@@ -17,12 +32,32 @@ Author  : Srikar
     z-index: 100;
 }
 
+/* Compact mobile bar (current section + hamburger). Hidden on desktop. */
+.employee-nav-bar {
+    display: none;
+}
+
+.employee-nav-toggle {
+    display: none;
+}
+
 .employee-nav-list {
-    display: flex;
     list-style: none;
     margin: 0;
     padding: 0;
     gap: 0;
+}
+
+/* Bootstrap's own .collapse:not(.show){display:none} rule (needed for the
+   mobile toggle further down) has higher specificity than a plain class
+   selector and would hide the nav on desktop too, where it must always
+   stay visible regardless of collapse state. #employeeNavMenu is the
+   same element's existing id - an id selector outranks any number of
+   classes, so this wins without !important and without introducing a
+   new breakpoint: the existing max-width: 768px query below reinstates
+   the real closed state on mobile using the same id. */
+#employeeNavMenu {
+    display: flex;
 }
 
 .employee-nav-item {
@@ -63,16 +98,123 @@ Author  : Srikar
 }
 
 @media (max-width: 768px) {
+    .employee-nav .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    /* Compact bar: current section label + hamburger toggle */
+    .employee-nav-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+    }
+
+    .employee-nav-current {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #1E4FA3;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .employee-nav-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        flex-shrink: 0;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: white;
+        color: #1E4FA3;
+        font-size: 1.05rem;
+        cursor: pointer;
+        transition: background-color 0.2s, border-color 0.2s;
+    }
+
+    .employee-nav-toggle:hover {
+        background: #f0f5ff;
+        border-color: #1E4FA3;
+    }
+
+    .employee-nav-toggle:focus-visible {
+        outline: 3px solid #1E4FA3;
+        outline-offset: 2px;
+    }
+
+    /* Same rotate-on-aria-expanded technique as
+       .category-summary-toggle[aria-expanded="true"] in inventory.html -
+       Bootstrap's Collapse plugin manages aria-expanded on this button
+       automatically, so no click handler is needed for the icon either. */
+    .employee-nav-toggle i {
+        transition: transform 0.2s;
+    }
+
+    .employee-nav-toggle[aria-expanded="true"] i {
+        transform: rotate(90deg);
+    }
+
+    /* Bootstrap's .collapse/.collapsing/.show classes drive the show/hide
+       and the height transition; these rules only add the column layout,
+       a 75vh cap with internal scrolling, and spacing - normal in-flow
+       positioning, same as every other collapse panel in this codebase
+       (no position:absolute/fixed, no z-index, no overlay/backdrop). */
     .employee-nav-list {
         flex-direction: column;
+        gap: 0;
+        max-height: 75vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        border-top: 1px solid #eee;
+    }
+
+    /* Restores the real closed state on mobile only. #employeeNavMenu's
+       unconditional display:flex above (needed to outrank Bootstrap on
+       desktop) would otherwise also keep the panel visible while
+       collapsed here; this matches the same .collapse:not(.show) gating
+       Bootstrap itself uses, so the .collapsing transition (which never
+       carries both .collapse and .show at once) is unaffected. */
+    #employeeNavMenu.collapse:not(.show) {
+        display: none;
     }
 
     .employee-nav-item {
+        flex: none;
         text-align: left;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .employee-nav-item:last-child {
+        border-bottom: none;
+    }
+
+    .employee-nav-item-logout {
+        border-top: 1px solid #f0f0f0;
     }
 
     .employee-nav-link {
-        padding: 0.75rem 1rem;
-        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        min-height: 44px;
+        padding: 0.7rem 1.1rem;
+        font-size: 0.92rem;
+        border-bottom: none;
+    }
+
+    .employee-nav-link i {
+        width: 18px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .employee-nav-link.active {
+        border-bottom: none;
+        border-left: 3px solid #1E4FA3;
+        padding-left: calc(1.1rem - 3px);
     }
 }

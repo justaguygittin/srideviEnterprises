@@ -5,12 +5,38 @@ File    : employee_nav.html
 Purpose : Shared employee portal navigation bar.
           Expects `current_page` in the including template's context.
 
+          Desktop (>=769px): unchanged horizontal nav bar.
+          Mobile (<=768px): collapses behind a hamburger toggle using
+          Bootstrap's built-in Collapse component (data-bs-toggle=
+          "collapse") - the same mechanism already used by the customer
+          navbar's own mobile toggle and by the Inventory Summary page's
+          Category Summary toggle. No page-specific JavaScript file is
+          needed; see employee_nav.css for the CSS-only icon rotation,
+          height cap, and body-scroll-lock (via :has()).
+
 Author  : Srikar
 =========================================================
 -->
 <nav class="employee-nav">
     <div class="container">
-        <ul class="employee-nav-list">
+        <div class="employee-nav-bar">
+            <span class="employee-nav-current">
+                {% if current_page == 'dashboard' %}<i class="fas fa-home"></i> Dashboard
+                {% elif current_page == 'products' %}<i class="fas fa-box"></i> Products
+                {% elif current_page == 'departments' %}<i class="fas fa-building"></i> Departments
+                {% elif current_page == 'inventory' %}<i class="fas fa-warehouse"></i> Inventory
+                {% elif current_page == 'enquiries' %}<i class="fas fa-envelope"></i> Enquiries
+                {% elif current_page == 'customers' %}<i class="fas fa-users"></i> Customers
+                {% elif current_page == 'invoices' %}<i class="fas fa-receipt"></i> Invoices
+                {% else %}<i class="fas fa-bars"></i> Menu
+                {% endif %}
+            </span>
+            <button type="button" class="employee-nav-toggle" data-bs-toggle="collapse" data-bs-target="#employeeNavMenu"
+                aria-expanded="false" aria-controls="employeeNavMenu" aria-label="Toggle employee menu">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        <ul class="employee-nav-list collapse" id="employeeNavMenu">
             <li class="employee-nav-item">
                 <a href="{{ url_for('employee.dashboard') }}" class="employee-nav-link {% if current_page == 'dashboard' %}active{% endif %}" {% if current_page == 'dashboard' %}aria-current="page"{% endif %}>
                     <i class="fas fa-home"></i> Dashboard
@@ -46,7 +72,7 @@ Author  : Srikar
                     <i class="fas fa-receipt"></i> Invoices
                 </a>
             </li>
-            <li class="employee-nav-item">
+            <li class="employee-nav-item employee-nav-item-logout">
                 <a href="{{ url_for('employee.logout') }}" class="employee-nav-link logout">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
