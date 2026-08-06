@@ -60,12 +60,22 @@ def _get_canonical_department_names() -> dict[str, str]:
     return {_normalise_department_name(name): name for name in get_catalog_department_names()}
 
 
-def get_department_product_counts() -> dict[str, int]:
-    """Return {Department: product_count} for every non-empty department in Catalog."""
+def get_department_product_counts(active_only: bool = False) -> dict[str, int]:
+    """
+    Return {Department: product_count} for every non-empty department in Catalog.
 
-    rows = fetch_all("""
+    v1.0 Sprint 7 (Product Lifecycle Management): active_only defaults to
+    False, so the Employee Departments module (get_departments_for_management()
+    below) keeps showing true total counts, deactivated products included -
+    unchanged from before this sprint. get_active_department_cards() below
+    explicitly passes active_only=True, since a customer-facing department
+    card must never count a product the customer can't actually see.
+    """
+
+    active_clause = "AND IsActive = 1" if active_only else ""
+    rows = fetch_all(f"""
         SELECT Department, COUNT(*) AS total FROM Catalog
-        WHERE Department IS NOT NULL AND TRIM(Department) <> ''
+        WHERE Department IS NOT NULL AND TRIM(Department) <> '' {active_clause}
         GROUP BY Department;
     """)
     return {row["Department"]: row["total"] for row in rows}
@@ -237,7 +247,7 @@ def get_active_department_cards() -> list[dict[str, Any]]:
     """)
 
     canonical_names = _get_canonical_department_names()
-    counts = get_department_product_counts()
+    counts = get_department_product_counts(active_only=True)
 
     cards = []
     for row in rows:

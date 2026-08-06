@@ -96,8 +96,16 @@ def products():
         "availability": request.args.get("availability", ""),
         "sort": request.args.get("sort", "newest"),
     }
+    # v1.0 Sprint 7 (Product Lifecycle Management): a deactivated product
+    # must never appear in the customer-facing listing, filters, or search
+    # (see AI_CONTEXT.md "Customer Site (IsActive Filtering)"). Kept out of
+    # `filters` itself - that dict is also spread into every url_for(...)
+    # call below (pagination, sort, chip removal, clear-search) via
+    # **filters, and "active" isn't a real user-facing filter choice, so it
+    # has no business showing up as a query parameter in those URLs.
+    query_filters = dict(filters, status="active")
     per_page = 24
-    total_products = get_product_count(filters)
+    total_products = get_product_count(query_filters)
     total_pages = max(ceil(total_products / per_page), 1)
     requested_page = request.args.get("page", 1, type=int) or 1
     page = min(max(requested_page, 1), total_pages)
@@ -109,7 +117,7 @@ def products():
 
     return render_template(
         "customer/products.html",
-        products=get_products(filters, page, per_page),
+        products=get_products(query_filters, page, per_page),
         filter_options=get_product_filters(),
         filters=filters,
         active_filters=_build_active_filter_chips(filters),

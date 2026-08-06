@@ -60,13 +60,16 @@ def get_products(filters: dict[str, Any], page: int, per_page: int):
     products = fetch_all(f"""
         SELECT
             id, product_name, NULLIF(TRIM(brand), '') AS brand, Department,
-            category,
+            category, IsActive,
             CASE WHEN stock_quantity > 0 THEN 'In stock' ELSE 'Available on request' END AS availability
         FROM Catalog
         WHERE {where_clause}
         ORDER BY {order_by}
         LIMIT %s OFFSET %s;
     """, tuple(params + [per_page, (page - 1) * per_page]))
+
+    for product in products:
+        product["IsActive"] = bool(product["IsActive"])
 
     add_primary_images(products)
     return products
@@ -81,10 +84,28 @@ def get_product_count(filters: dict[str, Any]) -> int:
 
 
 def _build_product_filters(filters: dict[str, Any]) -> tuple[str, list[Any]]:
-    """Build the reusable SQL WHERE clause for product listing and count queries."""
+    """
+    Build the reusable SQL WHERE clause for product listing and count queries.
+
+    v1.0 Sprint 7 (Product Lifecycle Management): `filters["status"]` is
+    optional and defaults to no filtering at all (every existing caller
+    that doesn't set it - the Employee Products page's default view, the
+    Dashboard's catalog count, etc. - keeps seeing every product,
+    active and inactive, exactly as before this sprint). Only a caller
+    that explicitly asks for "active" or "inactive" gets narrowed.
+    Customer-facing routes (services/customer_service.py,
+    routes/customer.py) explicitly pass "active" - see AI_CONTEXT.md
+    "Customer Site (IsActive Filtering)".
+    """
 
     where_clauses = ["product_name IS NOT NULL", "TRIM(product_name) <> ''"]
     params: list[Any] = []
+
+    status = filters.get("status")
+    if status == "active":
+        where_clauses.append("IsActive = 1")
+    elif status == "inactive":
+        where_clauses.append("IsActive = 0")
 
     search = filters.get("search", "").strip()
     if search:
@@ -245,21 +266,41 @@ def get_products_by_stock_status(status: str, page: int, per_page: int):
     return products
 
 
-def get_product(product_id: int):
-    """Return one catalog product and its related detail records."""
+def get_product(product_id: int, include_inactive: bool = False):
+    """
+    Return one catalog product and its related detail records.
+
+    v1.0 Sprint 7 (Product Lifecycle Management): `include_inactive`
+    defaults to False, so an inactive (soft-deleted) product is treated
+    exactly like a non-existent one - customer routes (routes/customer.py)
+    call this with no arguments and already `abort(404)` on None, so
+    inactive products 404 automatically with zero changes there. Employee
+    routes (routes/employee.py) pass include_inactive=True so staff can
+    still view, edit, and restore a deactivated product.
+
+    DeletedByName is resolved via a LEFT JOIN against Employees (not a
+    second query) and is None for an active product or one deactivated
+    before an EmployeeID could be resolved.
+    """
 
     product = fetch_one("""
         SELECT
-            id, product_name, NULLIF(TRIM(brand), '') AS brand, Department,
-            category, model,
-            CASE WHEN stock_quantity > 0 THEN 'In stock' ELSE 'Available on request' END AS availability
+            Catalog.id, Catalog.product_name, NULLIF(TRIM(Catalog.brand), '') AS brand,
+            Catalog.Department, Catalog.category, Catalog.model, Catalog.IsActive,
+            Catalog.DeletedAt, Catalog.DeletedBy, Employees.Name AS DeletedByName,
+            CASE WHEN Catalog.stock_quantity > 0 THEN 'In stock' ELSE 'Available on request' END AS availability
         FROM Catalog
-        WHERE id = %s;
+        LEFT JOIN Employees ON Employees.EmployeeID = Catalog.DeletedBy
+        WHERE Catalog.id = %s;
     """, (product_id,))
 
     if product is None:
         return None
 
+    if not product["IsActive"] and not include_inactive:
+        return None
+
+    product["IsActive"] = bool(product["IsActive"])
     # TODO: Correct UTF-8 encoding in legacy imported catalog data if its source CSV is updated.
     product["product_name"] = _normalise_catalog_text(product["product_name"])
     product["images"] = get_product_images(product_id)
@@ -276,15 +317,24 @@ def _get_product_specifications(product_id: int):
     """, (product_id,))
 
 
-def get_related_products(product: dict[str, Any]):
-    """Return up to four products from the same department, preferring its category."""
+def get_related_products(product: dict[str, Any], include_inactive: bool = False):
+    """
+    Return up to four products from the same department, preferring its category.
 
-    related_products = fetch_all("""
+    v1.0 Sprint 7: include_inactive defaults to False so the customer-facing
+    "Similar Products" section (routes/customer.py, which calls this with no
+    extra argument) never surfaces a deactivated product - see AI_CONTEXT.md
+    "Customer Site (IsActive Filtering)". Employee product_details keeps its
+    pre-sprint behavior unchanged by explicitly passing include_inactive=True.
+    """
+
+    active_clause = "" if include_inactive else "AND IsActive = 1"
+    related_products = fetch_all(f"""
         SELECT
             id, product_name, NULLIF(TRIM(brand), '') AS brand,
             CASE WHEN stock_quantity > 0 THEN 'In stock' ELSE 'Available on request' END AS availability
         FROM Catalog
-        WHERE id <> %s AND Department = %s
+        WHERE id <> %s AND Department = %s {active_clause}
         ORDER BY (category = %s) DESC, id DESC
         LIMIT 4;
     """, (product["id"], product["Department"], product["category"]))
@@ -671,28 +721,47 @@ def delete_product_image(product_id: int, image_id: int) -> tuple[bool, str | No
     return True, None
 
 
-def delete_product(product_id: int) -> None:
+def deactivate_product(product_id: int, employee_id: int) -> None:
     """
-    Delete a product and all its related rows as one atomic write.
+    Soft-delete a product: set IsActive = 0, DeletedAt = NOW(), DeletedBy =
+    employee_id. v1.0 Sprint 7 (Product Lifecycle Management) - permanently
+    replaces the old hard delete_product() (see AI_CONTEXT.md "Product
+    Deletion" / "Soft Delete Product" in Planned Roadmap for the full
+    history). Products, their images, specifications, StockHistory rows,
+    and Enquiries references are never removed - a deactivated product
+    still exists everywhere except customer-facing listings and inventory
+    transactions (see get_product()/get_related_products()'s
+    include_inactive parameter and apply_stock_transaction()'s IsActive
+    check).
 
-    Standard write-operation pattern (see AI_CONTEXT.md):
-    Begin Transaction -> Database Delete -> Commit -> Filesystem Cleanup.
-
-    The upload folder is removed only after the transaction commits, so a
-    mid-transaction failure can never delete images for a product that
-    still exists in the database.
+    A single-table UPDATE needs no transaction() wrapper (see Write
+    Operation Pattern in AI_CONTEXT.md - that convention is for writes
+    spanning multiple tables or combining a database write with a
+    filesystem write; this is neither). No filesystem change happens here
+    at all, unlike the old hard delete which removed the product's upload
+    folder.
     """
 
-    with transaction() as conn:
-        cursor = conn.cursor()
-        try:
-            cursor.execute("DELETE FROM ProductDetails WHERE ProductID = %s;", (product_id,))
-            cursor.execute("DELETE FROM ProductImages WHERE ProductID = %s;", (product_id,))
-            cursor.execute("DELETE FROM Catalog WHERE id = %s;", (product_id,))
-        finally:
-            cursor.close()
+    execute(
+        "UPDATE Catalog SET IsActive = 0, DeletedAt = NOW(), DeletedBy = %s WHERE id = %s;",
+        (employee_id, product_id),
+    )
 
-    delete_product_folder(product_id)
+
+def restore_product(product_id: int) -> None:
+    """
+    Reactivate a previously deactivated product: IsActive = 1, DeletedAt
+    and DeletedBy cleared. v1.0 Sprint 7 - the inverse of
+    deactivate_product() above. DeletedAt/DeletedBy are cleared (not kept
+    as "last deactivation" history) since Catalog only ever tracks current
+    state; if deactivation history is needed later, that's a StockHistory-
+    style audit table, not more columns on Catalog.
+    """
+
+    execute(
+        "UPDATE Catalog SET IsActive = 1, DeletedAt = NULL, DeletedBy = NULL WHERE id = %s;",
+        (product_id,),
+    )
 
 
 # =========================================================
@@ -736,10 +805,18 @@ def get_products_for_transaction() -> list[dict[str, Any]]:
     client-side current-stock preview (v1.0 Sprint 5.1). Unpaginated and
     deliberately minimal - reuses the same "valid product" WHERE clause as
     every other product-listing query.
+
+    v1.0 Sprint 7: still includes inactive (deactivated) products rather
+    than hiding them from the selector - an employee searching for a
+    deactivated product should be told it's deactivated (see
+    inventory_transaction.html's client-side block, mirrored server-side
+    by apply_stock_transaction() below), not have it silently disappear as
+    if it never existed. `is_active` is embedded per product so the page's
+    script can block the transaction before it's even submitted.
     """
 
     products = fetch_all("""
-        SELECT id, product_name, Department, category, stock_quantity
+        SELECT id, product_name, Department, category, stock_quantity, IsActive
         FROM Catalog
         WHERE product_name IS NOT NULL AND TRIM(product_name) <> ''
         ORDER BY product_name;
@@ -748,6 +825,7 @@ def get_products_for_transaction() -> list[dict[str, Any]]:
     for product in products:
         product["product_name"] = _normalise_catalog_text(product["product_name"])
         product["stock_quantity"] = product["stock_quantity"] or 0
+        product["is_active"] = bool(product.pop("IsActive"))
     return products
 
 
@@ -809,10 +887,12 @@ def apply_stock_transaction(
     new_stock) on success.
 
     Raises ValueError with a user-facing message, and writes nothing at all,
-    if the product doesn't exist or a Stock Out would produce negative
-    stock. The current stock is re-read here with FOR UPDATE (not trusted
-    from an earlier page load) so two concurrent Stock Out requests for the
-    same product can never both succeed and push stock negative.
+    if the product doesn't exist, is deactivated (v1.0 Sprint 7 - see
+    AI_CONTEXT.md "Inventory Blocks Transactions on Inactive Products"), or
+    a Stock Out would produce negative stock. The current stock is re-read
+    here with FOR UPDATE (not trusted from an earlier page load) so two
+    concurrent Stock Out requests for the same product can never both
+    succeed and push stock negative.
     """
 
     if transaction_type not in _TRANSACTION_TYPE_LABELS:
@@ -821,10 +901,16 @@ def apply_stock_transaction(
     with transaction() as conn:
         cursor = conn.cursor(dictionary=True)
         try:
-            cursor.execute("SELECT stock_quantity FROM Catalog WHERE id = %s FOR UPDATE;", (product_id,))
+            cursor.execute(
+                "SELECT stock_quantity, IsActive FROM Catalog WHERE id = %s FOR UPDATE;", (product_id,)
+            )
             row = cursor.fetchone()
             if row is None:
                 raise ValueError("This product could not be found.")
+            if not row["IsActive"]:
+                raise ValueError(
+                    "This product has been deactivated. Restore it before performing inventory transactions."
+                )
             old_stock = row["stock_quantity"] or 0
 
             if transaction_type == "stock_in":

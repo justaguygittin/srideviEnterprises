@@ -30,7 +30,14 @@ def get_home_departments():
 
 
 def get_featured_products():
-    """Return eight randomly selected catalog products, with their real images."""
+    """
+    Return eight randomly selected catalog products, with their real images.
+
+    v1.0 Sprint 7 (Product Lifecycle Management): IsActive = 1 - a
+    deactivated product must never surface on the customer-facing homepage,
+    even by random chance (see AI_CONTEXT.md "Customer Site (IsActive
+    Filtering)").
+    """
 
     products = fetch_all("""
         SELECT
@@ -42,7 +49,7 @@ def get_featured_products():
                 ELSE 'Available on request'
             END AS availability
         FROM Catalog
-        WHERE product_name IS NOT NULL AND TRIM(product_name) <> ''
+        WHERE product_name IS NOT NULL AND TRIM(product_name) <> '' AND IsActive = 1
         ORDER BY RAND()
         LIMIT 8;
     """)

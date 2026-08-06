@@ -80,6 +80,46 @@ Author  : Srikar
         border-radius: 50%;
         font-size: 0.75rem;
     }
+
+    /* Product status badge (v1.0 Sprint 7: Product Lifecycle Management) -
+       same page-scoped naming/color convention as products.html's copy of
+       this component (see AI_CONTEXT.md Component Isolation - each page
+       keeps its own scoped styles). */
+    .product-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.3rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        white-space: nowrap;
+        margin-bottom: 0.75rem;
+    }
+
+    .product-status-badge.status-active {
+        background: #ECFDF3;
+        color: #067647;
+    }
+
+    .product-status-badge.status-inactive {
+        background: #f0f0f0;
+        color: #777;
+    }
+
+    .product-status-badge i {
+        font-size: 0.6rem;
+    }
+
+    .deactivation-note {
+        background: #fff9f0;
+        border: 1px solid #ffe0b2;
+        color: #8a5a00;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+    }
 </style>
 {% endblock %}
 
@@ -97,14 +137,30 @@ Author  : Srikar
                         <i class="fas fa-pen"></i> Edit Product
                     </a>
                     {% if role == 'Admin' %}
-                    <form method="post" action="{{ url_for('employee.delete_product', product_id=product.id) }}" onsubmit="return confirm('Delete this product permanently? This removes the product, its images, and its specifications. This cannot be undone.');">
-                        <button type="submit" class="btn btn-outline-danger btn-sm">
-                            <i class="fas fa-trash"></i> Delete Product
-                        </button>
-                    </form>
+                        {% if product.IsActive %}
+                        <form method="post" action="{{ url_for('employee.deactivate_product', product_id=product.id) }}" onsubmit="return confirm('Deactivate this product?\n\nIt will be hidden from customers but preserved for inventory history and invoices. Existing records will not be deleted.{% if 'In stock' in product.availability %}\n\nThis product still has stock. Continue?{% endif %}');">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                <i class="fas fa-ban"></i> Deactivate
+                            </button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="{{ url_for('employee.restore_product', product_id=product.id) }}" onsubmit="return confirm('Restore this product?\n\nIt will become visible to customers again.');">
+                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                <i class="fas fa-rotate-left"></i> Restore
+                            </button>
+                        </form>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
+
+            {% if not product.IsActive %}
+            <div class="deactivation-note">
+                <i class="fas fa-circle-info"></i>
+                This product was deactivated{% if product.DeletedAt %} on {{ product.DeletedAt.strftime("%d %b %Y") }}{% endif %}{% if product.DeletedByName %} by {{ product.DeletedByName }}{% endif %}.
+                It is hidden from the customer website but its history is preserved. Restore it to make it visible again.
+            </div>
+            {% endif %}
 
             <div class="row g-5 mt-1">
                 <div class="col-lg-6">
@@ -126,6 +182,11 @@ Author  : Srikar
                 </div>
                 <div class="col-lg-6">
                     <p class="catalog-product-brand">{{ product.brand or 'Sridevi Enterprises' }}</p>
+                    {% if product.IsActive %}
+                    <span class="product-status-badge status-active"><i class="fas fa-circle"></i> Active</span>
+                    {% else %}
+                    <span class="product-status-badge status-inactive"><i class="fas fa-circle"></i> Inactive</span>
+                    {% endif %}
                     <h1>{{ product.product_name }}</h1>
                     <p class="product-detail-meta">{{ product.Department }} &middot; {{ product.category or 'Uncategorised' }}</p>
                     <p class="product-detail-availability">{{ product.availability }}</p>

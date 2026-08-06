@@ -24,7 +24,7 @@ from services.image_service import validate_image_file, validate_image_files
 from services.product_service import (
     apply_stock_transaction,
     create_product,
-    delete_product as delete_product_service,
+    deactivate_product as deactivate_product_service,
     delete_product_image,
     find_duplicate_product_name,
     find_similar_product,
@@ -43,6 +43,7 @@ from services.product_service import (
     get_products_for_transaction,
     get_related_products,
     get_stock_status_count,
+    restore_product as restore_product_service,
     update_product,
     validate_product_form,
     validate_specifications,
@@ -206,12 +207,20 @@ def products():
     department = request.args.get("department", "").strip()
     category = request.args.get("category", "").strip()
     brand = request.args.get("brand", "").strip()
+    # v1.0 Sprint 7 (Product Lifecycle Management): defaults to "all" so a
+    # bare /employee/products request keeps showing every product, active
+    # and inactive, exactly as before this sprint - the tabs only narrow
+    # the view when an employee explicitly picks one.
+    status = request.args.get("status", "all").strip().lower()
+    if status not in ("all", "active", "inactive"):
+        status = "all"
 
     filters = {
         "search": search,
         "department": department if department else None,
         "category": category if category else None,
         "brand": brand if brand else None,
+        "status": status,
     }
 
     per_page = 20
@@ -233,6 +242,7 @@ def products():
         department=department,
         category=category,
         brand=brand,
+        status=status,
         start_page=start_page,
         end_page=end_page,
     )
@@ -412,8 +422,17 @@ def delete_image(product_id, image_id):
 
 
 @employee_bp.route("/employee/products/<int:product_id>/delete", methods=["POST"])
-def delete_product(product_id):
-    """Delete a product and all its related data. Admin only."""
+def deactivate_product(product_id):
+    """
+    Deactivate (soft-delete) a product. Admin only.
+
+    v1.0 Sprint 7 (Product Lifecycle Management): permanently replaces the
+    old hard-delete route. The URL path is unchanged from the previous
+    Delete Product route (see AI_CONTEXT.md) - only the underlying action
+    and the view function's name changed, so no existing link/bookmark
+    breaks. See services/product_service.py:deactivate_product() for what
+    this does and doesn't touch.
+    """
 
     if not session.get("UserID"):
         return redirect(url_for("employee.login"))
@@ -421,18 +440,51 @@ def delete_product(product_id):
     if session.get("Role") != "Admin":
         abort(403)
 
-    product = get_product(product_id)
+    product = get_product(product_id, include_inactive=True)
+    if product is None:
+        abort(404)
+
+    employee_id = get_employee_id_for_user(session["UserID"])
+    if employee_id is None:
+        flash(
+            "Your account is not linked to an employee record, so this action cannot be recorded. "
+            "Contact your administrator.",
+            "danger",
+        )
+        return redirect(url_for("employee.product_details", product_id=product_id))
+
+    try:
+        deactivate_product_service(product_id, employee_id)
+    except Exception:
+        flash("Could not deactivate this product. Please try again.", "danger")
+        return redirect(url_for("employee.product_details", product_id=product_id))
+
+    flash(f'Product "{product["product_name"]}" was deactivated.', "success")
+    return redirect(url_for("employee.products"))
+
+
+@employee_bp.route("/employee/products/<int:product_id>/restore", methods=["POST"])
+def restore_product(product_id):
+    """Restore (reactivate) a previously deactivated product. Admin only."""
+
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+
+    if session.get("Role") != "Admin":
+        abort(403)
+
+    product = get_product(product_id, include_inactive=True)
     if product is None:
         abort(404)
 
     try:
-        delete_product_service(product_id)
+        restore_product_service(product_id)
     except Exception:
-        flash("Could not delete this product. Please try again.", "danger")
+        flash("Could not restore this product. Please try again.", "danger")
         return redirect(url_for("employee.product_details", product_id=product_id))
 
-    flash(f'Product "{product["product_name"]}" was deleted.', "success")
-    return redirect(url_for("employee.products"))
+    flash(f'Product "{product["product_name"]}" was restored.', "success")
+    return redirect(url_for("employee.product_details", product_id=product_id))
 
 
 @employee_bp.route("/employee/products/<int:product_id>", methods=["GET"])
@@ -445,7 +497,11 @@ def product_details(product_id):
     if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
         abort(403)
 
-    product = get_product(product_id)
+    # include_inactive=True: employees must still be able to view (and
+    # restore) a deactivated product's details - only customer routes 404
+    # on an inactive product (see AI_CONTEXT.md "Customer Site (IsActive
+    # Filtering)").
+    product = get_product(product_id, include_inactive=True)
     if product is None:
         abort(404)
 
@@ -455,7 +511,7 @@ def product_details(product_id):
         role=session.get("Role"),
         current_page="products",
         product=product,
-        related_products=get_related_products(product),
+        related_products=get_related_products(product, include_inactive=True),
         images_with_ids=get_product_images_with_ids(product_id),
     )
 

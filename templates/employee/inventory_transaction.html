@@ -277,7 +277,8 @@ Inventory Transaction - Employee Portal - Sridevi Enterprises
     products.forEach(function (p) { productById[p.id] = p; });
 
     function productLabel(p) {
-        return p.product_name + " — " + p.Department + " / " + p.category;
+        var label = p.product_name + " — " + p.Department + " / " + p.category;
+        return p.is_active ? label : label + " (Deactivated)";
     }
 
     var productSearchInput = document.getElementById("product-search");
@@ -334,13 +335,23 @@ Inventory Transaction - Employee Portal - Sridevi Enterprises
     }
 
     // Returns false (and shows an inline warning) when a Stock Out would
-    // produce negative stock - "Cannot stock out more than available".
+    // produce negative stock - "Cannot stock out more than available" - or
+    // when the selected product has been deactivated (v1.0 Sprint 7:
+    // Product Lifecycle Management). This is a client-side hint only;
+    // apply_stock_transaction() enforces the same IsActive check
+    // server-side, so this can never be bypassed by disabling JS.
     function updateStockPreview() {
         var product = currentProduct();
         var type = selectedType();
         var qty = parseInt(quantityInput.value, 10);
 
         currentStockHint.textContent = product ? ("Current stock: " + product.stock_quantity + " units.") : "";
+
+        if (product && !product.is_active) {
+            newStockHint.textContent = "This product has been deactivated. Restore it before performing inventory transactions.";
+            newStockHint.classList.add("text-danger");
+            return false;
+        }
 
         if (!product || isNaN(qty) || !type) {
             newStockHint.textContent = "";

@@ -194,11 +194,114 @@ Products - Employee Portal - Sridevi Enterprises
         text-decoration: none;
         font-weight: 500;
         white-space: nowrap;
+        background: none;
+        border: none;
+        padding: 0;
+        font-size: inherit;
+        cursor: pointer;
     }
 
     .action-link:hover {
         color: #1565A0;
         text-decoration: underline;
+    }
+
+    .action-link.action-link-danger {
+        color: #c33;
+    }
+
+    .action-link.action-link-danger:hover {
+        color: #a00;
+    }
+
+    .action-link.action-link-restore {
+        color: #1e7e34;
+    }
+
+    .action-link.action-link-restore:hover {
+        color: #145523;
+    }
+
+    /* Status tabs (v1.0 Sprint 7: Product Lifecycle Management) - plain
+       links styled as pills, same active-state convention already used by
+       employee_nav.html's .employee-nav-link.active (background + text
+       color, no new pattern introduced). */
+    .status-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+        flex-wrap: wrap;
+    }
+
+    .status-tab {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1.1rem;
+        border-radius: 999px;
+        background: white;
+        color: #555;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.9rem;
+        border: 1px solid #ddd;
+        transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    }
+
+    .status-tab:hover {
+        border-color: #1E4FA3;
+        color: #1E4FA3;
+    }
+
+    .status-tab.active {
+        background: #1E4FA3;
+        border-color: #1E4FA3;
+        color: white;
+    }
+
+    /* Product status badge - distinct from .availability-in-stock/
+       .availability-on-request above (those describe stock; this describes
+       the product's own lifecycle state, see AI_CONTEXT.md Component
+       Isolation) and from .availability-badge (Product Cards/Details) for
+       the same reason - deliberately new, page-scoped classes. */
+    .product-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.3rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .product-status-badge.status-active {
+        background: #ECFDF3;
+        color: #067647;
+    }
+
+    .product-status-badge.status-inactive {
+        background: #f0f0f0;
+        color: #777;
+    }
+
+    .product-status-badge i {
+        font-size: 0.6rem;
+    }
+
+    /* Greyed-out row for a deactivated product (Part 2: "Inactive products
+       appear: Greyed card"). Scoped to the row only, dims text but keeps
+       every action still fully legible/usable. */
+    .products-table tbody tr.is-inactive {
+        background: #fafafa;
+        color: #999;
+    }
+
+    .products-table tbody tr.is-inactive:hover {
+        background: #f2f2f2;
+    }
+
+    .products-table tbody tr.is-inactive .product-id {
+        color: #999;
     }
 
     .empty-state-icon {
@@ -330,6 +433,10 @@ Products - Employee Portal - Sridevi Enterprises
             display: inline-flex;
             align-items: center;
         }
+
+        .status-tab {
+            min-height: 44px;
+        }
     }
 </style>
 {% endblock %}
@@ -358,9 +465,21 @@ Products - Employee Portal - Sridevi Enterprises
                 </a>
             </div>
 
+            <!-- Status Tabs (v1.0 Sprint 7: Product Lifecycle Management) -->
+            <div class="status-tabs">
+                {% for tab_value, tab_label in (('all', 'All'), ('active', 'Active'), ('inactive', 'Inactive')) %}
+                <a
+                    href="{{ url_for('employee.products', status=tab_value, search=search, department=department, category=category, brand=brand) }}"
+                    class="status-tab {% if status == tab_value %}active{% endif %}"
+                    {% if status == tab_value %}aria-current="true"{% endif %}
+                >{{ tab_label }}</a>
+                {% endfor %}
+            </div>
+
             <!-- Search Section -->
             <div class="search-section">
                 <form method="GET" action="{{ url_for('employee.products') }}">
+                    <input type="hidden" name="status" value="{{ status }}">
                     <div class="search-grid">
                         <div class="form-group">
                             <label for="search">Search by Name/Brand</label>
@@ -406,12 +525,13 @@ Products - Employee Portal - Sridevi Enterprises
                             <th scope="col">Department</th>
                             <th scope="col">Category</th>
                             <th scope="col">Availability</th>
+                            <th scope="col">Status</th>
                             <th scope="col">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for product in products %}
-                        <tr>
+                        <tr class="{{ 'is-inactive' if not product.IsActive }}">
                             <td><span class="product-id">#{{ product.id }}</span></td>
                             <td>{{ product.product_name }}</td>
                             <td>{{ product.brand or '—' }}</td>
@@ -429,6 +549,13 @@ Products - Employee Portal - Sridevi Enterprises
                                 {% endif %}
                             </td>
                             <td>
+                                {% if product.IsActive %}
+                                <span class="product-status-badge status-active"><i class="fas fa-circle"></i> Active</span>
+                                {% else %}
+                                <span class="product-status-badge status-inactive"><i class="fas fa-circle"></i> Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
                                 <div class="d-flex gap-3 flex-wrap">
                                     <a href="{{ url_for('employee.product_details', product_id=product.id) }}" class="action-link">
                                         <i class="fas fa-eye"></i> View
@@ -436,6 +563,21 @@ Products - Employee Portal - Sridevi Enterprises
                                     <a href="{{ url_for('employee.edit_product', product_id=product.id) }}" class="action-link">
                                         <i class="fas fa-pen"></i> Edit
                                     </a>
+                                    {% if role == 'Admin' %}
+                                        {% if product.IsActive %}
+                                        <form method="post" action="{{ url_for('employee.deactivate_product', product_id=product.id) }}" onsubmit="return confirm('Deactivate this product?\n\nIt will be hidden from customers but preserved for inventory history and invoices. Existing records will not be deleted.{% if 'In stock' in product.availability %}\n\nThis product still has stock. Continue?{% endif %}');">
+                                            <button type="submit" class="action-link action-link-danger">
+                                                <i class="fas fa-ban"></i> Deactivate
+                                            </button>
+                                        </form>
+                                        {% else %}
+                                        <form method="post" action="{{ url_for('employee.restore_product', product_id=product.id) }}" onsubmit="return confirm('Restore this product?\n\nIt will become visible to customers again.');">
+                                            <button type="submit" class="action-link action-link-restore">
+                                                <i class="fas fa-rotate-left"></i> Restore
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
@@ -449,11 +591,11 @@ Products - Employee Portal - Sridevi Enterprises
             <div class="pagination">
                 {% if page > 1 %}
                 <a
-                    href="{{ url_for('employee.products', page=1, search=search, department=department, category=category, brand=brand) }}">
+                    href="{{ url_for('employee.products', page=1, status=status, search=search, department=department, category=category, brand=brand) }}">
                     <i class="fas fa-chevron-left"></i> First
                 </a>
                 <a
-                    href="{{ url_for('employee.products', page=page-1, search=search, department=department, category=category, brand=brand) }}">
+                    href="{{ url_for('employee.products', page=page-1, status=status, search=search, department=department, category=category, brand=brand) }}">
                     <i class="fas fa-chevron-left"></i> Previous
                 </a>
                 {% else %}
@@ -466,17 +608,18 @@ Products - Employee Portal - Sridevi Enterprises
                 <span class="current" aria-current="page">{{ page_num }}</span>
                 {% else %}
                 <a
-                    href="{{ url_for('employee.products', page=page_num, search=search, department=department, category=category, brand=brand) }}">{{
+                    href="{{ url_for('employee.products', page=page_num, status=status, search=search, department=department, category=category, brand=brand) }}">{{
                     page_num }}</a>
                 {% endif %}
                 {% endfor %}
 
-                {% if page < total_pages %} <a
-                    href="{{ url_for('employee.products', page=page+1, search=search, department=department, category=category, brand=brand) }}">
+                {% if page < total_pages %}
+                    <a
+                    href="{{ url_for('employee.products', page=page+1, status=status, search=search, department=department, category=category, brand=brand) }}">
                     Next <i class="fas fa-chevron-right"></i>
                     </a>
                     <a
-                        href="{{ url_for('employee.products', page=total_pages, search=search, department=department, category=category, brand=brand) }}">
+                        href="{{ url_for('employee.products', page=total_pages, status=status, search=search, department=department, category=category, brand=brand) }}">
                         Last <i class="fas fa-chevron-right"></i>
                     </a>
                     {% else %}

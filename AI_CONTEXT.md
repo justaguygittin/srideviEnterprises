@@ -253,12 +253,12 @@ A holistic UX audit across the full customer journey (Homepage → Categories �
 ✓ Edit Product
 ✓ Replace Product Images
 ✓ Delete Product Images (Admin)
-✓ Delete Product (Admin)
+✓ Deactivate / Restore Product (Admin) — soft delete, see Product Deactivation (Soft Delete); replaces the old hard Delete Product (v1.0 Sprint 7)
 ✓ Inventory Summary (read-only, v1.0 Sprint 1, see Employee Inventory Summary Module)
 ✓ Inventory Transactions — Stock In / Stock Out / Adjustment (v1.0 Sprint 5.1, see Employee Inventory Summary Module)
 ✓ Departments — Department Image Management (see Department Image Management)
 
-This completes the Employee Product Management lifecycle: Add, Edit, Replace/Delete Images, and Delete Product all exist and share the same transaction and image-handling infrastructure (see Write Operation Pattern).
+This completes the Employee Product Management lifecycle: Add, Edit, Replace/Delete Images, and Deactivate/Restore Product all exist and share the same transaction and image-handling infrastructure (see Write Operation Pattern).
 
 ### Add Product
 
@@ -313,19 +313,19 @@ Routes: `POST /employee/products/<id>/images/<image_id>/delete` (Admin only)
 
 Image validation, storage, and deletion all go through `services/image_service.py` — no upload or filesystem logic is duplicated elsewhere.
 
-### Product Deletion
+### Product Deactivation (Soft Delete)
 
-Deleting a product is Admin only. Employees never see the Delete Product control and are refused with 403 if the route is called directly.
+**Update (v1.0 Sprint 7 — Product Lifecycle Management): implemented, permanently superseding the hard-delete behavior this section originally described.** Deactivating (and restoring) a product is Admin only. Employees never see the Deactivate/Restore controls and are refused with 403 if either route is called directly.
 
-Workflow: Product Details (Admin) → Click Delete Product (confirmation required) → Delete ProductDetails, ProductImages, and Catalog rows in one transaction → Commit → Delete the product's upload folder → Redirect to Products List
+Workflow: Product Details or the Products list (Admin) → Click Deactivate (reason-aware confirmation, with a non-blocking stock warning if `stock_quantity > 0`) → `UPDATE Catalog SET IsActive=0, DeletedAt=NOW(), DeletedBy=<EmployeeID>` → Redirect. Restore is the inverse (`IsActive=1`, both audit columns cleared) and needs only a plain confirmation.
 
-Route: `POST /employee/products/<id>/delete` (Admin only)
+Routes: `POST /employee/products/<id>/delete` (Admin only — URL kept from the original hard-delete route so no existing link/bookmark breaks; the view function itself was renamed to `deactivate_product`) and the new `POST /employee/products/<id>/restore` (Admin only).
 
-Confirmation is a plain browser `confirm()` dialog on the delete form — the same lightweight pattern already used for Delete Product Image, no new UI component was introduced.
+Confirmation is still a plain browser `confirm()` dialog — the same lightweight pattern already used for Delete Product Image, no new UI component was introduced — but its wording is now reason-aware ("Deactivate this product? It will be hidden from customers but preserved for inventory history and invoices. Existing records will not be deleted.") rather than the old destructive-sounding "Delete this product permanently?".
 
-Filesystem deletion (the upload folder) happens only AFTER the database transaction commits, never before or during — see Write Operation Pattern.
+**Nothing is deleted from disk or from any table anymore.** `ProductDetails`, `ProductImages`, `StockHistory`, and `Enquiries` rows referencing a deactivated product are all left exactly as they were — this is the entire point of the change. See "Sprint 7 — Product Lifecycle Management" below for the full implementation detail (schema, service-layer defaults, customer-site filtering, and the Inventory Transactions block on inactive products).
 
-**Planned (roadmap only, not implemented — see Planned Roadmap > Soft Delete Product):** this hard-delete behavior (`DELETE FROM ProductDetails/ProductImages/Catalog`, folder removed from disk) is intended to be replaced by an archive/deactivate flow in a future sprint, so `StockHistory`, `Enquiries`, and any future invoice references to a product survive its removal from active listings. No hard `DELETE` should be introduced anywhere else in the meantime, and this existing one should be revisited when that sprint lands, not extended.
+No hard `DELETE` should be introduced anywhere else in this codebase — this was the last one.
 
 ### Employee Dashboard — Command Center
 
@@ -546,6 +546,39 @@ What's still CSS-only, mirroring the same `.category-summary-toggle[aria-expande
 - **Everything else already handled itself correctly**: every data table already sits inside an `overflow-x: auto` container; spec rows, image uploads, and the transaction form already stacked to one column; card grids already collapsed to one column. The real gaps were specifically the nav, pagination wrap, touch targets, and the three form pages' missed mobile heading/button rules — not a systemic problem with the per-page CSS convention.
 
 **Regression tested**: Dashboard, Products (incl. deep pagination), Customers, Enquiries, Inventory Summary (incl. Category Summary collapse, both independent paginations), Inventory Transaction, Departments, Department Edit, Add/Edit Product, Product Details, Invoices, Login — at 320/360/375/390/425/768/769/992/1280px. No console or server errors at any width. Desktop confirmed pixel-identical to pre-sprint (including the collapse-specificity bug caught and fixed before it could ship).
+
+### Sprint 7 — Product Lifecycle Management (v1.0)
+
+**Naming note**: this sprint was also labelled "Sprint 7" by the user, distinct from "Sprint 7 — Mobile Responsive Polish" directly above (also v1.0, same conversation) — recorded here verbatim so a future reader isn't confused by two same-numbered sprints; no renumbering scheme exists yet to resolve this, flag if one is needed.
+
+Implements the **Soft Delete Product** item from Planned Roadmap > Product Management Roadmap (open since the Department Image Management sprint) — `delete_product()`'s hard `DELETE FROM ProductDetails/ProductImages/Catalog` is fully replaced by a deactivate/restore flow. No new table (no `ProductArchive`), no hard deletes anywhere in the new code, no schema change to any table other than `Catalog`.
+
+**Schema**: `database/schema/011_alter_catalog_add_soft_delete.sql` adds `Catalog.IsActive BOOLEAN NOT NULL DEFAULT TRUE`, `DeletedAt DATETIME NULL`, `DeletedBy INT NULL`. `IsActive` defaults `TRUE` so all 315 pre-existing rows (and any future row the independently-deployed Receipt Generator project inserts into this shared table) are visible everywhere by default — no backfill needed. No foreign key on `DeletedBy`: consistent with Catalog's existing "never constrained, shared table" convention (see `StockHistory`'s note on this same page) — the app-level convention is that it conceptually references `Employees.EmployeeID` (the same id `StockHistory.EmployeeID` uses), resolved via `services/auth_service.py:get_employee_id_for_user()`, not enforced by the database.
+
+**Service layer defaults are backward-compatible by design** — the guiding rule for every function touched was: a caller that doesn't ask about status keeps seeing exactly what it saw before this sprint, and only the specific call sites this sprint's Parts 5/6 name were changed to narrow to active-only:
+- `services/product_service.py:_build_product_filters()` gained an optional `filters["status"]` (`"active"` / `"inactive"` / absent-or-anything-else = no filter). `get_products()`/`get_product_count()` are shared by both `routes/customer.py` and `routes/employee.py` — the Employee Products page explicitly reads a `status` query param (default `"all"`, preserving its pre-sprint "show everything" behavior for a bare `/employee/products` request); `routes/customer.py:products()` explicitly merges in `status="active"` **only for the two DB-query calls**, not into the `filters` dict that's also spread into every `url_for(...)` call for pagination/sort/chip-removal/clear-search — keeping every generated customer-facing URL byte-for-byte unchanged (a `status=active` query param has no business appearing in a URL bar for a filter that was never a real user choice).
+- `get_product(product_id, include_inactive=False)` — customer routes call it with no extra argument, so an inactive product is indistinguishable from a nonexistent one and `routes/customer.py`'s existing `abort(404)` on `None` handles Part 6 automatically, with zero changes to `routes/customer.py` itself. Employee routes (`product_details`, `deactivate_product`, `restore_product`) explicitly pass `include_inactive=True`. Also now resolves `DeletedByName` via a `LEFT JOIN Employees ON Employees.EmployeeID = Catalog.DeletedBy` (no second query) for the employee-facing audit note.
+- `get_related_products(product, include_inactive=False)` — same pattern: customer "Similar Products" defaults to active-only (Part 5), employee product_details explicitly passes `include_inactive=True` to keep its own Similar Products section exactly as it behaved before this sprint.
+- `services/department_service.py:get_department_product_counts(active_only=False)` — the Employee Departments module (`get_departments_for_management()`) keeps showing true totals including deactivated products (unchanged); `get_active_department_cards()` (customer homepage/Categories page) explicitly passes `active_only=True`, since a customer-facing department card must never count a product the customer can't see. Verified end-to-end: deactivating a Computer & IT product dropped the homepage's department card from 70 → 69 while the Employee Departments page kept showing 70.
+- `services/customer_service.py:get_featured_products()` and `services/enquiry_service.py:get_enquiry_product()` both gained a plain `AND IsActive = 1` — no parameter needed, since neither is called from an employee context. `get_enquiry_product()` returning `None` for an inactive product already flows into `routes/customer.py`'s pre-existing "This product is no longer available." message with zero route/template changes.
+- **Deliberately not touched**: `get_product_filters()` (department/category/brand dropdown *value lists*, shared by the customer Products filter sidebar and the Add/Edit Product form's searchable comboboxes) and `get_popular_brands()`. Filtering the former to active-only would have silently removed department/category options from the *employee* Add/Edit Product form the moment every product in one happened to be deactivated — a materially worse regression than a customer briefly seeing a filter option that currently returns zero (correctly filtered) results. Flag if `get_popular_brands()` should also exclude brands with no active products.
+
+**Deactivate / Restore** (`services/product_service.py:deactivate_product()` / `restore_product()`, replacing `delete_product()`): each is a single-table `UPDATE` via plain `execute()`, not `transaction()` — Write Operation Pattern's transaction wrapper is for multi-table or DB+filesystem writes, and this is neither (no filesystem change happens at all, unlike the old hard delete which removed the product's upload folder). `deactivate_product(product_id, employee_id)` sets `IsActive=0, DeletedAt=NOW(), DeletedBy=%s`; `restore_product(product_id)` sets `IsActive=1` and clears both audit columns (Catalog tracks current state only — deactivation *history*, if ever needed, is a `StockHistory`-style audit table, not more columns here).
+
+**Routes** (`routes/employee.py`): `POST /employee/products/<id>/delete` keeps its exact pre-sprint URL (no bookmark/link breaks) but is now handled by a renamed `deactivate_product()` view calling the new service function — resolves `EmployeeID` via the same `get_employee_id_for_user()` safety check Inventory Transactions already established (Sprint 5.1), refusing the action with a clear message rather than writing a `NULL DeletedBy` if the acting account has no linked `Employees` row. `POST /employee/products/<id>/restore` is a genuinely new route (Admin only, same RBAC as deactivate — Employees still only get Edit, matching the existing "Employees cannot delete products" rule extended to its soft-delete equivalent).
+
+**Employee Products list** (Part 2/9): three pill tabs (All/Active/Inactive, `?status=`) above the existing search form, styled like `employee_nav.html`'s own `.active` link convention — not a new pattern. A hidden `status` field in the search form and an explicit `status=status` on every pagination link keep the active tab across searching and paging. New Status column (`.product-status-badge`, green *Active* / grey *Inactive* — a new page-scoped component, deliberately distinct from `.availability-badge` and `.stock-status-badge` per Component Isolation, since this describes lifecycle state, not stock). Inactive rows get `.is-inactive` (dimmed background/text, all actions still fully usable). Action column gains Deactivate (active rows) / Restore (inactive rows), Admin-only, each a plain `confirm()` dialog — the same lightweight pattern Delete Product already used, no new UI component. The confirm message is now **reason-aware** ("Deactivate this product? It will be hidden from customers but preserved for inventory history and invoices. Existing records will not be deleted.") and, per Part 8, **non-blockingly** appends a stock warning ("This product still has stock. Continue?") when `product.availability` indicates stock > 0 — computed from data the row already had, no new query.
+
+**Product Details page**: mirrors the same status badge and Deactivate/Restore swap, plus a `.deactivation-note` banner (shown only when inactive) reading "This product was deactivated on {DeletedAt} by {DeletedByName}. It is hidden from the customer website but its history is preserved." — the first place in the app surfacing this audit trail, made possible by `get_product()`'s new `LEFT JOIN Employees`.
+
+**Inventory Transactions block inactive products** (Part 7), enforced twice, client-side hint + server-side authority (the same split Sprint 5.1 established for negative-stock prevention):
+- `get_products_for_transaction()` still returns inactive products (an employee searching for one should be told it's deactivated, not have it silently vanish as if it never existed) with a new `is_active` flag embedded per product; the searchable dropdown's label appends "(Deactivated)". Client-side, `updateStockPreview()` shows the exact required message ("This product has been deactivated. Restore it before performing inventory transactions.") and disables Review the moment an inactive product is selected.
+- `apply_stock_transaction()` re-checks `IsActive` in the same `SELECT ... FOR UPDATE` row it already reads for the stock check, and raises the identical message as a `ValueError` — which already flows into the form's existing `errors.form` alert with no template change. Verified end-to-end: submitting a transaction for a deactivated product with the disabled button bypassed (direct `form.submit()`) was rejected server-side with zero `StockHistory` rows written and `stock_quantity` unchanged.
+- Inventory Summary, Department/Category Summary, and the Low Stock/Out of Stock lists were deliberately left untouched — none of them go through `_build_product_filters`, so a deactivated product's stock still counts everywhere in Inventory (Part 7: "History must remain intact"). Verified: deactivating a product left the Inventory Summary's Total Products (315) and every other figure unchanged.
+
+**Regression tested** (Part 10), all against the real dev database with an actual deactivate → verify → restore round trip, not just code inspection: Product CRUD (Add/Edit Product forms and their Department/Category comboboxes load unaffected), Department counts (customer 70→69 on deactivation, Employee Departments page stayed 70), Featured Products, Inventory Summary (unaffected by deactivation), Inventory Transactions (client + server block confirmed, zero stray writes), Product Images (Edit Product's image management section unaffected), Search (employee "All" search finds inactive products; customer search excludes them; product enquiry form shows "no longer available" for an inactive product), Pagination (customer Products page and Employee Products page both re-verified after the status/URL changes), Departments module. No console or server errors beyond the pre-existing, unrelated `/favicon.ico` 404.
+
+**Dev-environment note, not a code change**: while testing, the local dev database's `admin` account password no longer matched what earlier sessions had used; it was reset to a new local-only value via `werkzeug.security.generate_password_hash` directly against the dev DB so testing could continue. This only affects the local development database, not any deployed environment, and is unrelated to the authentication code itself (untouched this sprint).
 
 ---
 
@@ -982,13 +1015,9 @@ Invoice Generator
 
 ## Product Management Roadmap
 
-□ **Soft Delete Product** (added during the Department Image Management sprint, not implemented). Products should never be permanently removed from the database. A future sprint should replace `delete_product()`'s current hard `DELETE FROM ProductDetails/ProductImages/Catalog` (see Product Deletion above) with an archive/deactivate flow — likely a status flag on `Catalog` (schema change, out of scope for this note) rather than actually removing rows — that preserves:
-  - Product history (the Catalog row itself)
-  - Inventory history (`StockHistory` rows referencing the product — these would orphan or lose meaning if the product row disappeared)
-  - Customer enquiries (`Enquiries.ProductID` rows referencing the product)
-  - Invoice references (once the Invoice Generator integration deepens beyond a launch-only bridge — see Employee Invoice Generator Bridge — any future invoice line pointing at a `Catalog.id` needs that id to keep existing)
+✓ **Soft Delete Product** (added during the Department Image Management sprint; implemented in v1.0 Sprint 7 — Product Lifecycle Management, see that section above and "Product Deactivation (Soft Delete)" under Employee Portal). `Catalog.IsActive`/`DeletedAt`/`DeletedBy` replaced `delete_product()`'s hard `DELETE FROM ProductDetails/ProductImages/Catalog`. Confirmed preserved: Product history (the Catalog row itself, never removed), Inventory history (`StockHistory` rows untouched — Inventory Summary's totals are unaffected by deactivation), Customer enquiries (`Enquiries.ProductID` rows untouched). Invoice references remain N/A until the Invoice Generator integration deepens beyond a launch-only bridge (see Employee Invoice Generator Bridge) — nothing to preserve there yet.
 
-  No hard `DELETE` operation should be introduced anywhere else in the codebase in the meantime, and the existing Delete Product route should be migrated to this pattern rather than extended further as-is.
+  No hard `DELETE` operation exists anywhere in this codebase anymore.
 
 ## Future Improvements
 

@@ -22,13 +22,21 @@ _MINIMUM_MESSAGE_LENGTH = 10
 
 
 def get_enquiry_product(product_id: int):
-    """Return the product summary required by the customer enquiry form."""
+    """
+    Return the product summary required by the customer enquiry form.
+
+    v1.0 Sprint 7 (Product Lifecycle Management): IsActive = 1 - a
+    deactivated product returns None here exactly like a nonexistent one,
+    which routes/customer.py's product_enquiry() already turns into the
+    existing "This product is no longer available." message, so no
+    template or route change was needed for this.
+    """
 
     try:
         return fetch_one("""
             SELECT id, product_name, NULLIF(TRIM(brand), '') AS brand
             FROM Catalog
-            WHERE id = %s;
+            WHERE id = %s AND IsActive = 1;
         """, (product_id,))
     except mysql.connector.Error:
         return None
