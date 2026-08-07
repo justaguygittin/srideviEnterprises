@@ -374,6 +374,40 @@ Dashboard - Employee Portal - Sridevi Enterprises
         color: #2e7d32;
     }
 
+    /* Website Status card (Sprint 10) - reuses the Inventory Overview's
+       existing healthy/low/out palette (#067647 green, #B54708 amber,
+       #B42318 red) instead of inventing new colors. */
+    .status-item i.status-icon-warn {
+        color: #B54708;
+    }
+
+    .status-item i.status-icon-bad {
+        color: #B42318;
+    }
+
+    .status-item-meta {
+        display: block;
+        font-size: 0.78rem;
+        color: #999;
+        margin-top: 0.15rem;
+    }
+
+    .maintenance-controls {
+        margin-top: 1.25rem;
+        padding-top: 1.1rem;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .maintenance-toggle-form {
+        display: inline-block;
+    }
+
+    .maintenance-toggle-note {
+        margin: 0 0 0.75rem;
+        font-size: 0.8rem;
+        color: #999;
+    }
+
     /* Recent Enquiries (v1.0 Sprint 2) - reuses enquiries.html's .status-badge
        colors and the status_class template filter (routes/employee.py). */
     .status-badge {
@@ -749,18 +783,70 @@ Dashboard - Employee Portal - Sridevi Enterprises
                     <h3><i class="fas fa-server"></i> System Status</h3>
                     <ul class="status-list">
                         <li class="status-item">
+                            {% if maintenance_mode_enabled %}
+                            <i class="fas fa-triangle-exclamation status-icon-warn"></i>
+                            Website Status: Maintenance
+                            {% else %}
                             <i class="fas fa-check-circle"></i>
+                            Website Status: Online
+                            {% endif %}
+                        </li>
+                        <li class="status-item">
+                            <i class="fas fa-check-circle {% if not db_connected %}status-icon-bad{% endif %}"></i>
                             {{ "Database Connected" if db_connected else "Database Unavailable" }}
                         </li>
                         <li class="status-item">
-                            <i class="fas fa-check-circle"></i>
-                            {{ "Catalog Available" if catalog_loaded else "Catalog Unavailable" }}
+                            <i class="fas fa-check-circle {% if not health_ok %}status-icon-bad{% endif %}"></i>
+                            Health Endpoint: {{ "Healthy" if health_ok else "Unavailable" }}
                         </li>
                         <li class="status-item">
+                            {% if maintenance_mode_enabled %}
+                            <i class="fas fa-triangle-exclamation status-icon-warn"></i>
+                            <span>
+                                Maintenance Mode: Enabled
+                                {% if maintenance_last_changed %}
+                                <span class="status-item-meta">Since {{ maintenance_last_changed }}{% if maintenance_changed_by %} by {{ maintenance_changed_by }}{% endif %}</span>
+                                {% endif %}
+                            </span>
+                            {% else %}
                             <i class="fas fa-check-circle"></i>
-                            Employee Logged In
+                            <span>
+                                Maintenance Mode: Disabled
+                                {% if maintenance_last_changed %}
+                                <span class="status-item-meta">Since {{ maintenance_last_changed }}{% if maintenance_changed_by %} by {{ maintenance_changed_by }}{% endif %}</span>
+                                {% endif %}
+                            </span>
+                            {% endif %}
+                        </li>
+                        <li class="status-item">
+                            <i class="fas fa-code-branch"></i>
+                            Version: {{ app_version }}
                         </li>
                     </ul>
+
+                    {% if role == 'Admin' %}
+                    <div class="maintenance-controls">
+                        {% if maintenance_mode_enabled %}
+                        <p class="maintenance-toggle-note">Customers are currently receiving HTTP 503.</p>
+                        <form method="POST" action="{{ url_for('employee.update_maintenance') }}" class="maintenance-toggle-form"
+                            onsubmit="return confirm('Disable Maintenance Mode? Customers will immediately regain access to the site.');">
+                            <input type="hidden" name="state" value="disable">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                <i class="fas fa-toggle-off"></i> Disable Maintenance
+                            </button>
+                        </form>
+                        {% else %}
+                        <p class="maintenance-toggle-note">Enabling Maintenance Mode immediately shows HTTP 503 to public visitors.</p>
+                        <form method="POST" action="{{ url_for('employee.update_maintenance') }}" class="maintenance-toggle-form"
+                            onsubmit="return confirm('Enable Maintenance Mode? Customers will immediately receive HTTP 503 until this is disabled.');">
+                            <input type="hidden" name="state" value="enable">
+                            <button type="submit" class="btn btn-warning btn-sm">
+                                <i class="fas fa-toggle-on"></i> Enable Maintenance
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}

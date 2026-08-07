@@ -21,7 +21,7 @@ from services.department_service import (
 )
 from services.enquiry_service import get_customer_count, get_customers, get_enquiries, get_enquiry_count
 from services.image_service import validate_image_file, validate_image_files
-from services.maintenance_service import is_maintenance_enabled
+from services.maintenance_service import get_maintenance_config, set_maintenance_enabled
 from services.product_service import (
     apply_stock_transaction,
     create_product,
@@ -162,8 +162,27 @@ def dashboard():
 
     # Reaching this line means the Catalog query above already succeeded,
     # so both of these are simply true at render time - no extra queries needed.
+    # health_ok mirrors GET /health's own liveness semantics (reaching the
+    # line proves the WSGI process/DB path is up) - it deliberately is not
+    # a second, different check from db_connected.
     db_connected = True
-    catalog_loaded = True
+    health_ok = True
+
+    # Sprint 10 (Administration Tools): one read gets enabled state plus the
+    # last_changed/changed_by metadata set_maintenance_enabled() records -
+    # see AI_CONTEXT.md "Website Status Card". last_changed is stored as an
+    # ISO string; formatted here (not in the template) to keep the template
+    # free of parsing logic, matching this codebase's convention of routes
+    # preparing plain display-ready values.
+    maintenance_config = get_maintenance_config()
+    maintenance_last_changed = maintenance_config["last_changed"]
+    if maintenance_last_changed:
+        try:
+            maintenance_last_changed = datetime.fromisoformat(maintenance_last_changed).strftime(
+                "%d %b %Y, %I:%M %p"
+            )
+        except ValueError:
+            maintenance_last_changed = None
 
     return render_template(
         "employee/dashboard.html",
@@ -179,14 +198,50 @@ def dashboard():
         inventory_summary=inventory_summary,
         recent_enquiries=recent_enquiries,
         db_connected=db_connected,
-        catalog_loaded=catalog_loaded,
+        health_ok=health_ok,
+        app_version=Config.APP_VERSION,
         invoice_generator_configured=bool(Config.INVOICE_GENERATOR_URL),
         # Sprint 8 Review: lets an employee see at a glance, from the page
         # they're already most likely to have open during a deploy, that
         # customers are currently getting HTTP 503 - see the Maintenance
         # Mode Enabled card in dashboard.html.
-        maintenance_mode_enabled=is_maintenance_enabled(),
+        maintenance_mode_enabled=maintenance_config["enabled"],
+        maintenance_last_changed=maintenance_last_changed,
+        maintenance_changed_by=maintenance_config["changed_by"],
     )
+
+
+@employee_bp.route("/employee/maintenance", methods=["POST"])
+def update_maintenance():
+    """
+    Enable or disable Maintenance Mode from the Employee Dashboard. Admin
+    only - Employees may view maintenance status but never change it (see
+    AI_CONTEXT.md "Administrator Permissions").
+
+    One endpoint accepts the desired state via a `state` form field
+    ("enable"/"disable") rather than two separate enable/disable routes,
+    per the approved Sprint 10 architecture. Takes effect immediately -
+    services/maintenance_service.py reads config/maintenance.json fresh on
+    every request, so no Passenger restart or page-reload trick is needed.
+    """
+
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+
+    if session.get("Role") != "Admin":
+        abort(403)
+
+    desired_state = request.form.get("state")
+    if desired_state not in ("enable", "disable"):
+        abort(400)
+
+    set_maintenance_enabled(desired_state == "enable", session.get("Username"))
+
+    flash(
+        f"Maintenance Mode {'enabled' if desired_state == 'enable' else 'disabled'}.",
+        "success",
+    )
+    return redirect(url_for("employee.dashboard"))
 
 
 @employee_bp.route("/employee/products", methods=["GET"])

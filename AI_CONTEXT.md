@@ -673,6 +673,26 @@ A stabilization/polish pass across both portals, explicitly *not* a new-subsyste
 
 **Testing note — credential entry is out of scope for automated testing in this environment.** Every fix that didn't require an authenticated Employee/Admin session was verified live via the dev server (Home, Products search — including the `%`/`_`/normal-term cases above — Product Details, Categories, Contact, product Enquiry, Login's failure path, and the `/employee/login?logout_success=True` bookmark scenario, which now correctly shows no message at all). Fixes that require a live login (Dashboard, Products, Inventory, Customers, Enquiries, Departments, Product Images, Inventory Transactions, and the successful-login/logout round trip itself) were verified by full code review and a Python syntax/compile check instead — the assistant's safety policy blocks automated credential entry into a login form even against a throwaway local dev account, so these were not exercised end-to-end in a browser this sprint. A quick manual click-through of those pages (particularly the Department form's new Save spinner and a real login → dashboard → logout round trip) is recommended before considering this sprint fully verified.
 
+### Sprint 10 — Administration Tools
+
+Gives an Administrator operational control over Maintenance Mode from inside the Employee Portal, replacing manual edits to `config/maintenance.json` over SSH. No schema change, no new blueprint, no new CSS file, no JavaScript. The architecture established in Sprint 8/Sprint 8 Review (config-based state, `request.blueprint` gate, session-based bypass, fresh-read-every-call) is entirely unchanged — this sprint only adds a write path and a dashboard status display on top of it.
+
+**Not a Manager role.** The sprint brief referred to "Manager" as a permission tier, but `Users.Role` only ever has three values — Customer, Employee, Admin (see RBAC) — and "Manager" only exists as an `Employees.Designation` (job title), which this codebase explicitly forbids using for authorization (see "Authorization vs. Job Designation"). Implemented as Admin (toggle) vs. Employee (view-only) using the existing Role check, not a new role.
+
+**`services/maintenance_service.py:set_maintenance_enabled(enabled, changed_by)`** is the single write path `config/maintenance.json` goes through. It always reads the current file first and carries `maintenance_key` forward unchanged, so toggling Enabled/Disabled can never reset or blank the configured bypass key. It also stamps `last_changed` (ISO timestamp) and `changed_by` (the acting Admin's `Username`) — two new keys added to the config schema, both `None`/absent-safe for a `maintenance.json` that predates this sprint or was hand-edited on a server. Written atomically (`tempfile.mkstemp` in the same directory + `os.replace`) so a request reading the file mid-write can never see a partially-written document. `get_maintenance_config()`'s existing fresh-read-every-call behavior (no caching) is unchanged — `is_maintenance_enabled()` and `verify_maintenance_key()`, and therefore `app.py`'s gate/bypass/banner/`/health` logic, needed zero changes. `config/maintenance.example.json` (the committed onboarding template) gained the same two keys, both `null`.
+
+**Single endpoint, not enable/disable pairs.** `POST /employee/maintenance` (`routes/employee.py:update_maintenance()`) takes a `state` form field (`"enable"`/`"disable"`) rather than two separate routes, per the approved architecture. Admin-only via the same `session.get("Role") != "Admin"` guard already used by Deactivate/Restore Product and Delete Image — Employees get a 403 if they ever POST here directly, not just a hidden button. An unrecognized `state` value is a 400, not a silent no-op. On success: flashes through the existing global flash mechanism, redirects to the dashboard. Takes effect immediately — no Passenger restart, no reload trick — because the read side was already cache-free.
+
+**Website Status card**, added to the Employee Dashboard's existing "Operations" → **System Status** panel (`templates/employee/dashboard.html`) — extended in place, not a new panel, reusing `.info-panel`/`.status-list`/`.status-item`. Five lines, in order: Website Status (Online / Maintenance, from `maintenance_mode_enabled`), Database Connected (unchanged `db_connected`, computed the same way it always was — reaching that line in `dashboard()` after `get_product_count()` already proves it), Health Endpoint (new `health_ok`, deliberately the *same* liveness signal `GET /health` itself reports — not a second, different check, per "avoid unnecessary complexity"), Maintenance Mode: Enabled/Disabled with a `Since <date> by <employee>` metadata line when available, and Version (`Config.APP_VERSION`, bumped to `"Sprint 10"` this sprint — the existing "bump by hand per release" convention from Sprint 8 Review). Status icons reuse the Inventory Overview's existing healthy/amber/red palette (`#067647`/`#B54708`/`#B42318`) via two small new modifier classes (`.status-icon-warn`, `.status-icon-bad`) rather than inventing new colors. The pre-existing "Catalog Available" and "Employee Logged In" lines were dropped — they weren't part of the required five and duplicated information already shown elsewhere (`catalog_loaded`, the now-unused twin of `db_connected`, was removed from `dashboard()` entirely rather than left as dead code).
+
+**Admin-only toggle**, rendered `{% if role == 'Admin' %}` directly under the status list in the same panel: one form, its hidden `state` value and button label/color flipping with the current state (amber "Enable Maintenance" when disabled, outline-red "Disable Maintenance" when enabled) — a single toggle, not two always-visible buttons, matching the single-endpoint design. Same plain-`confirm()` pattern already used by Deactivate/Restore Product, with maintenance-specific wording ("Customers will immediately receive HTTP 503..." / "...immediately regain access..."). Employees see the identical five-line status list with no form at all — not a disabled/greyed-out button, the control doesn't exist in their rendered HTML.
+
+**Audit-log foundation, not an audit log.** Every state change already funnels through the one `set_maintenance_enabled()` call, and `last_changed`/`changed_by` are already captured — a future audit-log feature only needs to add a persistence call inside that one function; no route or template changes would be needed. No log table or file was built this sprint, per the brief's explicit instruction.
+
+**`admin_bp`/`templates/admin/*` left untouched.** This empty stub blueprint (three 0-byte templates, zero routes, no nav link) was explicitly out of scope per the approved architecture — its natural future scope (Employee CRUD, Role Management, per "Admin Permissions" → "Future system administration") is bigger than one maintenance toggle. See Future Roadmap below.
+
+**Regression tested** against a live dev server: Customer (Home, Products, Product Details, Categories, Contact) all 200 with maintenance off; anonymous visitor gets the unchanged standalone 503 page with maintenance on; `/employee/login` stays 200 throughout; `/health` reflects live `maintenance`/`version` state. Because this sprint's writes/authenticated views can't be exercised through the login form (see the standing testing-note above), the toggle and RBAC were verified with Flask's test client, setting `session` directly in a `session_transaction()` — never touching a password field — covering: anonymous POST redirects to login; Employee POST is 403; Employee dashboard renders the status list with no toggle form; Admin enable/disable both succeed, flash, persist `changed_by`/`last_changed`, and flip the button; an invalid `state` value is 400. 27/27 automated checks passed. Employee Portal regression (Products, Inventory, Customers, Enquiries, Departments, Inventory Transactions) was not touched by this sprint's changes and was covered by the Sprint 9 audit already on file.
+
 ---
 
 # 3. Architecture & Conventions
@@ -1107,6 +1127,19 @@ Goal:
 Employees should never have to log in twice.
 
 Invoice Generator
+
+## Administration Roadmap (Post Sprint 10)
+
+Sprint 10 (Administration Tools) deliberately scoped to Maintenance Mode control only — see "Sprint 10 — Administration Tools" above. The empty `admin_bp` blueprint (`routes/admin.py`) and its three 0-byte stub templates (`templates/admin/dashboard.html`, `employees.html`, `settings.html`) were left untouched and are reserved for a future, larger Admin Settings sprint, covering the items this sprint's brief explicitly listed as out of scope:
+
+□ Employee CRUD
+□ Role Management
+□ Backup / Restore
+□ Activity Logs (a real audit log — Sprint 10 only made the maintenance toggle audit-log-*ready*, see above)
+□ Notifications
+□ Analytics
+□ Invoice Generator Integration (deeper than the existing launch-only bridge — see Future Roadmap above)
+□ REST API
 
 ## Product Management Roadmap
 
