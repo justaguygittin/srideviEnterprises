@@ -137,7 +137,7 @@ Author  : Srikar
 
                 {% if errors.form %}<div class="alert alert-danger" role="alert">{{ errors.form }}</div>{% endif %}
 
-                <form method="post" enctype="multipart/form-data" novalidate>
+                <form method="post" enctype="multipart/form-data" id="department-form" novalidate>
                     <div class="mb-3">
                         <label class="form-label d-block">Current Image</label>
                         <div class="department-current-image">
@@ -181,7 +181,7 @@ Author  : Srikar
                     </div>
 
                     <div class="d-flex gap-2 mt-4">
-                        <button class="btn btn-primary" type="submit">Save</button>
+                        <button class="btn btn-primary" type="submit" id="department-form-save-btn">Save</button>
                         <a href="{{ url_for('employee.departments') }}" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
@@ -189,4 +189,16 @@ Author  : Srikar
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    var form = document.getElementById("department-form");
+    var saveButton = document.getElementById("department-form-save-btn");
+
+    form.addEventListener("submit", function () {
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Saving...';
+    });
+})();
+</script>
 {% endblock %}

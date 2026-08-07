@@ -61,22 +61,8 @@ Employee Login - Sridevi Enterprises
         box-shadow: 0 0 0 0.2rem rgba(30, 79, 163, 0.25);
     }
 
-    .login-btn {
-        background: linear-gradient(135deg, #1E4FA3 0%, #1565A0 100%);
-        border: none;
-        color: white;
-        font-weight: 600;
-        padding: 0.75rem;
-        width: 100%;
-        border-radius: 4px;
+    .login-card button[type="submit"] {
         margin-top: 1rem;
-        cursor: pointer;
-        transition: transform 0.2s;
-    }
-
-    .login-btn:hover {
-        transform: translateY(-2px);
-        color: white;
     }
 
     .alert-danger {
@@ -90,19 +76,13 @@ Employee Login - Sridevi Enterprises
     <div class="login-card">
         <h2>Employee Login</h2>
 
-        {% if success_message %}
-        <div class="alert alert-success" role="alert">
-            {{ success_message }}
-        </div>
-        {% endif %}
-
         {% if error %}
         <div class="alert alert-danger" role="alert">
             {{ error }}
         </div>
         {% endif %}
 
-        <form method="POST" action="{{ url_for('employee.login') }}" novalidate>
+        <form method="POST" action="{{ url_for('employee.login') }}" id="login-form" novalidate>
             <div class="form-group">
                 <label for="username" class="form-label">Username</label>
                 <input type="text" class="form-control" id="username" name="username" required autofocus
@@ -115,8 +95,20 @@ Employee Login - Sridevi Enterprises
                     placeholder="Enter your password">
             </div>
 
-            <button type="submit" class="login-btn">Login</button>
+            <button type="submit" class="btn btn-primary w-100" id="login-submit-btn">Login</button>
         </form>
     </div>
 </div>
+
+<script>
+(function () {
+    var form = document.getElementById("login-form");
+    var submitButton = document.getElementById("login-submit-btn");
+
+    form.addEventListener("submit", function () {
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Logging in...';
+    });
+})();
+</script>
 {% endblock %}

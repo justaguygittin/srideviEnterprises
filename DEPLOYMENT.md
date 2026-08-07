@@ -219,10 +219,10 @@ Run this after every deploy or restart.
 - [*] Homepage (`/`) loads with departments, featured products, and brands.
 - [*] Products listing (`/products`) loads; search, filters, and pagination work.
 - [*] A product details page (`/products/<id>`) loads with its images and specifications.
-- [ ] Departments page (`/categories`) loads.
+- [*] Departments page (`/categories`) loads.
 - [ ] Search returns results from the navbar search bar.
-- [ ] Contact form (`/contact`) submits successfully.
-- [ ] Customer product enquiry form submits successfully.
+- [*] Contact form (`/contact`) submits successfully.
+- [*] Customer product enquiry form submits successfully.
 - [*] Visiting the site over plain `http://` redirects to `https://`.
 - [*] The browser shows a valid HTTPS padlock (no certificate warnings).
 

@@ -88,9 +88,15 @@ Author  : Srikar
 
         </div>
 
-        <p class="empty-state d-none" id="category-empty-state">No departments match your search.</p>
+        <div class="empty-state d-none" id="category-empty-state">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <p>No departments match your search.</p>
+        </div>
         {% else %}
-        <p class="empty-state">No departments available yet.</p>
+        <div class="empty-state">
+            <i class="fa-solid fa-shapes"></i>
+            <p>No departments available yet.</p>
+        </div>
         {% endif %}
 
     </div>

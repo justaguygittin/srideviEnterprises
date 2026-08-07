@@ -96,3 +96,14 @@ Author  : Srikar
     white-space: nowrap;
 
 }
+
+@media (max-width: 575.98px) {
+
+    .search-bar-clear {
+
+        width: 44px;
+        height: 44px;
+
+    }
+
+}

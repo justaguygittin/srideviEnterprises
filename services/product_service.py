@@ -83,6 +83,17 @@ def get_product_count(filters: dict[str, Any]) -> int:
     return result["total"]
 
 
+def _escape_like(value: str) -> str:
+    """
+    Escape LIKE wildcard characters (%, _) and the backslash escape character
+    itself in user-supplied search text, so a literal % or _ typed into a
+    search box is matched as literal text instead of acting as a SQL
+    wildcard (which would otherwise silently match every row).
+    """
+
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def _build_product_filters(filters: dict[str, Any]) -> tuple[str, list[Any]]:
     """
     Build the reusable SQL WHERE clause for product listing and count queries.
@@ -109,7 +120,7 @@ def _build_product_filters(filters: dict[str, Any]) -> tuple[str, list[Any]]:
 
     search = filters.get("search", "").strip()
     if search:
-        like_value = f"%{search}%"
+        like_value = f"%{_escape_like(search)}%"
         where_clauses.append("""(
             product_name LIKE %s OR brand LIKE %s OR Department LIKE %s
             OR category LIKE %s OR model LIKE %s

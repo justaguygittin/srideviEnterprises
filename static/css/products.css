@@ -108,6 +108,14 @@ Author  : Srikar
 
 }
 
+.filter-drawer .offcanvas-header .btn-close {
+
+    width: 44px;
+    height: 44px;
+    padding: 0;
+
+}
+
 /* ===========================================
    Collapsible Filter Groups
 =========================================== */

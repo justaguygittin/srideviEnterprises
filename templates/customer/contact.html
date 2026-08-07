@@ -44,7 +44,7 @@ Author  : Srikar
                     <h2 id="general-enquiry-title">Send a General Enquiry</h2>
                     <p class="catalog-product-pricing">Contact for Pricing</p>
                     {% if errors.form %}<div class="alert alert-danger" role="alert">{{ errors.form }}</div>{% endif %}
-                    <form method="post" novalidate>
+                    <form method="post" id="contact-form" novalidate>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="customer_name" class="form-label">Name</label>
@@ -72,7 +72,7 @@ Author  : Srikar
                                 {% if errors.message %}<div class="invalid-feedback">{{ errors.message }}</div>{% endif %}
                             </div>
                         </div>
-                        <button class="btn btn-primary mt-4" type="submit">Submit Enquiry</button>
+                        <button class="btn btn-primary mt-4" type="submit" id="contact-form-submit-btn">Submit Enquiry</button>
                     </form>
                 </div>
             </section>
@@ -114,4 +114,16 @@ Author  : Srikar
         </section>
     </div>
 </section>
+
+<script>
+(function () {
+    var form = document.getElementById("contact-form");
+    var submitButton = document.getElementById("contact-form-submit-btn");
+
+    form.addEventListener("submit", function () {
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Submitting...';
+    });
+})();
+</script>
 {% endblock %}

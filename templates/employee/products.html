@@ -304,8 +304,8 @@ Products - Employee Portal - Sridevi Enterprises
         color: #999;
     }
 
-    .empty-state-icon {
-        font-size: 3rem;
+    .empty-state i {
+        font-size: 2.5rem;
         color: #ccc;
         margin-bottom: 1rem;
     }
@@ -313,6 +313,12 @@ Products - Employee Portal - Sridevi Enterprises
     .empty-state p {
         font-size: 1.1rem;
         margin: 0;
+    }
+
+    .empty-state p.empty-state-subtext {
+        font-size: 0.85rem;
+        color: #999;
+        margin-top: 0.4rem;
     }
 
     .pagination {
@@ -638,10 +644,9 @@ Products - Employee Portal - Sridevi Enterprises
             {% else %}
             <!-- Empty State -->
             <div class="empty-state">
-                <div class="empty-state-icon">
-                    <i class="fas fa-inbox"></i>
-                </div>
+                <i class="fas fa-inbox"></i>
                 <p>No matching products found.</p>
+                <p class="empty-state-subtext">Try adjusting your search or filters.</p>
             </div>
             {% endif %}
         </div>

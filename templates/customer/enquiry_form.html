@@ -27,7 +27,7 @@ Author  : Srikar
 
             {% if errors.form %}<div class="alert alert-danger" role="alert">{{ errors.form }}</div>{% endif %}
 
-            <form method="post" novalidate>
+            <form method="post" id="enquiry-form" novalidate>
                 <input type="hidden" name="product_id" value="{{ product.id }}">
                 <div class="row g-3">
                     <div class="col-md-6">
@@ -51,7 +51,7 @@ Author  : Srikar
                         {% if errors.message %}<div class="invalid-feedback">{{ errors.message }}</div>{% endif %}
                     </div>
                 </div>
-                <button class="btn btn-primary mt-4" type="submit">Submit Enquiry</button>
+                <button class="btn btn-primary mt-4" type="submit" id="enquiry-form-submit-btn">Submit Enquiry</button>
             </form>
         </div>
         {% else %}
@@ -63,4 +63,20 @@ Author  : Srikar
         {% endif %}
     </div>
 </section>
+
+<script>
+(function () {
+    var form = document.getElementById("enquiry-form");
+    var submitButton = document.getElementById("enquiry-form-submit-btn");
+
+    if (!form || !submitButton) {
+        return;
+    }
+
+    form.addEventListener("submit", function () {
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Submitting...';
+    });
+})();
+</script>
 {% endblock %}

@@ -107,10 +107,6 @@ def login():
     """Handle employee login page and authentication."""
 
     error = None
-    success_message = None
-
-    if request.args.get("logout_success"):
-        success_message = "You have been logged out successfully."
 
     if request.method == "POST":
         username = request.form.get("username", "").strip()
@@ -131,9 +127,7 @@ def login():
             else:
                 error = "Invalid username or password."
 
-    return render_template(
-        "employee/login.html", error=error, success_message=success_message
-    )
+    return render_template("employee/login.html", error=error)
 
 
 @employee_bp.route("/employee/dashboard", methods=["GET"])
@@ -821,4 +815,5 @@ def logout():
 
     session.clear()
 
-    return redirect(url_for("employee.login", logout_success=True))
+    flash("You have been logged out successfully.", "success")
+    return redirect(url_for("employee.login"))
