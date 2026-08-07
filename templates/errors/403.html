@@ -1,0 +1,33 @@
+<!--
+==========================================================
+Project : Sridevi Enterprises
+File    : errors/403.html
+Purpose : Branded 403 Forbidden page.
+
+Author  : Srikar
+==========================================================
+-->
+{% extends "layout/base.html" %}
+
+{% block title %}Access Denied - Sridevi Enterprises{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/error_page.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="error-page">
+    <div class="container">
+        <div class="error-page-wrapper">
+            <i class="fa-solid fa-lock error-page-icon error-page-icon--warning" aria-hidden="true"></i>
+            <div class="error-page-code">Error 403</div>
+            <h1>Access Denied</h1>
+            <p>You don't have permission to view this page.</p>
+            <p>If you believe this is a mistake, please contact your administrator.</p>
+            <div class="error-page-actions d-flex justify-content-center gap-3 flex-wrap">
+                <a href="{{ url_for('customer.home') }}" class="btn btn-primary">Return Home</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

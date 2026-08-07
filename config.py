@@ -40,6 +40,12 @@ class Config:
     # Debug mode must be explicitly enabled; defaults to False for safety.
     DEBUG = os.getenv("FLASK_DEBUG", "False").strip().lower() == "true"
 
+    # Human-readable build/sprint label, surfaced read-only via GET /health so a
+    # deploy can confirm the right code is actually running after a Passenger
+    # restart (Sprint 8 Review - see AI_CONTEXT.md "Health Endpoint"). Bump this
+    # string when a new sprint/release ships.
+    APP_VERSION = "Sprint 8"
+
     # Base URL of the separately-hosted invoice-generation project (its own Flask
     # app, not part of this codebase - see AI_CONTEXT.md; that project itself is
     # still named "Receipt Generator" and is NOT being renamed). Left unset until

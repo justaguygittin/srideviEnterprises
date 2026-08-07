@@ -21,6 +21,7 @@ from services.department_service import (
 )
 from services.enquiry_service import get_customer_count, get_customers, get_enquiries, get_enquiry_count
 from services.image_service import validate_image_file, validate_image_files
+from services.maintenance_service import is_maintenance_enabled
 from services.product_service import (
     apply_stock_transaction,
     create_product,
@@ -186,6 +187,11 @@ def dashboard():
         db_connected=db_connected,
         catalog_loaded=catalog_loaded,
         invoice_generator_configured=bool(Config.INVOICE_GENERATOR_URL),
+        # Sprint 8 Review: lets an employee see at a glance, from the page
+        # they're already most likely to have open during a deploy, that
+        # customers are currently getting HTTP 503 - see the Maintenance
+        # Mode Enabled card in dashboard.html.
+        maintenance_mode_enabled=is_maintenance_enabled(),
     )
 
 

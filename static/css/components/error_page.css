@@ -1,0 +1,95 @@
+/* ======================================================
+Project : Sridevi Enterprises
+File    : components/error_page.css
+Purpose : Shared branded status-page component, used by the 403, 404,
+          500, and 503 (Maintenance Mode) pages. Not loaded globally
+          (layout/base.html) since it only applies to these four pages -
+          each links it directly via its own page_css block, the same
+          "reuse a specific component without a global load" pattern
+          home.html already uses for products.css.
+
+Author  : Srikar
+====================================================== */
+
+.error-page {
+
+    background: #F5F7FA;
+    min-height: calc(100vh - 260px);
+    display: flex;
+    align-items: center;
+    padding: 48px 0;
+
+}
+
+.error-page-wrapper {
+
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 48px 36px;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+    text-align: center;
+
+}
+
+.error-page-icon {
+
+    font-size: 3.5rem;
+    color: #1E4FA3;
+    margin-bottom: 16px;
+
+}
+
+.error-page-icon--warning {
+
+    color: #B42318;
+
+}
+
+.error-page-icon--maintenance {
+
+    color: #B54708;
+
+}
+
+.error-page-code {
+
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: .95rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #667085;
+    margin-bottom: 8px;
+
+}
+
+.error-page-wrapper h1 {
+
+    margin-bottom: 16px;
+
+}
+
+.error-page-wrapper p {
+
+    color: #475467;
+    margin-bottom: 8px;
+
+}
+
+.error-page-actions {
+
+    margin-top: 28px;
+
+}
+
+@media (max-width: 576px) {
+
+    .error-page-wrapper {
+
+        padding: 32px 24px;
+
+    }
+
+}

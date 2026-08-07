@@ -1,0 +1,35 @@
+<!--
+==========================================================
+Project : Sridevi Enterprises
+File    : errors/500.html
+Purpose : Branded 500 Internal Server Error page. Deliberately shows no
+          stack trace or debug detail - see AI_CONTEXT.md "Maintenance
+          Mode" / Sprint 8.
+
+Author  : Srikar
+==========================================================
+-->
+{% extends "layout/base.html" %}
+
+{% block title %}Something Went Wrong - Sridevi Enterprises{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/error_page.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="error-page">
+    <div class="container">
+        <div class="error-page-wrapper">
+            <i class="fa-solid fa-triangle-exclamation error-page-icon error-page-icon--warning" aria-hidden="true"></i>
+            <div class="error-page-code">Error 500</div>
+            <h1>Something Went Wrong</h1>
+            <p>An unexpected error occurred on our end. Our team has been notified.</p>
+            <p>Please try again in a few minutes.</p>
+            <div class="error-page-actions d-flex justify-content-center gap-3 flex-wrap">
+                <a href="{{ url_for('customer.home') }}" class="btn btn-primary">Return Home</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,53 @@
+<!--
+==========================================================
+Project : Sridevi Enterprises
+File    : errors/503.html
+Purpose : Maintenance Mode page - a dedicated, standalone screen (see
+          layout/minimal.html: no navbar, no navigation links, no
+          search bar, no footer) so a customer immediately understands
+          the entire website is temporarily unavailable, instead of
+          thinking one page is broken.
+
+          Rendered for every customer-facing request while
+          config/maintenance.json has "enabled": true and the visitor
+          has no verified maintenance bypass session - see
+          enforce_maintenance_mode() in app.py and AI_CONTEXT.md
+          "Maintenance Mode" / "Maintenance Page Redesign".
+
+Author  : Srikar
+==========================================================
+-->
+{% extends "layout/minimal.html" %}
+
+{% block title %}Under Maintenance - Sridevi Enterprises{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/maintenance_page.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="maintenance-screen">
+
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Sridevi Enterprises Logo"
+        class="maintenance-logo">
+
+    <h1 class="maintenance-brand">Sridevi Enterprises</h1>
+
+    <div class="maintenance-card">
+
+        <i class="fa-solid fa-screwdriver-wrench maintenance-icon" aria-hidden="true"></i>
+
+        <h2>Scheduled Maintenance</h2>
+
+        <p>We're currently performing scheduled maintenance.</p>
+        <p>Please check back shortly.</p>
+
+        <div class="maintenance-contact">
+            <p><i class="fas fa-phone" aria-hidden="true"></i> +91 98765 43210</p>
+            <p><i class="fas fa-envelope" aria-hidden="true"></i> info@sridevienterprises.example</p>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

@@ -56,6 +56,7 @@ TODO:
 
     <!-- Shared Components (used by the navbar on every page) -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/search.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/maintenance_banner.css') }}">
 
     <!-- Page Specific CSS -->
     {% block page_css %}
@@ -66,6 +67,10 @@ TODO:
 <body>
 
     {% include 'components/navbar.html' %}
+
+    {% if show_maintenance_banner %}
+    {% include 'components/maintenance_banner.html' %}
+    {% endif %}
 
     {% include 'components/flash_messages.html' %}
 

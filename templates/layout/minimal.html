@@ -1,0 +1,70 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : minimal.html
+Purpose : Minimal standalone layout - no navbar, no footer, no search
+          bar, no Bootstrap/app JS. Used by pages that must present as
+          a dedicated, full-page screen rather than a normal site page,
+          so a visitor immediately understands the whole site is
+          unavailable rather than thinking one page is broken.
+
+          Currently used only by errors/503.html (Maintenance Mode) -
+          see AI_CONTEXT.md "Maintenance Page Redesign (Sprint 8
+          Review)". Reuse this layout for any future page that needs
+          the same dedicated-screen treatment instead of duplicating
+          the <head> boilerplate.
+
+Author  : Srikar
+=========================================================
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <!-- Character Encoding -->
+    <meta charset="UTF-8">
+
+    <!-- Mobile Responsive -->
+    <meta name="author" content="Developed by Guddanti Srikar">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>
+        {% block title %}
+        Sridevi Enterprises
+        {% endblock %}
+    </title>
+
+    <!-- Google Fonts -->
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Font Awesome -->
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+    <!-- Global CSS -->
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+
+    <!-- Page Specific CSS -->
+    {% block page_css %}
+    {% endblock %}
+
+</head>
+
+<body>
+
+    {% block content %}
+    {% endblock %}
+
+</body>
+
+</html>

@@ -1,0 +1,64 @@
+/* ======================================================
+Project : Sridevi Enterprises
+File    : components/maintenance_banner.css
+Purpose : "Maintenance Mode" bypass banner - loaded globally
+          (layout/base.html) since it can appear above any customer
+          page, same reasoning as components/search.css.
+
+          Sprint 8 Review: restyled from a subtle inline notice to a
+          solid, high-contrast band (bold title line + two explanatory
+          lines) so a bypassed visitor can't mistake it for a normal
+          page notice and assume the public site is already live.
+
+Author  : Srikar
+====================================================== */
+
+.maintenance-banner {
+
+    background: #FDB022;
+    border-bottom: 3px solid #B54708;
+    color: #4E1D09;
+    padding: 12px 0;
+    text-align: center;
+
+}
+
+.maintenance-banner-title {
+
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+
+}
+
+.maintenance-banner-title i {
+
+    margin-right: 8px;
+
+}
+
+.maintenance-banner-line {
+
+    margin: 0;
+    font-size: .875rem;
+
+}
+
+@media (max-width: 576px) {
+
+    .maintenance-banner-title {
+
+        font-size: .9rem;
+
+    }
+
+    .maintenance-banner-line {
+
+        font-size: .78rem;
+
+    }
+
+}

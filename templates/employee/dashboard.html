@@ -164,6 +164,42 @@ Dashboard - Employee Portal - Sridevi Enterprises
         color: #B42318;
     }
 
+    /* Maintenance Mode notice (Sprint 8 Review) - same amber palette as the
+       customer-facing bypass banner (components/maintenance_banner.css), so
+       the two "you're in a maintenance window" signals read as one system. */
+    .maintenance-mode-alert {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        background: #FFFAEB;
+        border: 1px solid #FEDF89;
+        border-left: 4px solid #B54708;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 1.5rem;
+        color: #93370D;
+    }
+
+    .maintenance-mode-alert i {
+        font-size: 1.4rem;
+        margin-top: 2px;
+    }
+
+    .maintenance-mode-alert strong {
+        display: block;
+        margin-bottom: 4px;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .maintenance-mode-alert p {
+        margin: 0 0 2px;
+        font-size: 0.9rem;
+    }
+
+    .maintenance-mode-alert-reminder {
+        font-weight: 600;
+    }
+
     .dashboard-cards {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -511,6 +547,19 @@ Dashboard - Employee Portal - Sridevi Enterprises
                     <i class="far fa-calendar"></i> {{ current_date }}
                 </div>
             </div>
+
+            {% if maintenance_mode_enabled %}
+            <!-- Maintenance Mode Notice (Sprint 8 Review) -->
+            <div class="maintenance-mode-alert" role="status">
+                <i class="fas fa-screwdriver-wrench" aria-hidden="true"></i>
+                <div>
+                    <strong>Maintenance Mode Enabled</strong>
+                    <p>Customers currently receive HTTP 503.</p>
+                    <p>The Employee Portal remains available.</p>
+                    <p class="maintenance-mode-alert-reminder">Remember to disable maintenance after deployment.</p>
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Statistics -->
             <h2 class="section-heading">Overview</h2>

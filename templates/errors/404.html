@@ -1,0 +1,33 @@
+<!--
+==========================================================
+Project : Sridevi Enterprises
+File    : errors/404.html
+Purpose : Branded 404 Not Found page.
+
+Author  : Srikar
+==========================================================
+-->
+{% extends "layout/base.html" %}
+
+{% block title %}Page Not Found - Sridevi Enterprises{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/error_page.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="error-page">
+    <div class="container">
+        <div class="error-page-wrapper">
+            <i class="fa-solid fa-magnifying-glass error-page-icon" aria-hidden="true"></i>
+            <div class="error-page-code">Error 404</div>
+            <h1>Page Not Found</h1>
+            <p>The page you're looking for doesn't exist or may have moved.</p>
+            <div class="error-page-actions d-flex justify-content-center gap-3 flex-wrap">
+                <a href="{{ url_for('customer.home') }}" class="btn btn-primary">Return Home</a>
+                <a href="{{ url_for('customer.products') }}" class="btn btn-outline-primary">Browse Products</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

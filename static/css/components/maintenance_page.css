@@ -1,0 +1,115 @@
+/* ======================================================
+Project : Sridevi Enterprises
+File    : components/maintenance_page.css
+Purpose : Standalone Maintenance Mode screen (errors/503.html,
+          layout/minimal.html). Deliberately its own file, not shared
+          with error_page.css (403/404/500) - those pages keep the full
+          site chrome (navbar/footer), this page intentionally has
+          none, so its visual language (full-bleed brand gradient,
+          centered splash) is different enough to not belong in the
+          same component.
+
+Author  : Srikar
+====================================================== */
+
+body {
+
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1E4FA3 0%, #1565A0 100%);
+    font-family: 'Inter', sans-serif;
+
+}
+
+.maintenance-screen {
+
+    width: 100%;
+    max-width: 480px;
+    padding: 24px;
+    text-align: center;
+
+}
+
+.maintenance-logo {
+
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    margin-bottom: 12px;
+
+}
+
+.maintenance-brand {
+
+    color: #ffffff;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 1.4rem;
+    margin: 0 0 28px;
+
+}
+
+.maintenance-card {
+
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 40px 32px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .18);
+
+}
+
+.maintenance-icon {
+
+    font-size: 3rem;
+    color: #B54708;
+    margin-bottom: 12px;
+
+}
+
+.maintenance-card h2 {
+
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    margin-bottom: 16px;
+
+}
+
+.maintenance-card p {
+
+    color: #475467;
+    margin: 0 0 6px;
+
+}
+
+.maintenance-contact {
+
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #EAECF0;
+
+}
+
+.maintenance-contact p {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    color: #1E4FA3;
+    font-weight: 500;
+
+}
+
+@media (max-width: 480px) {
+
+    .maintenance-card {
+
+        padding: 28px 20px;
+
+    }
+
+}

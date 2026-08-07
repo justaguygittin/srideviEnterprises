@@ -13,6 +13,10 @@ __pycache__/
 venv/
 .env
 
+# Maintenance Mode - live server state, never committed. See
+# config/maintenance.example.json for the template.
+config/maintenance.json
+
 # VS Code
 .vscode/
 
