@@ -32,15 +32,31 @@ def enforce_maintenance_mode():
 
     Only `customer_bp` routes are customer-facing, so this only fires for
     request.blueprint == "customer". That also means /health, static
-    files, and the Employee/Admin Portal (blueprint None or "employee"/
-    "admin") are never gated - the Employee Portal must keep working
-    normally during a deploy, and customer session doesn't carry any
-    Employee login info to check instead.
+    files, and the Employee/Admin Portal itself (blueprint None or
+    "employee"/"admin") are never gated - the Employee Portal must keep
+    working normally during a deploy.
 
-    A verified maintenance_key (session["maintenance_verified"]) lets the
-    bypassed visitor reach the whole customer site while maintenance stays
-    on for everyone else - see inject_maintenance_banner_state() below for
-    how that session is surfaced back to the visitor.
+    A request is let through (HTTP 503 is NOT returned) if any of:
+      1. Maintenance Mode is disabled.
+      2. The session has a logged-in Employee/Admin (session["UserID"]) -
+         bug fix, Sprint 8 Review follow-up: an employee verifying the
+         live public site right after a deploy is one of Maintenance
+         Mode's primary use cases, and forcing them to also know/paste
+         the separate bypass key on top of their own login defeated that.
+         Their Employee login already proves who they are; RBAC on the
+         Employee Portal itself is untouched by this - this only widens
+         what an *already-authenticated* employee session can see on the
+         customer site during maintenance.
+      3. The session has a verified maintenance bypass
+         (session["maintenance_verified"]), set below when a correct
+         ?maintenance_key= is supplied - this is what lets an anonymous
+         visitor (e.g. a client without an Employee account) reach the
+         site too.
+
+    Only a fully anonymous visitor - no Employee session, no verified
+    bypass session - ever receives HTTP 503. See
+    inject_maintenance_banner_state() below for how either bypass path is
+    surfaced back to the visitor via the banner.
     """
 
     if request.blueprint != "customer" or not is_maintenance_enabled():
@@ -50,7 +66,7 @@ def enforce_maintenance_mode():
     if candidate_key and verify_maintenance_key(candidate_key):
         session["maintenance_verified"] = True
 
-    if session.get("maintenance_verified"):
+    if session.get("maintenance_verified") or session.get("UserID"):
         return None
 
     abort(503)
@@ -59,16 +75,21 @@ def enforce_maintenance_mode():
 @app.context_processor
 def inject_maintenance_banner_state():
     """
-    Compute whether the "Maintenance Mode Active" banner should render on
-    this page, so templates never need to read `session`/`request`
-    directly - matching this codebase's convention of routes (and here, a
-    context processor) preparing plain values for templates.
+    Compute whether the "Maintenance Mode" banner should render on this
+    page, so templates never need to read `session`/`request` directly -
+    matching this codebase's convention of routes (and here, a context
+    processor) preparing plain values for templates.
+
+    Mirrors enforce_maintenance_mode()'s two ways through the gate (a
+    logged-in Employee/Admin, or a verified bypass session) - either one
+    means this visitor is seeing the live customer site while the public
+    is not, so either should see the reminder.
     """
 
     show_banner = (
         request.blueprint == "customer"
         and is_maintenance_enabled()
-        and bool(session.get("maintenance_verified"))
+        and bool(session.get("maintenance_verified") or session.get("UserID"))
     )
     return {"show_maintenance_banner": show_banner}
 

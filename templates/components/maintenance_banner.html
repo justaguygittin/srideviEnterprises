@@ -2,17 +2,20 @@
 =========================================================
 Project : Sridevi Enterprises
 File    : maintenance_banner.html
-Purpose : Shown only to a maintenance-bypass session, on customer-facing
-          pages, while Maintenance Mode is enabled. Made deliberately
-          hard to miss (Sprint 8 Review) so a bypassed visitor - most
-          likely an employee verifying a deploy - never mistakes the
-          bypass for the site actually being back up for everyone.
+Purpose : Shown on customer-facing pages, while Maintenance Mode is
+          enabled, to a visitor who is seeing the live site anyway -
+          either a logged-in Employee/Admin or a verified maintenance
+          bypass session (see enforce_maintenance_mode()'s bug-fixed
+          gate in app.py). Made deliberately hard to miss (Sprint 8
+          Review) so neither one mistakes what they're seeing for the
+          site actually being back up for everyone.
 
           Rendered only when show_maintenance_banner is true - see
           inject_maintenance_banner_state() in app.py. That condition
-          already guarantees: customer pages only, bypass session only,
-          never shown to the public, never shown inside the Employee
-          Portal.
+          already guarantees: customer pages only, an authenticated
+          Employee/Admin OR a verified bypass session, never shown to
+          an anonymous public visitor, never shown inside the Employee
+          Portal itself.
 
 Author  : Srikar
 =========================================================
@@ -24,6 +27,6 @@ Author  : Srikar
             Maintenance Mode
         </div>
         <p class="maintenance-banner-line">Public visitors are currently receiving <strong>HTTP 503</strong>.</p>
-        <p class="maintenance-banner-line">You are viewing the site using the maintenance bypass.</p>
+        <p class="maintenance-banner-line">You are viewing the site via employee login or a maintenance bypass.</p>
     </div>
 </div>

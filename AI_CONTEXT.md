@@ -636,6 +636,23 @@ Fixed by introducing **`templates/layout/minimal.html`**, a new, deliberately ba
 
 **Dev-environment note, not a code change**: the local dev database's `admin` account password was reset to a new local-only value (same `werkzeug.security.generate_password_hash`-against-the-dev-DB approach already used and documented under Sprint 7 — Product Lifecycle Management) so this review could log in and verify the Employee Portal during an active maintenance window. Local development database only, unrelated to authentication code (untouched this review).
 
+### Sprint 8 Bug Fix — Employee Login Was Not a Maintenance Bypass
+
+QA testing found a real logic gap in `enforce_maintenance_mode()` (`app.py`): an already-authenticated Employee/Admin browsing the *customer* site (e.g. `/`, `/products`) while Maintenance Mode was on still received the branded HTTP 503 page, exactly like an anonymous visitor. This defeated one of Maintenance Mode's stated purposes — an employee verifying the live public site immediately after a deploy — by forcing them to also know and paste the separate `?maintenance_key=` on top of already being logged in, which the original design never intended to require.
+
+**Root cause**: the gate's pass-through condition only ever checked `session["maintenance_verified"]` (the bypass-key session). It never looked at `session["UserID"]`, even though every Employee Portal route two lines away in `routes/employee.py` already treats that exact key as proof of a valid Employee/Admin login.
+
+**Fix**: `enforce_maintenance_mode()` now lets a request through when **any** of three conditions hold:
+1. Maintenance Mode is disabled (unchanged).
+2. `session.get("UserID")` is truthy — an authenticated Employee/Admin session. **New.**
+3. `session.get("maintenance_verified")` is truthy — a verified `?maintenance_key=` bypass session (unchanged).
+
+Only a request satisfying none of the three — a fully anonymous visitor — still receives HTTP 503. This does **not** touch RBAC or the Employee Portal's own access control anywhere: `session["UserID"]` is read, never written, by this check, and no new route or session key was introduced. It only widens what an *already-authenticated* employee session is allowed to see on the customer site during a maintenance window — the Employee Portal's own routes were never gated by Maintenance Mode in the first place (see Sprint 8's original `request.blueprint != "customer"` short-circuit, unchanged).
+
+**Banner condition updated to match.** `inject_maintenance_banner_state()` now shows the banner under the same two-condition OR (`maintenance_verified` or `UserID`), so a logged-in employee browsing the customer site without ever using a bypass key still gets the "public visitors are receiving 503" reminder — previously they'd have seen the live site with zero indication anything was unusual. The banner's second line was reworded from "You are viewing the site using the maintenance bypass" to "You are viewing the site via employee login or a maintenance bypass" (`templates/components/maintenance_banner.html`) so the copy is accurate for both paths through the gate, not just the key-based one.
+
+**Regression tested**: anonymous visitor (logged out, no query param) → HTTP 503 with the standalone maintenance page, confirmed via `fetch('/').then(r => r.status)` → `503`. Employee login (`admin`, no `?maintenance_key=` anywhere in the session) → `/` and `/products` both return `200`, with the updated banner correctly rendering the "employee login or a maintenance bypass" copy. Anonymous + correct `?maintenance_key=` → still bypasses exactly as before, confirming the fix didn't regress the original bypass path. Employee Portal itself (`/employee/dashboard`) → unaffected, including its own Maintenance Mode notice card. No server errors in any of the four scenarios.
+
 ---
 
 # 3. Architecture & Conventions
