@@ -8,6 +8,7 @@ Author  : Srikar
 =========================================================
 """
 
+import logging
 import os
 import shutil
 from uuid import uuid4
@@ -15,6 +16,8 @@ from uuid import uuid4
 from flask import current_app
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
@@ -106,13 +109,22 @@ def save_department_image(file: FileStorage) -> str:
 
 
 def delete_department_image_file(filename: str) -> None:
-    """Remove one department image file by its filename, ignoring a missing file."""
+    """
+    Remove one department image file by its filename, ignoring a missing file.
+
+    Swallowing the error is intentional - the database row is already the
+    source of truth and a failed unlink must not fail the request - but it is
+    now recorded, since the only symptom otherwise is an orphaned file slowly
+    consuming shared-hosting disk quota with nothing to trace it back to.
+    """
 
     file_path = os.path.join(current_app.static_folder, _DEPARTMENT_UPLOAD_SUBPATH, filename)
     try:
         os.remove(file_path)
+    except FileNotFoundError:
+        logger.info("Department image already absent from disk: %s", filename)
     except OSError:
-        pass
+        logger.warning("Could not delete department image file: %s", filename, exc_info=True)
 
 
 def department_image_path(filename: str) -> str:
@@ -122,13 +134,20 @@ def department_image_path(filename: str) -> str:
 
 
 def delete_image_file(relative_path: str) -> None:
-    """Remove one image file by its static-relative path, ignoring a missing file."""
+    """
+    Remove one image file by its static-relative path, ignoring a missing file.
+
+    Same reasoning as delete_department_image_file() above: the failure stays
+    non-fatal, but it is no longer invisible.
+    """
 
     file_path = os.path.join(current_app.static_folder, relative_path.replace("/", os.sep))
     try:
         os.remove(file_path)
+    except FileNotFoundError:
+        logger.info("Product image already absent from disk: %s", relative_path)
     except OSError:
-        pass
+        logger.warning("Could not delete product image file: %s", relative_path, exc_info=True)
 
 
 def _get_extension(filename: str) -> str:

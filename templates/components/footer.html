@@ -4,10 +4,12 @@ Project : Sridevi Enterprises
 File    : footer.html
 Purpose : Website footer component.
 
+          Contact details come from Config.BUSINESS_* via
+          app.py:inject_business_details() - see .env.example. Each line
+          renders only when its value is configured, so an unconfigured
+          deployment shows no contact block rather than placeholder text.
+
 TODO:
-- Replace placeholder address.
-- Replace placeholder phone.
-- Replace placeholder email.
 - Add Google Maps iframe.
 - Add social media links.
 =========================================================
@@ -54,8 +56,6 @@ TODO:
 
                     <li><a href="{{ url_for('customer.categories') }}">Departments</a></li>
 
-                    <!-- Compare is planned for v0.9 — intentionally hidden from navigation until it exists. -->
-
                     <li><a href="{{ url_for('customer.contact') }}">Contact</a></li>
 
                 </ul>
@@ -66,35 +66,41 @@ TODO:
                  Contact
             =========================== -->
 
+            {% if business.address or business.phone or business.email or business.hours %}
             <div class="col-lg-5">
 
                 <h5>Contact</h5>
 
-                <!-- TODO: Replace with actual address -->
+                {% if business.address %}
                 <p>
                     <i class="fa-solid fa-location-dot"></i>
-                    Showroom Address
+                    {{ business.address }}
                 </p>
+                {% endif %}
 
-                <!-- TODO: Replace with actual phone -->
+                {% if business.phone %}
                 <p>
                     <i class="fa-solid fa-phone"></i>
-                    +91 XXXXX XXXXX
+                    {{ business.phone }}
                 </p>
+                {% endif %}
 
-                <!-- TODO: Replace with business email -->
+                {% if business.email %}
                 <p>
                     <i class="fa-solid fa-envelope"></i>
-                    info@sridevienterprises.com
+                    {{ business.email }}
                 </p>
+                {% endif %}
 
-                <!-- TODO: Replace with actual working hours -->
+                {% if business.hours %}
                 <p>
                     <i class="fa-solid fa-clock"></i>
-                    Mon - Sat | 9:00 AM - 8:00 PM
+                    {{ business.hours }}
                 </p>
+                {% endif %}
 
             </div>
+            {% endif %}
 
         </div>
 

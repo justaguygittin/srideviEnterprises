@@ -49,10 +49,46 @@ pip install -r requirements.txt
 
 1. In cPanel, use **MySQL® Databases** to create a new database and a database user, and
    grant that user all privileges on the database.
-2. Open **phpMyAdmin**, select the new database, and import each file in
-   `database/schema/` **in numeric order** (`001_create_catalog.sql` through
-   `009_alter_stockhistory_add_transaction_columns.sql`) using phpMyAdmin's Import tab, or
-   run them via the phpMyAdmin SQL tab one at a time in order.
+2. Open **phpMyAdmin**, select the new database, and import **every** file in
+   `database/schema/` **in numeric order**, from `001_create_catalog.sql` through
+   `011_alter_catalog_add_soft_delete.sql`, using phpMyAdmin's Import tab, or run them
+   via the phpMyAdmin SQL tab one at a time in order.
+
+   Import the whole directory — do not stop at any particular file. Order is not
+   optional: `003` adds a foreign key to `Users`, `009` adds one to `Employees` and
+   alters the table `008` creates, and `011` alters the table `001` creates. As of
+   v1.0 the directory contains these 11 files:
+
+   | File | Creates / changes |
+   |---|---|
+   | `001_create_catalog.sql` | `Catalog` — products (shared with the Receipt Generator project) |
+   | `002_create_users.sql` | `Users` — authentication |
+   | `003_create_employees.sql` | `Employees` (FK → `Users`) |
+   | `004_create_customers.sql` | `Customers` — reserved; no write path yet |
+   | `005_create_enquiries.sql` | `Enquiries` — customer enquiries |
+   | `006_create_productdetails.sql` | `ProductDetails` — specifications |
+   | `007_create_productimages.sql` | `ProductImages` — product gallery |
+   | `008_create_stockhistory.sql` | `StockHistory` — inventory audit trail |
+   | `009_alter_stockhistory_add_transaction_columns.sql` | Adds transaction columns, 3 indexes, FK → `Employees` |
+   | `010_create_departmentimages.sql` | `DepartmentImages` — Department Image Management |
+   | `011_alter_catalog_add_soft_delete.sql` | Adds `Catalog.IsActive` / `DeletedAt` / `DeletedBy` |
+
+   **Skipping `010` or `011` produces a database the v1.0 application cannot run
+   against** — without `010` the homepage and Departments module fail, and without
+   `011` every product query fails on the missing `IsActive` column. Verify with
+   step 3 below before moving on.
+
+3. **Verify the import** before continuing. In phpMyAdmin's SQL tab:
+
+   ```sql
+   SHOW TABLES;                  -- expect 9: Catalog, Customers, DepartmentImages,
+                                 -- Employees, Enquiries, ProductDetails,
+                                 -- ProductImages, StockHistory, Users
+   SHOW COLUMNS FROM Catalog;    -- must include IsActive, DeletedAt, DeletedBy (011)
+   ```
+
+   If either check comes up short, re-run the missing file(s) rather than continuing —
+   the application will not start correctly against a partial schema.
 
 ### 1.5 Configure Environment Variables
 
@@ -71,9 +107,49 @@ DB_USER=<your cPanel database user>
 DB_PASSWORD=<your cPanel database password>
 SECRET_KEY=<a long random value — see the comment in .env.example>
 FLASK_DEBUG=False
+SESSION_COOKIE_SECURE=True
+LOG_LEVEL=INFO
 ```
 
 `.env` is gitignored — it must be created directly on the server and is never committed.
+
+> **`SESSION_COOKIE_SECURE` must be `True` in production.** `.env.example` ships it as
+> `False` because local development runs over plain HTTP, where a secure cookie is
+> refused by the browser and login would not work. It is the one value in that template
+> that is deliberately *less* safe than the application's own default — if you copied
+> `.env.example` to the server, change it. Leaving it out entirely is also correct, since
+> `True` is the default. The app logs a `WARNING` on every startup while it is `False`,
+> so check the error log (§4.1) after your first deploy.
+
+#### Public business details
+
+**This is where the showroom's real contact information is configured.** These five
+values are the single source of truth for every public surface that displays contact
+details — the sitewide footer, the Contact page, and the standalone Maintenance Mode
+(503) screen. They are not hardcoded in any template.
+
+```env
+BUSINESS_ADDRESS=<full showroom address, one line>
+BUSINESS_PHONE=<phone, written for display — e.g. +91 98765 43210>
+BUSINESS_EMAIL=<public enquiry email>
+BUSINESS_WEBSITE=<public website, e.g. www.example.com>
+BUSINESS_HOURS=<opening hours, free text>
+```
+
+- `.env.example` ships **development placeholders** for these (`123 Business Road`,
+  `info@sridevienterprises.example`, …) so a fresh local checkout renders a complete
+  page. **Every one of them must be replaced with real values on the server** — the
+  same rule as `SECRET_KEY` and the maintenance key.
+- The dialable `tel:` link and the absolute website URL are derived automatically from
+  the display values (`config.py`), so each detail is configured exactly once.
+- **A blank value is safe, not an error.** Any detail left unset is omitted from every
+  page — no placeholder text, no empty row. If none are set, the footer's Contact
+  column and the 503 page's contact block do not render at all, and the Contact page
+  shows a short "use the enquiry form" note instead of an empty card. This is
+  deliberate: an unconfigured deployment shows nothing rather than plausible-looking
+  fake contact details.
+- Changing any of these requires a Passenger restart (§2), since `.env` is read at
+  process start — unlike `config/maintenance.json`, which is read fresh per request.
 
 ### 1.6 Configure Maintenance Mode
 
@@ -225,6 +301,9 @@ Run this after every deploy or restart.
 - [*] Customer product enquiry form submits successfully.
 - [*] Visiting the site over plain `http://` redirects to `https://`.
 - [*] The browser shows a valid HTTPS padlock (no certificate warnings).
+- [ ] Footer and Contact page show the **real** business address, phone, email,
+      website, and hours — not `.env.example`'s placeholders (`123 Business Road`,
+      `info@sridevienterprises.example`). See §1.5 "Public business details".
 
 ### Employee Portal
 
@@ -257,13 +336,56 @@ Run this after every deploy or restart.
 - [ ] An incorrect `?maintenance_key=` value stays on the maintenance page.
 - [ ] The Employee Dashboard shows the "Maintenance Mode Enabled" notice card while
       maintenance is on, and it disappears once disabled.
+- [ ] The 503 page shows the real business phone and email (from `.env`, §1.5), or no
+      contact block at all if they are unset — never a placeholder number.
 - [ ] `GET /health` returns `{"status": "ok", "maintenance": <true|false>, "version":
       "<Config.APP_VERSION>"}` — and `maintenance` correctly matches the current
       `config/maintenance.json` state — regardless of which customer/employee page you
       last visited.
 
 If anything fails, check cPanel's Python app error log (linked from the **Setup Python
-App** page) before making changes.
+App** page) before making changes — see §4.1 for what the application writes there.
+
+### 4.1 Application Logs
+
+As of v1.0 the application logs to **stderr**, which Passenger captures into the Python
+app error log linked from cPanel's **Setup Python App** page. There is no separate log
+file to create, rotate, or make writable.
+
+Each line looks like:
+
+```
+2026-08-08 07:47:03,409 ERROR    [services.enquiry_service:26592] Enquiry submission FAILED to save - product_id=1 (customer details not logged)
+```
+
+`timestamp · level · [module:process-id] · message`. The process id matters on shared
+hosting, where Passenger runs several workers concurrently.
+
+Verbosity is set by `LOG_LEVEL` in `.env` (default `INFO`; see §1.5). What each level
+means here:
+
+| Level | What appears |
+|---|---|
+| `INFO` | Worker startup (with version), enquiries saved, stock transactions recorded or refused, products deactivated/restored, images deleted |
+| `WARNING` | Maintenance Mode enabled, `config/maintenance.json` missing, image files that could not be deleted, refused image deletions |
+| `ERROR` | Every failed write — product save/update, department save, deactivate/restore — and every failed customer enquiry, each with a full traceback |
+
+**What to grep for when something is reported broken:**
+
+```bash
+grep "FAILED" ~/logs/*.log        # every failed write operation
+grep "Enquiry submission FAILED" ~/logs/*.log   # lost customer enquiries
+grep "Maintenance Mode" ~/logs/*.log            # who took the site offline, and when
+```
+
+Read-only page views deliberately log nothing, so the log stays readable — anything
+present in it is a write, a failure, or a state change.
+
+**Customer personal data is never logged.** A failed enquiry records the product id and
+the underlying database error, but not the customer's name, phone, email, or message.
+The enquiry is genuinely lost in that case; the log tells you it happened and why, not
+who it was. If lost-lead recovery ever becomes a requirement, that needs a durable
+store, not the log file.
 
 ---
 
@@ -356,7 +478,7 @@ the WSGI process is up) and returns:
 {
     "status": "ok",
     "maintenance": false,
-    "version": "Sprint 8"
+    "version": "<Config.APP_VERSION>"
 }
 ```
 
@@ -382,6 +504,11 @@ the WSGI process is up) and returns:
    schema (§1.4). Never hand-edit a table directly without also adding/updating the
    corresponding `database/schema/0NN_*.sql` file — see the Sprint 5.1 schema-drift
    lesson in §8; the canonical schema is always what's in version control.
+
+   **When you add a new `0NN_*.sql` file, update §1.4's table and its stated file
+   range in the same change.** That list is what a first-time installer follows, and
+   it is the one piece of documentation that silently breaks a fresh install when it
+   falls behind — see the v1.0 lesson in §8.
 4. **Restart Passenger** (`touch tmp/restart.txt`) so the running process picks up any
    code that depends on the new schema.
 5. **Run the Employee Smoke Test**, since it exercises write paths (Add/Edit Product,
@@ -411,6 +538,49 @@ A condensed version of §3.1 for pinning to the terminal/notes while deploying:
 - [ ] Disable Maintenance Mode, restart Passenger.
 - [ ] Re-check the homepage loads normally with Maintenance Mode off.
 
+### 7.1 Business Configuration Verification
+
+**Run this before the first go-live, and again after any change to `.env`.** The site
+will render perfectly well with none of these set — every unset value is silently
+omitted from the page (see §1.5). That safe-failure behaviour is deliberate, but it
+also means a deployment can go live with **no contact information at all** and nothing
+will look broken. This section is the gate that prevents that.
+
+Confirm each value is present in the server's `.env` **and** is a real business value,
+not the development placeholder shipped in `.env.example`:
+
+```
+□ BUSINESS_ADDRESS configured
+□ BUSINESS_PHONE configured
+□ BUSINESS_EMAIL configured
+□ BUSINESS_WEBSITE configured
+□ BUSINESS_HOURS configured
+```
+
+Also confirm the session cookie is hardened (§1.5). In the browser's dev tools,
+Application → Cookies, the `session` cookie on the live site must show:
+
+```
+□ Secure   flag set    (SESSION_COOKIE_SECURE=True, or absent from .env)
+□ HttpOnly flag set
+□ SameSite = Lax
+```
+
+If `Secure` is missing, the error log will also contain a `SESSION_COOKIE_SECURE is
+False` warning from startup — fix `.env` and restart Passenger.
+
+Then verify the business details actually reached the pages (Passenger must have been
+restarted after editing `.env` — these are read once at process start):
+
+- [ ] Footer shows the real address, phone, email, and hours on the live site.
+- [ ] Contact page shows all five values, and the phone/email/website links work.
+- [ ] Enable Maintenance Mode briefly and confirm the 503 screen shows the real phone
+      and email, then disable it again.
+- [ ] Search the live pages for the placeholder strings `123 Business Road`,
+      `+91 98765 43210`, `info@sridevienterprises.example`, and
+      `www.sridevienterprises.example`. **Any hit means `.env.example`'s development
+      values reached production** — fix before announcing the site.
+
 ---
 
 ## 8. Lessons Learned
@@ -433,6 +603,22 @@ without adding/updating the matching migration file in the same change.
 outdated schema snapshot, not the current `database/schema/` files. Rule: always create
 a new database strictly from the current, numerically-ordered `database/schema/` files
 (§1.4) — never from an old export or a partially-applied prior attempt.
+
+**v1.0 Sprint 11 (documentation drift broke fresh installs).** §1.4 and README.md both
+told installers to import `001` through `009`, but two further migrations had shipped
+since that instruction was written (`010_create_departmentimages.sql`,
+`011_alter_catalog_add_soft_delete.sql`). Following the documentation literally
+produced a database with no `DepartmentImages` table and no `Catalog.IsActive` column —
+against which essentially every page fails. Nothing in the codebase pointed at the
+documentation, so the drift was invisible until it was tested. Two rules came out of
+this: **(a)** adding a `0NN_*.sql` file and updating §1.4 are one change, not two
+(§6 step 3); **(b)** a release must actually build a database from
+`database/schema/` and boot the app against it, rather than trusting that the install
+instructions still describe reality. That simulation immediately found a second,
+unrelated fresh-install bug — the Employee Dashboard and Inventory Summary returned
+HTTP 500 against an empty `Catalog`, because an unfiltered `SUM()` over zero rows
+returns `NULL`, not `0` (fixed in `services/product_service.py:get_inventory_summary()`).
+**An install is only proven by installing it.**
 
 **Sprint 8 (Maintenance Mode design).** Maintenance state is a config file
 (`config/maintenance.json`), not a database row — deliberately, so that flipping it

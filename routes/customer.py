@@ -187,11 +187,6 @@ def categories():
     )
 
 
-@customer_bp.route("/compare")
-def compare():
-    return "<h2>Compare - Coming Soon</h2>"
-
-
 @customer_bp.route("/contact", methods=["GET", "POST"])
 def contact():
     """Display and submit general customer enquiries."""

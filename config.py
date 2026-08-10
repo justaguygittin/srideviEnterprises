@@ -9,6 +9,7 @@ Author  : Srikar
 """
 
 import os
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -16,6 +17,55 @@ from dotenv import load_dotenv
 # Always load this project's database settings, regardless of the directory
 # from which Flask is started.
 load_dotenv(Path(__file__).resolve().parent / ".env", override=True)
+
+
+def _telephone_href(phone: str) -> str:
+    """
+    Build a dialable tel: href from a human-formatted phone number.
+
+    Keeps digits and a single leading "+" and drops everything a human
+    reads but a dialer cannot ("+91 98765 43210" -> "tel:+919876543210"),
+    so BUSINESS_PHONE can be written in whatever format reads best on the
+    page without a second env var for the machine-readable form.
+    """
+
+    if not phone:
+        return ""
+
+    digits = re.sub(r"[^\d]", "", phone)
+    return f"tel:+{digits}" if phone.lstrip().startswith("+") else f"tel:{digits}"
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    """
+    Read a boolean environment variable, tolerating the spellings people
+    actually write in a .env file. Anything unrecognised falls back to the
+    default rather than raising - a typo must never stop the site booting.
+    """
+
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+
+    value = raw.strip().lower()
+    if value in {"true", "1", "yes", "on"}:
+        return True
+    if value in {"false", "0", "no", "off"}:
+        return False
+    return default
+
+
+def _website_href(website: str) -> str:
+    """
+    Build an absolute href from BUSINESS_WEBSITE, which is written for
+    display ("www.example.com") and so usually has no scheme. A
+    scheme-less href would otherwise be resolved as a relative path.
+    """
+
+    if not website:
+        return ""
+
+    return website if re.match(r"^https?://", website, re.IGNORECASE) else f"https://{website}"
 
 
 class Config:
@@ -40,11 +90,71 @@ class Config:
     # Debug mode must be explicitly enabled; defaults to False for safety.
     DEBUG = os.getenv("FLASK_DEBUG", "False").strip().lower() == "true"
 
-    # Human-readable build/sprint label, surfaced read-only via GET /health so a
-    # deploy can confirm the right code is actually running after a Passenger
-    # restart (Sprint 8 Review - see AI_CONTEXT.md "Health Endpoint"). Bump this
-    # string when a new sprint/release ships.
-    APP_VERSION = "Sprint 10"
+    # ---------------------------------------------------------------------
+    # Session cookie hardening (v1.0 Sprint 11)
+    #
+    # The session cookie is what authenticates every Employee/Admin request
+    # and what carries the Maintenance Mode bypass, so these three flags are
+    # the whole of this application's session security.
+    # ---------------------------------------------------------------------
+
+    # Never expose the session cookie to JavaScript. This is already Flask's
+    # default; it is set explicitly so it cannot be silently lost if a future
+    # change starts assigning app.config wholesale.
+    SESSION_COOKIE_HTTPONLY = True
+
+    # "Lax" means the browser withholds the cookie on cross-site POST/PUT/
+    # DELETE (the shape every CSRF attack against this app's write endpoints
+    # would take) while still sending it on ordinary top-level GET navigation
+    # - so following a link to the site, including a ?maintenance_key= bypass
+    # link shared over email or chat, still works normally.
+    #
+    # Deliberately NOT "Strict": Strict also withholds the cookie on
+    # cross-site GET navigation, so an employee opening a bookmark or an
+    # emailed link to /employee/dashboard would land there appearing logged
+    # out, then appear logged in after any internal click. That is a
+    # confusing failure for no additional protection against the attack this
+    # setting exists to blunt.
+    #
+    # This is a partial mitigation, not CSRF protection. Real CSRF tokens are
+    # deferred to v1.1 - see AI_CONTEXT.md and CHANGELOG.
+    SESSION_COOKIE_SAMESITE = "Lax"
+
+    # Only send the session cookie over HTTPS.
+    #
+    # Defaults to True - secure unless a deployment explicitly opts out. It is
+    # deliberately NOT derived from FLASK_DEBUG: this project runs
+    # FLASK_DEBUG=False in local development too (see AI_CONTEXT.md's
+    # no-autoreload note), so "not DEBUG" would look correct and silently mean
+    # "production" on every developer's machine.
+    #
+    # Local development over http://127.0.0.1:5000 must set
+    # SESSION_COOKIE_SECURE=False in .env, or the browser will refuse to store
+    # the cookie and login will not work. Production must leave it True; the
+    # site is HTTPS-only (see DEPLOYMENT.md, Enable HTTPS). app.py logs a
+    # warning at startup whenever this is False, so an accidental opt-out in
+    # production is visible in the error log rather than silent.
+    SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", True)
+
+    # Application log verbosity (v1.0 Sprint 11). One of DEBUG, INFO, WARNING,
+    # ERROR, CRITICAL. Defaults to INFO, which records write operations and
+    # every failure without logging a line per page view. Set LOG_LEVEL=WARNING
+    # on a busy production site to keep only problems. See app.py's
+    # configure_logging() for where records are written (stderr, which Passenger
+    # captures into the cPanel Python app error log).
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").strip().upper()
+
+    # The application's version. This is the single source of truth: it is
+    # surfaced read-only via GET /health and on the Employee Dashboard's System
+    # Status panel, so a deploy can confirm the right code is actually running
+    # after a Passenger restart (see AI_CONTEXT.md "Health Endpoint" and
+    # DEPLOYMENT.md). Bump this string when a release ships.
+    #
+    # v1.0 Sprint 11 (RC-7): switched from the interim per-sprint labels
+    # ("Sprint 8" ... "Sprint 10") to a real semantic version for the first
+    # public release. Future releases should follow semver - v1.0.1 for fixes,
+    # v1.1.0 for the deferred CSRF/feature work (see CHANGELOG.md).
+    APP_VERSION = "v1.0.0"
 
     # Base URL of the separately-hosted invoice-generation project (its own Flask
     # app, not part of this codebase - see AI_CONTEXT.md; that project itself is
@@ -60,4 +170,35 @@ class Config:
         os.getenv("INVOICE_GENERATOR_URL", "").strip()
         or os.getenv("RECEIPT_GENERATOR_URL", "").strip()
     )
+
+    # ---------------------------------------------------------------------
+    # Public business details (v1.0 Sprint 11 - Release Candidate)
+    #
+    # The showroom's real-world contact information, shown on every public
+    # surface that displays it: the sitewide footer, the Contact page, and
+    # the standalone Maintenance Mode (503) screen. These used to be
+    # hardcoded - and had drifted out of sync with each other (two
+    # different email addresses, two different sets of business hours) -
+    # so they are now read from the environment and rendered from one
+    # source of truth. See app.py:inject_business_details().
+    #
+    # Every value defaults to an empty string. A template renders each
+    # line ONLY when its value is set, so a deployment that has not yet
+    # supplied real details shows nothing at all rather than a plausible
+    # looking but fake address or phone number. Production values belong
+    # in the server's own .env (never committed - see DEPLOYMENT.md
+    # "Configure Environment Variables"); .env.example carries safe
+    # placeholder values so a fresh development checkout still renders a
+    # complete page.
+    # ---------------------------------------------------------------------
+    BUSINESS_ADDRESS = os.getenv("BUSINESS_ADDRESS", "").strip()
+    BUSINESS_PHONE = os.getenv("BUSINESS_PHONE", "").strip()
+    BUSINESS_EMAIL = os.getenv("BUSINESS_EMAIL", "").strip()
+    BUSINESS_WEBSITE = os.getenv("BUSINESS_WEBSITE", "").strip()
+    BUSINESS_HOURS = os.getenv("BUSINESS_HOURS", "").strip()
+
+    # Machine-readable forms, derived from the display values above so a
+    # deployment only ever configures each detail once.
+    BUSINESS_PHONE_HREF = _telephone_href(BUSINESS_PHONE)
+    BUSINESS_WEBSITE_HREF = _website_href(BUSINESS_WEBSITE)
 

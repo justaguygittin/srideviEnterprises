@@ -1,7 +1,11 @@
 # AI_CONTEXT.md
 
 # Sridevi Enterprises
-Current Version: v0.9.0 — Employee Portal (Complete)
+Current Version: v1.0.0 — Release Candidate complete (v1.0 Sprint 11)
+
+The single source of truth for the version string is `Config.APP_VERSION`
+(`config.py`), surfaced via `GET /health` and the Employee Dashboard's System
+Status panel. This header and `README.md` must be updated alongside it.
 
 ---
 
@@ -74,7 +78,7 @@ Version Control
 ✓ Contact Page (general enquiry form)
 
 Not yet built (see Planned Roadmap):
-- Product Comparison — `/compare` is currently a placeholder route, and as of the Customer Experience Audit is intentionally not linked from the navbar or footer (see Customer Experience Audit — Sitewide Consistency Pass) since a hidden feature is a better experience than a visible link that does nothing
+- Product Comparison — **no route exists.** `/compare` was a placeholder route returning a bare `<h2>Compare - Coming Soon</h2>` with no layout; it was removed entirely in v1.0 Sprint 11 (RC-3) and now falls through to the branded 404 like any other unknown URL. See "Sprint 11 — Release Candidate" below. It had already been unlinked from the navbar and footer during the Customer Experience Audit; those placeholder comments are gone too. If Compare is ever built, add the route and the two nav entries together — nothing is left behind to reactivate.
 
 ### Homepage
 
@@ -117,7 +121,7 @@ Both the navbar's and footer's "Categories" links now point to `url_for('custome
 
 #### Navbar Active-Page Highlighting
 
-`templates/components/navbar.html` now sets the `active` class per link by comparing `request.endpoint` against each route's endpoint (e.g. `request.endpoint == 'customer.categories'`), instead of hardcoding `active` on Home. This was a pre-existing gap (previously Home always showed active, regardless of the current page) surfaced while verifying the Categories page's active nav state, and is now correct on every customer page (Home, Products, Categories, Contact). Compare has no route yet, so it never highlights.
+`templates/components/navbar.html` now sets the `active` class per link by comparing `request.endpoint` against each route's endpoint (e.g. `request.endpoint == 'customer.categories'`), instead of hardcoding `active` on Home. This was a pre-existing gap (previously Home always showed active, regardless of the current page) surfaced while verifying the Categories page's active nav state, and is now correct on every customer page (Home, Products, Categories, Contact). (Compare was mentioned here originally as having no route yet; as of v1.0 Sprint 11 it has no route *and* no nav entry — see Product Comparison above.)
 
 #### Category Image Fallback
 
@@ -232,6 +236,8 @@ A holistic UX audit across the full customer journey (Homepage → Categories �
 **Category slider arrows** (`.slider-arrow` in `categories.css`) gained a `:focus-visible` outline matching the same pattern already used on pagination links, the search-clear button, and gallery thumbnails (`outline: 3px solid #1E4FA3; outline-offset: 2px;`) — closes a keyboard-accessibility gap where this was the only circular icon-button in the codebase without one.
 
 **Compare is temporarily removed from customer navigation** (navbar and footer) rather than left as a dead `href="#"` link. The `/compare` route itself is untouched (still returns its placeholder response) — only the two nav entries pointing to it were removed, each replaced with an HTML comment noting it's deferred to v0.9. Reversing this when Compare ships is a two-line change.
+
+> **Superseded (v1.0 Sprint 11, RC-3):** the `/compare` route and both placeholder nav comments were subsequently deleted outright — a placeholder page reachable at a public URL contradicts this project's own "do not commit placeholder pages" testing policy. `/compare` now returns the branded 404. Nothing remains to reverse; building Compare means adding the route and nav entries from scratch.
 
 **Button consistency review (documented, not changed):** searched for duplicated primary-button CSS across the customer site. Nearly all buttons already reuse plain Bootstrap `btn-primary`/`btn-outline-primary` with no custom per-instance styling (Enquiry/Contact submit buttons, Product Details CTAs, empty-state actions). The few custom treatments found — `.category-slide-body .btn` (Homepage slider "Explore") vs. `.category-grid-card-body .btn` (Categories page "Explore", which has an icon hover-translate micro-interaction the slider version lacks) — style the same conceptual action differently, but consolidating them would mean editing CSS shared by two already-shipped, previously-approved sections outside this pass's scope, for a cosmetic micro-interaction difference. Left unchanged per the audit's own risk rule ("if consolidation would introduce risk, leave unchanged and document"). Also noted: `.hero-buttons` in `home.css` is unused dead CSS (`hero.html` has no buttons in the hero itself; the homepage's buttons live in `quick_actions.html`) — not a duplication case, just unused code, left alone as out of scope for this pass.
 
@@ -683,7 +689,7 @@ Gives an Administrator operational control over Maintenance Mode from inside the
 
 **Single endpoint, not enable/disable pairs.** `POST /employee/maintenance` (`routes/employee.py:update_maintenance()`) takes a `state` form field (`"enable"`/`"disable"`) rather than two separate routes, per the approved architecture. Admin-only via the same `session.get("Role") != "Admin"` guard already used by Deactivate/Restore Product and Delete Image — Employees get a 403 if they ever POST here directly, not just a hidden button. An unrecognized `state` value is a 400, not a silent no-op. On success: flashes through the existing global flash mechanism, redirects to the dashboard. Takes effect immediately — no Passenger restart, no reload trick — because the read side was already cache-free.
 
-**Website Status card**, added to the Employee Dashboard's existing "Operations" → **System Status** panel (`templates/employee/dashboard.html`) — extended in place, not a new panel, reusing `.info-panel`/`.status-list`/`.status-item`. Five lines, in order: Website Status (Online / Maintenance, from `maintenance_mode_enabled`), Database Connected (unchanged `db_connected`, computed the same way it always was — reaching that line in `dashboard()` after `get_product_count()` already proves it), Health Endpoint (new `health_ok`, deliberately the *same* liveness signal `GET /health` itself reports — not a second, different check, per "avoid unnecessary complexity"), Maintenance Mode: Enabled/Disabled with a `Since <date> by <employee>` metadata line when available, and Version (`Config.APP_VERSION`, bumped to `"Sprint 10"` this sprint — the existing "bump by hand per release" convention from Sprint 8 Review). Status icons reuse the Inventory Overview's existing healthy/amber/red palette (`#067647`/`#B54708`/`#B42318`) via two small new modifier classes (`.status-icon-warn`, `.status-icon-bad`) rather than inventing new colors. The pre-existing "Catalog Available" and "Employee Logged In" lines were dropped — they weren't part of the required five and duplicated information already shown elsewhere (`catalog_loaded`, the now-unused twin of `db_connected`, was removed from `dashboard()` entirely rather than left as dead code).
+**Website Status card**, added to the Employee Dashboard's existing "Operations" → **System Status** panel (`templates/employee/dashboard.html`) — extended in place, not a new panel, reusing `.info-panel`/`.status-list`/`.status-item`. Five lines, in order: Website Status (Online / Maintenance, from `maintenance_mode_enabled`), Database Connected (unchanged `db_connected`, computed the same way it always was — reaching that line in `dashboard()` after `get_product_count()` already proves it), Health Endpoint (new `health_ok`, deliberately the *same* liveness signal `GET /health` itself reports — not a second, different check, per "avoid unnecessary complexity"), Maintenance Mode: Enabled/Disabled with a `Since <date> by <employee>` metadata line when available, and Version (`Config.APP_VERSION`, bumped to `"Sprint 10"` this sprint — the existing "bump by hand per release" convention from Sprint 8 Review; **superseded in v1.0 Sprint 11 (RC-7), which replaced the per-sprint labels with the semantic version `"v1.0.0"`** — the card itself is unchanged, it simply renders whatever `Config.APP_VERSION` holds). Status icons reuse the Inventory Overview's existing healthy/amber/red palette (`#067647`/`#B54708`/`#B42318`) via two small new modifier classes (`.status-icon-warn`, `.status-icon-bad`) rather than inventing new colors. The pre-existing "Catalog Available" and "Employee Logged In" lines were dropped — they weren't part of the required five and duplicated information already shown elsewhere (`catalog_loaded`, the now-unused twin of `db_connected`, was removed from `dashboard()` entirely rather than left as dead code).
 
 **Admin-only toggle**, rendered `{% if role == 'Admin' %}` directly under the status list in the same panel: one form, its hidden `state` value and button label/color flipping with the current state (amber "Enable Maintenance" when disabled, outline-red "Disable Maintenance" when enabled) — a single toggle, not two always-visible buttons, matching the single-endpoint design. Same plain-`confirm()` pattern already used by Deactivate/Restore Product, with maintenance-specific wording ("Customers will immediately receive HTTP 503..." / "...immediately regain access..."). Employees see the identical five-line status list with no form at all — not a disabled/greyed-out button, the control doesn't exist in their rendered HTML.
 
@@ -692,6 +698,144 @@ Gives an Administrator operational control over Maintenance Mode from inside the
 **`admin_bp`/`templates/admin/*` left untouched.** This empty stub blueprint (three 0-byte templates, zero routes, no nav link) was explicitly out of scope per the approved architecture — its natural future scope (Employee CRUD, Role Management, per "Admin Permissions" → "Future system administration") is bigger than one maintenance toggle. See Future Roadmap below.
 
 **Regression tested** against a live dev server: Customer (Home, Products, Product Details, Categories, Contact) all 200 with maintenance off; anonymous visitor gets the unchanged standalone 503 page with maintenance on; `/employee/login` stays 200 throughout; `/health` reflects live `maintenance`/`version` state. Because this sprint's writes/authenticated views can't be exercised through the login form (see the standing testing-note above), the toggle and RBAC were verified with Flask's test client, setting `session` directly in a `session_transaction()` — never touching a password field — covering: anonymous POST redirects to login; Employee POST is 403; Employee dashboard renders the status list with no toggle form; Admin enable/disable both succeed, flash, persist `changed_by`/`last_changed`, and flip the button; an invalid `state` value is 400. 27/27 automated checks passed. Employee Portal regression (Products, Inventory, Customers, Enquiries, Departments, Inventory Transactions) was not touched by this sprint's changes and was covered by the Sprint 9 audit already on file.
+
+### Sprint 11 — Release Candidate (v1.0.0)
+
+The final sprint before v1.0.0. **No new features.** Stability, reliability,
+documentation, and production readiness only. Preceded by a full read-only audit
+that classified every finding as must-fix / recommended / future, so only
+approved items were implemented.
+
+**RC-1 — Fresh-install validation.** README and DEPLOYMENT told installers to
+import schema files `001` through `009`; `010_create_departmentimages.sql` and
+`011_alter_catalog_add_soft_delete.sql` had shipped since. Following the docs
+literally produced a database with no `DepartmentImages` table and no
+`Catalog.IsActive` — against which essentially every page fails. Fixed, and §1.4
+gained a per-file table plus a post-import verification step.
+
+Rather than trusting the corrected docs, a **fresh-install simulation** was built:
+create an empty database, apply all 11 files in order, compare the result against
+the working database structurally (`information_schema` columns, indexes, foreign
+keys), then boot the real Flask app against it. That found two further bugs no
+documentation review would have:
+
+- **Empty-catalog 500.** `get_inventory_summary()` used bare `SUM(CASE …)`. An
+  unfiltered aggregate over an empty table returns one row with `COUNT(*) = 0`
+  but every `SUM()` as `NULL`, so `int(None)` raised — **a brand-new install had
+  a 500 on both the Employee Dashboard and Inventory Summary until the first
+  product was added.** Fixed with `COALESCE(…, 0)`. `_get_inventory_group_summary()`
+  needs no equivalent fix: it is a `GROUP BY`, so a group only exists if it has rows.
+- **Table-name casing.** `001_create_catalog.sql` created `` `catalog` `` in
+  lowercase while every other schema file uses PascalCase and every query says
+  `Catalog`. Invisible on Windows/macOS (`lower_case_table_names=1` folds names);
+  on Linux, the deployment target, the default is `0` and names are
+  case-sensitive, so a fresh install would fail on every page. Renamed to
+  `Catalog`. Affects newly created databases only.
+
+**Rule established:** adding a `0NN_*.sql` file and updating DEPLOYMENT.md §1.4
+are one change, not two — and an install is only proven by installing it.
+
+**RC-2 — Business configuration.** The showroom's address, phone, email, website,
+and hours were hardcoded in three places and had drifted apart (two different
+email addresses, two different sets of business hours). They now come from
+`Config.BUSINESS_*` via a new `inject_business_details()` context processor in
+`app.py`, consumed by the footer, the Contact page, and the standalone 503
+Maintenance screen.
+
+A context processor rather than route context, for a concrete reason: the 503 page
+is rendered by `@app.errorhandler(503)` and never passes through a view function,
+while the footer is included sitewide so per-route passing would mean touching
+every route. `BUSINESS_PHONE_HREF`/`BUSINESS_WEBSITE_HREF` are derived in
+`config.py`, so each detail is configured once. **Every value may be empty, and
+each line renders only when set** — an unconfigured deployment shows nothing
+rather than plausible-looking fake contact details.
+
+**RC-3 — `/compare` removed.** The placeholder route returned a bare
+`<h2>Compare - Coming Soon</h2>` with no layout at a public URL, contradicting
+this project's own "do not commit placeholder pages" testing policy. Route and
+both leftover nav placeholder comments deleted; `/compare` now falls through to
+the branded 404. No redirect, nothing left to reactivate.
+
+**RC-4 — Product Details mobile overflow.** Bootstrap's `.g-5` sets
+`--bs-gutter-x: 3rem`, giving `.row` a `margin: 0 -24px` against a `.container`
+with only 12px of padding — so the row hung 12px past the viewport on each side
+below 576px. The row has no background, so nothing looked wrong; it silently
+widened `scrollWidth` and the whole page scrolled sideways. Fixed with one scoped
+rule in the existing `max-width: 991.98px` block:
+
+```css
+.product-details-page .row.g-5 { --bs-gutter-x: 1.5rem; }
+```
+
+Only `--bs-gutter-x` is reset — `--bs-gutter-y` stays at 3rem, so vertical spacing
+is unchanged. Scoped to the `lg` breakpoint because that is where these
+`.col-lg-6` columns stop sitting side by side; once stacked, the horizontal gutter
+has no visual job, which is what makes the change inert rather than cosmetic.
+Verified: column content lands on identical pixels before and after, and desktop
+never sees the rule.
+
+**RC-5 — Application logging.** The application previously logged nothing at all,
+and several write paths caught exceptions, showed a generic "please try again",
+and discarded the error. `configure_logging()` (`app.py`) attaches one formatted
+handler to the **root** logger, so `logging.getLogger(__name__)` in `routes/` and
+`services/` propagates into it. Format:
+`timestamp · level · [module:pid] · message`. Destination is **stderr**, which
+Passenger captures into the cPanel error log — no writable directory, no rotation
+story on shared hosting.
+
+Configured **before anything touches `app.logger`**: Flask only attaches its own
+default handler when it finds none up the hierarchy, so root-first is what
+prevents every record being emitted twice. Level from `Config.LOG_LEVEL`
+(default INFO), with an unrecognised value falling back rather than raising.
+
+All 20 exception handlers now either log or re-raise to a caller that logs — none
+are silent. Level policy: ERROR for failed writes (with traceback), WARNING for
+degraded-but-handled and site-offline events, INFO for successful writes and state
+changes. **Read-only page views log nothing**, so anything in the log is a write,
+a failure, or a state change.
+
+**Customer personal data is never logged.** A failed enquiry — the most
+business-critical failure in the application, since it is a silently lost sales
+lead — records the product id and the database error, but not the customer's name,
+phone, email, or message. Server logs on shared hosting are a weaker place to hold
+contact details than the database is. The trade-off is explicit: you learn that a
+lead was lost and why, not who it was.
+
+**RC-6 — Session cookie hardening.** `SESSION_COOKIE_HTTPONLY = True`,
+`SESSION_COOKIE_SAMESITE = "Lax"`, and `SESSION_COOKIE_SECURE` defaulting to
+`True` with an explicit `SESSION_COOKIE_SECURE` env-var opt-out.
+
+**`SESSION_COOKIE_SECURE` is deliberately not derived from `FLASK_DEBUG`.** That
+is the conventional idiom and it would be wrong here: this project runs
+`FLASK_DEBUG=False` in local development too, so `not DEBUG` would look correct
+and silently mean "production" on every developer machine. Secure-by-default means
+a deployment that forgets the variable is secure; only an explicit opt-out is
+insecure, and `app.py` logs a WARNING on every worker start while it is disabled.
+
+`Lax` rather than `Strict`: Strict also withholds the cookie on cross-site GET
+navigation, so an employee opening a bookmark or emailed link would land
+apparently logged out, then appear logged in after one internal click — a
+confusing failure for no extra protection. `ProxyFix` is what makes `Secure` work
+behind HostyCare's TLS-terminating proxy at all.
+
+Verified in a real browser that `http://localhost` is treated as a secure context,
+so secure-by-default does **not** break local HTTP development.
+
+**RC-7 / RC-9 — Version and documentation.** `Config.APP_VERSION` moved from the
+interim per-sprint labels to `"v1.0.0"`, flowing automatically to `GET /health`
+and the Dashboard System Status panel. README rewritten for the real v1.0 feature
+set with a Known Limitations section; `CHANGELOG.md` and `RELEASE_NOTES.md`
+created; DEPLOYMENT.md's `/health` examples genericised to `<Config.APP_VERSION>`
+so they cannot go stale again.
+
+**RC-8 — CSRF: deferred to v1.1** by explicit decision. See Planned Roadmap >
+Phase 3 for the full reasoning, what mitigates it today, and what v1.1 should do.
+
+**Deliberately not done this sprint** (recorded so a future reader does not
+re-open them as oversights): branded 400/405/413 pages, customer-site touch
+targets below 44px, `_escape_like` deduplication, database connection pooling,
+missing indexes, and removal of `restructure_project.py` and the dead
+`static/images/categories/*.jpg` stubs. All are logged under v1.1 above.
 
 ---
 
@@ -744,7 +888,9 @@ Three user roles exist: Customer, Employee, Admin. No additional roles should be
 
 ### Customer Permissions
 
-Customers can: Browse website, View products, View product details, Search products, Compare products, Submit enquiries.
+Customers can: Browse website, View products, View product details, Search products, Submit enquiries.
+
+("Compare products" was listed here historically. Product Comparison has never been implemented and its placeholder route was removed in v1.0 Sprint 11 — see Product Comparison under Customer Website. It stays out of this list until the feature actually exists, so this section describes real permissions rather than intended ones.)
 
 Customers cannot: Access employee portal, Edit products, Manage data.
 
@@ -1042,14 +1188,35 @@ Remaining Phase 1 items require an actual HostyCare deployment and live verifica
 
 ### Phase 3 – Production Hardening
 
-□ Logging
+✓ Logging (v1.0 Sprint 11 RC-5 — stderr, levelled, no PII; see "Sprint 11 — Release Candidate")
 ✓ Custom 403 / 404 / 500 / 503 Pages (Sprint 8 — see "Sprint 8 — Maintenance Mode & Deployment Hardening")
 ✓ Maintenance Mode (Sprint 8, config-based — same section)
 ✓ Health Endpoint (`/health`, Sprint 8 — same section)
-□ CSRF Protection
-□ Session Hardening
+□ **CSRF Protection — DEFERRED TO v1.1** (v1.0 Sprint 11 RC-8, explicit decision — see below)
+✓ Session Hardening (v1.0 Sprint 11 RC-6 — HttpOnly, SameSite=Lax, Secure-by-default)
 □ Automated Test Suite
-□ Deployment Verification
+✓ Deployment Verification (v1.0 Sprint 11 RC-1 — fresh-install simulation; see that section)
+
+**CSRF deferral decision (v1.0 Sprint 11, RC-8).** Token-based CSRF protection is
+**not** implemented in v1.0.0. This was a deliberate, approved decision, not an
+oversight:
+
+- **What is at risk.** Every write endpoint — product create/edit, image delete,
+  product deactivate/restore, inventory transactions, and the Admin Maintenance
+  Mode toggle — could in principle be triggered cross-site from an
+  already-authenticated Admin's browser.
+- **What mitigates it today.** `SESSION_COOKIE_SAMESITE = "Lax"` (RC-6) causes
+  browsers to withhold the session cookie on cross-site POST/PUT/DELETE, which is
+  the exact shape such an attack takes. Every write endpoint is POST-only and
+  behind authentication, and all destructive actions are additionally Admin-only.
+  This is a mitigation, not equivalent protection: it depends on browser
+  behaviour rather than on the application verifying anything.
+- **Why deferred.** Adding tokens touches every form in the application. Doing
+  that during a release-candidate freeze would have meant re-verifying every write
+  path at exactly the point the sprint existed to stabilise them.
+- **What v1.1 should do.** Add a session-derived CSRF token, validated in a single
+  `before_request` hook for state-changing methods, plus a hidden field in each
+  form. Do not remove `SameSite=Lax` when this ships — keep both.
 
 ## v0.9.0 — Employee Customer Management
 
@@ -1072,29 +1239,49 @@ Employee:
 ✓ Search (Filters not built — Enquiries has no dedicated filter dropdowns, only text search)
 □ Dashboard Widgets (the Dashboard's Operations panel shows a static "Recent Enquiries" empty state, not real widget data — see Employee Enquiries Module)
 
-## v1.0.0 — Sridevi Enterprises Demonstration Release
+## v1.0.0 — Sridevi Enterprises Demonstration Release ✅ COMPLETE
 
 Customer Website:
-□ Complete Product Experience
-□ Search
-□ Categories
-□ Product Gallery
-□ Product Details
-□ Enquiry System
+✓ Complete Product Experience
+✓ Search
+✓ Categories (customer-facing label: Departments)
+✓ Product Gallery
+✓ Product Details
+✓ Enquiry System
 
 Employee Portal:
-□ Product Management
-□ Customer Management
-□ Enquiry Management
+✓ Product Management (incl. Product Lifecycle / soft delete, Sprint 7)
+✓ Customer Management (read-only, derived from Enquiries — see Customer Module Data Source)
+✓ Enquiry Management (read-only; status updates deferred, see v1.1 below)
 ✓ Inventory Dashboard Foundation (Sprints 1–3, read-only — see Employee Inventory Summary Module)
 ✓ Inventory Transactions (Sprint 5.1, write-capable — Stock In/Stock Out/Adjustment, see Employee Inventory Summary Module)
+✓ Department Image Management
+✓ Administrator Maintenance Controls (Sprint 10)
 
 System:
-✓ Responsive UI (Employee Portal — Sprint 7, see Sprint 7 — Mobile Responsive Polish; Customer Website responsive work was covered earlier under Phase 2 — Customer Experience)
-□ Production Security
-□ Automated Testing
-□ Documentation
-□ Stable Deployment
+✓ Responsive UI (Employee Portal — Sprint 7, see Sprint 7 — Mobile Responsive Polish; Customer Website responsive work was covered earlier under Phase 2 — Customer Experience, and re-verified 320–1024px in Sprint 11)
+✓ Production Security (session hardening, Sprint 11 RC-6 — **except CSRF, deferred to v1.1**, see Phase 3 above)
+□ Automated Testing — **deferred to v1.1.** Sprint 11's verification suites live outside the repository; no test suite ships with the application.
+✓ Documentation (README, AI_CONTEXT, DEPLOYMENT, CHANGELOG, RELEASE_NOTES — Sprint 11 RC-9)
+✓ Stable Deployment (fresh-install simulation verified end-to-end, Sprint 11 RC-1)
+
+## v1.1 — Deferred From v1.0.0
+
+Carried forward deliberately, each with its reasoning recorded above or in
+RELEASE_NOTES.md:
+
+□ **CSRF Protection** (RC-8 — see the deferral decision under Phase 3 above; the
+  highest-priority item in this list)
+□ Automated Test Suite
+□ Enquiry status updates (`Enquiries.Status` is displayed but never written)
+□ Employee CRUD and Role Management (see Administration Roadmap below)
+□ Branded 400 / 405 / 413 error pages (403/404/500/503 are branded; these three
+  still fall through to Werkzeug's default page)
+□ Customer-site touch targets below the project's own 44px standard
+□ Database connection pooling (`database/db.py` opens one connection per query)
+□ Indexes on `Catalog.Department`/`category`/`brand`, `ProductImages.ProductID`,
+  and `ProductDetails.ProductID` (only primary keys exist today; fine at the
+  current ~315-row catalog scale)
 
 ## Future Roadmap (Post v1.0.0)
 

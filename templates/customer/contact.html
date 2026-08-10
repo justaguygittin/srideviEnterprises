@@ -27,15 +27,30 @@ Author  : Srikar
             <section class="col-lg-5" aria-labelledby="business-information-title">
                 <div class="contact-information-card h-100">
                     <h2 id="business-information-title">Business Information</h2>
-                    <!-- TODO: Replace placeholder address, phone, email, hours, and website details. -->
+                    {# Contact details come from Config.BUSINESS_* (see .env.example);
+                       each renders only when configured, so an unconfigured deployment
+                       shows the fallback note below instead of placeholder details. #}
+                    {% if business.address %}
                     <address>
                         <strong>Showroom Address</strong>
-                        <span>123 Business Road, Your City, India</span>
+                        <span>{{ business.address }}</span>
                     </address>
-                    <p><strong>Phone</strong><a href="tel:+919876543210">+91 98765 43210</a></p>
-                    <p><strong>Email</strong><a href="mailto:info@sridevienterprises.example">info@sridevienterprises.example</a></p>
-                    <p><strong>Business Hours</strong><span>Monday–Saturday, 9:00 AM–6:00 PM</span></p>
-                    <p><strong>Website</strong><a href="{{ url_for('customer.home') }}">www.sridevienterprises.example</a></p>
+                    {% endif %}
+                    {% if business.phone %}
+                    <p><strong>Phone</strong><a href="{{ business.phone_href }}">{{ business.phone }}</a></p>
+                    {% endif %}
+                    {% if business.email %}
+                    <p><strong>Email</strong><a href="mailto:{{ business.email }}">{{ business.email }}</a></p>
+                    {% endif %}
+                    {% if business.hours %}
+                    <p><strong>Business Hours</strong><span>{{ business.hours }}</span></p>
+                    {% endif %}
+                    {% if business.website %}
+                    <p><strong>Website</strong><a href="{{ business.website_href }}" rel="noopener">{{ business.website }}</a></p>
+                    {% endif %}
+                    {% if not (business.address or business.phone or business.email or business.hours or business.website) %}
+                    <p>Please use the enquiry form and our team will get back to you.</p>
+                    {% endif %}
                 </div>
             </section>
 

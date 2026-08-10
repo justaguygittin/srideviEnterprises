@@ -19,12 +19,15 @@ Author  : Srikar
 """
 
 import json
+import logging
 import os
 import secrets
 import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 _CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "maintenance.json"
 
@@ -51,7 +54,22 @@ def get_maintenance_config() -> dict[str, Any]:
     try:
         with open(_CONFIG_PATH, "r", encoding="utf-8") as config_file:
             data = json.load(config_file)
+    except FileNotFoundError:
+        # Normal on a fresh checkout that has not copied the template yet.
+        logger.warning(
+            "config/maintenance.json not found - defaulting to Maintenance Mode DISABLED. "
+            "Copy config/maintenance.example.json and set a real maintenance_key."
+        )
+        return dict(_DEFAULT_CONFIG)
     except (OSError, ValueError):
+        # Not normal. A corrupt or unreadable file silently means "maintenance
+        # off", so an admin could enable maintenance, see the site stay up, and
+        # have no idea the file never parsed. This is called on every request,
+        # so it is logged at ERROR without a traceback to avoid flooding.
+        logger.error(
+            "config/maintenance.json could not be read or parsed - treating Maintenance Mode "
+            "as DISABLED. Check the file's syntax and permissions."
+        )
         return dict(_DEFAULT_CONFIG)
 
     return {
@@ -92,6 +110,18 @@ def set_maintenance_enabled(enabled: bool, changed_by: str | None) -> None:
         "last_changed": datetime.now().isoformat(timespec="seconds"),
         "changed_by": changed_by,
     }
+
+    # Taking the public website offline (or back online) is the highest-impact
+    # action any Admin can take from the portal, and until now it left no trace
+    # outside maintenance.json's own last_changed/changed_by - which the next
+    # toggle overwrites. Sprint 10 deliberately made this function the single
+    # choke point for exactly this kind of addition. Enabling is logged at
+    # WARNING because "customers are being served HTTP 503" is a state someone
+    # scanning the log for problems should see.
+    if updated["enabled"]:
+        logger.warning("Maintenance Mode ENABLED by %s - customers now receive HTTP 503", changed_by)
+    else:
+        logger.info("Maintenance Mode DISABLED by %s - customer site is live", changed_by)
 
     config_dir = _CONFIG_PATH.parent
     fd, temp_path = tempfile.mkstemp(dir=config_dir, prefix=".maintenance.", suffix=".json.tmp")

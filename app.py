@@ -1,3 +1,6 @@
+import logging
+import sys
+
 from flask import Flask, abort, jsonify, make_response, render_template, request, session
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -7,6 +10,56 @@ from routes.employee import employee_bp
 from routes.admin import admin_bp
 from routes.api import api_bp
 from services.maintenance_service import is_maintenance_enabled, verify_maintenance_key
+
+_LOG_FORMAT = "%(asctime)s %(levelname)-8s [%(name)s:%(process)d] %(message)s"
+
+
+def configure_logging():
+    """
+    Send application logs to stderr in a consistent, timestamped format.
+
+    v1.0 Sprint 11 (RC-5). Before this, the application logged nothing at
+    all: several write paths caught exceptions, showed the user a generic
+    "please try again" message, and discarded the actual error. On shared
+    hosting that left no way to find out why anything failed.
+
+    Why stderr: Passenger captures a Python app's stderr into the error log
+    reachable from cPanel's "Setup Python App" page, which DEPLOYMENT.md
+    already tells operators to check when something goes wrong. That makes
+    stderr the one destination that needs no new configuration, no writable
+    log directory, and no log-rotation story on a shared host.
+
+    Configured on the ROOT logger, so the module-level
+    logging.getLogger(__name__) loggers in routes/ and services/ propagate
+    into the same stream and format. This runs before anything touches
+    app.logger, which matters: Flask only attaches its own default handler
+    when it finds no handler anywhere up the hierarchy, so configuring the
+    root first is what prevents every record being emitted twice.
+
+    Level comes from Config.LOG_LEVEL (default INFO). An unrecognised value
+    falls back to INFO rather than raising - a typo in .env must never stop
+    the site from booting.
+    """
+
+    level = getattr(logging, Config.LOG_LEVEL, None)
+    if not isinstance(level, int):
+        level = logging.INFO
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+
+    # Passenger may import this module more than once per process; adding a
+    # second identical handler would double every line.
+    if not any(getattr(h, "_sridevi_handler", False) for h in root_logger.handlers):
+        handler = logging.StreamHandler(sys.stderr)
+        handler.setFormatter(logging.Formatter(_LOG_FORMAT))
+        handler._sridevi_handler = True
+        root_logger.addHandler(handler)
+
+    return root_logger
+
+
+configure_logging()
 
 app = Flask(__name__)
 
@@ -18,10 +71,42 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.secret_key = Config.SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = Config.MAX_CONTENT_LENGTH
 
+# Session cookie hardening (v1.0 Sprint 11) - see config.py for the reasoning
+# behind each value. ProxyFix above is what makes SESSION_COOKIE_SECURE work
+# behind HostyCare's TLS-terminating proxy: without it Flask would only ever
+# see plain HTTP and would refuse to set a secure cookie at all.
+app.config["SESSION_COOKIE_HTTPONLY"] = Config.SESSION_COOKIE_HTTPONLY
+app.config["SESSION_COOKIE_SAMESITE"] = Config.SESSION_COOKIE_SAMESITE
+app.config["SESSION_COOKIE_SECURE"] = Config.SESSION_COOKIE_SECURE
+
 app.register_blueprint(customer_bp)
 app.register_blueprint(employee_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(api_bp)
+
+# One line per worker start. After a Passenger restart this is the first thing
+# in the error log, and it answers the same question GET /health answers -
+# which version actually came up - without needing to make a request.
+app.logger.info(
+    "Sridevi Enterprises starting - version=%s debug=%s log_level=%s "
+    "session_cookie(secure=%s httponly=%s samesite=%s)",
+    Config.APP_VERSION,
+    Config.DEBUG,
+    Config.LOG_LEVEL,
+    Config.SESSION_COOKIE_SECURE,
+    Config.SESSION_COOKIE_HTTPONLY,
+    Config.SESSION_COOKIE_SAMESITE,
+)
+
+if not Config.SESSION_COOKIE_SECURE:
+    # Expected and required for local HTTP development; wrong in production.
+    # Logged every worker start so an accidental opt-out on the server shows
+    # up in the error log instead of going unnoticed until it matters.
+    app.logger.warning(
+        "SESSION_COOKIE_SECURE is False - the session cookie may be sent over plain HTTP. "
+        "This is expected in local development only. Set SESSION_COOKIE_SECURE=True (or "
+        "remove it from .env) on any HTTPS deployment."
+    )
 
 
 @app.before_request
@@ -92,6 +177,42 @@ def inject_maintenance_banner_state():
         and bool(session.get("maintenance_verified") or session.get("UserID"))
     )
     return {"show_maintenance_banner": show_banner}
+
+
+@app.context_processor
+def inject_business_details():
+    """
+    Expose the showroom's configured contact details (Config.BUSINESS_*)
+    to every template as a single `business` dict - v1.0 Sprint 11.
+
+    A context processor rather than per-route context, for one concrete
+    reason: the standalone Maintenance Mode screen (templates/errors/
+    503.html) is rendered by @app.errorhandler(503) below, which has no
+    route and therefore no place to pass context through. The sitewide
+    footer has the same problem in reverse - it is included by
+    layout/base.html on every page, so passing these values explicitly
+    would mean touching every single route. This mirrors
+    inject_maintenance_banner_state() above: values are prepared in
+    Python and handed to templates as plain data, so no template ever
+    reads configuration itself.
+
+    Every value may legitimately be an empty string (see config.py) -
+    templates must render each line only when its value is set, so an
+    unconfigured deployment shows nothing rather than fake contact
+    details.
+    """
+
+    return {
+        "business": {
+            "address": Config.BUSINESS_ADDRESS,
+            "phone": Config.BUSINESS_PHONE,
+            "phone_href": Config.BUSINESS_PHONE_HREF,
+            "email": Config.BUSINESS_EMAIL,
+            "website": Config.BUSINESS_WEBSITE,
+            "website_href": Config.BUSINESS_WEBSITE_HREF,
+            "hours": Config.BUSINESS_HOURS,
+        }
+    }
 
 
 @app.route("/health")

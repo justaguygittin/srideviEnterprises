@@ -8,6 +8,7 @@ Author  : Srikar
 =========================================================
 """
 
+import logging
 import re
 from typing import Any
 
@@ -15,6 +16,7 @@ import mysql.connector
 
 from database.db import execute, fetch_all, fetch_one
 
+logger = logging.getLogger(__name__)
 
 _EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _MOBILE_PATTERN = re.compile(r"^[6-9]\d{9}$")
@@ -39,6 +41,11 @@ def get_enquiry_product(product_id: int):
             WHERE id = %s AND IsActive = 1;
         """, (product_id,))
     except mysql.connector.Error:
+        # Returning None here makes the enquiry page say "This product is no
+        # longer available", which is indistinguishable to the customer from a
+        # genuinely deactivated product - so a database outage would otherwise
+        # look like normal behaviour and never be noticed.
+        logger.exception("Enquiry product lookup failed for product_id=%s", product_id)
         return None
 
 
@@ -100,8 +107,26 @@ def create_enquiry(product_id: int | None, enquiry: dict[str, str]) -> tuple[boo
             message,
         ))
     except mysql.connector.Error:
+        # A failure here is a lost sales lead: the customer is told to try
+        # again, and if they don't, nothing anywhere records that they ever
+        # tried. This is the single most business-critical failure in the
+        # application, so it is logged at ERROR.
+        #
+        # Deliberately logs no personal data - not the name, phone, email, or
+        # message. Server logs on shared hosting are a weaker place to hold
+        # customer contact details than the database is, and the operational
+        # question ("are enquiries failing, and why") is fully answered
+        # without them.
+        logger.exception(
+            "Enquiry submission FAILED to save - product_id=%s (customer details not logged)",
+            product_id if product_id is not None else "general",
+        )
         return False, "We could not submit your enquiry right now. Please try again shortly."
 
+    logger.info(
+        "Enquiry saved - product_id=%s",
+        product_id if product_id is not None else "general",
+    )
     # TODO: Integrate email notification for new customer enquiries.
     return True, None
 

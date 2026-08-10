@@ -185,16 +185,32 @@ def _get_department_category_map() -> dict[str, list[str]]:
 
 
 def get_inventory_summary() -> dict[str, int]:
-    """Return catalog-wide inventory counts using the temporary low-stock threshold."""
+    """
+    Return catalog-wide inventory counts using the temporary low-stock threshold.
+
+    Every SUM() is wrapped in COALESCE(..., 0). This is not cosmetic: an
+    unfiltered aggregate over an empty table still returns exactly one row,
+    with COUNT(*) = 0 but every bare SUM() = NULL - so on a brand-new
+    installation with no products yet, the int() conversion below raised
+    TypeError and took out both the Employee Dashboard and the Inventory
+    Summary page with a 500. Found by the v1.0 Sprint 11 fresh-install
+    simulation (see DEPLOYMENT.md "Database Migration Workflow"), which
+    boots the app against a database built only from database/schema/.
+
+    _get_inventory_group_summary() below does not need the same treatment:
+    it is a GROUP BY, so a group can only exist if it has at least one row.
+    """
 
     threshold = get_low_stock_threshold()
     result = fetch_one("""
         SELECT
             COUNT(*) AS total_products,
             COALESCE(SUM(stock_quantity), 0) AS total_stock_units,
-            SUM(CASE WHEN stock_quantity > %s THEN 1 ELSE 0 END) AS healthy_count,
-            SUM(CASE WHEN stock_quantity BETWEEN 1 AND %s THEN 1 ELSE 0 END) AS low_stock_count,
-            SUM(CASE WHEN stock_quantity IS NULL OR stock_quantity = 0 THEN 1 ELSE 0 END) AS out_of_stock_count
+            COALESCE(SUM(CASE WHEN stock_quantity > %s THEN 1 ELSE 0 END), 0) AS healthy_count,
+            COALESCE(SUM(CASE WHEN stock_quantity BETWEEN 1 AND %s THEN 1 ELSE 0 END), 0) AS low_stock_count,
+            COALESCE(
+                SUM(CASE WHEN stock_quantity IS NULL OR stock_quantity = 0 THEN 1 ELSE 0 END), 0
+            ) AS out_of_stock_count
         FROM Catalog
         WHERE product_name IS NOT NULL AND TRIM(product_name) <> '';
     """, (threshold, threshold))

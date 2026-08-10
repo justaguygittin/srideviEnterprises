@@ -8,6 +8,7 @@ Author  : Srikar
 =========================================================
 """
 
+import logging
 from datetime import datetime
 from math import ceil
 
@@ -50,6 +51,8 @@ from services.product_service import (
     validate_specifications,
     validate_stock_transaction_form,
 )
+
+logger = logging.getLogger(__name__)
 
 EMPLOYEE_PORTAL_ROLES = ("Employee", "Admin")
 SPEC_ROW_COUNT = 6
@@ -182,6 +185,11 @@ def dashboard():
                 "%d %b %Y, %I:%M %p"
             )
         except ValueError:
+            logger.warning(
+                "Unparseable last_changed in config/maintenance.json: %r - "
+                "the dashboard will omit the 'Since ...' line.",
+                maintenance_config["last_changed"],
+            )
             maintenance_last_changed = None
 
     return render_template(
@@ -349,6 +357,13 @@ def add_product():
             try:
                 product_id = create_product(form_data, images, specifications)
             except Exception:
+                logger.exception(
+                    "Create product FAILED - user=%s name=%r images=%d specs=%d",
+                    session.get("Username"),
+                    form_data.get("product_name"),
+                    len(images),
+                    len(specifications),
+                )
                 errors["form"] = "Could not save this product. Please try again."
             else:
                 if duplicate:
@@ -440,6 +455,13 @@ def edit_product(product_id):
             try:
                 update_product(product_id, form_data, specifications, new_images, replacement_images)
             except Exception:
+                logger.exception(
+                    "Update product FAILED - user=%s product_id=%s new_images=%d replaced=%d",
+                    session.get("Username"),
+                    product_id,
+                    len(new_images),
+                    len(replacement_images),
+                )
                 errors["form"] = "Could not save these changes. Please try again."
             else:
                 flash("Product updated successfully.", "success")
@@ -471,6 +493,21 @@ def delete_image(product_id, image_id):
         abort(403)
 
     deleted, error = delete_product_image(product_id, image_id)
+    if deleted:
+        logger.info(
+            "Product image deleted - user=%s product_id=%s image_id=%s",
+            session.get("Username"),
+            product_id,
+            image_id,
+        )
+    else:
+        logger.warning(
+            "Product image delete refused - user=%s product_id=%s image_id=%s reason=%s",
+            session.get("Username"),
+            product_id,
+            image_id,
+            error,
+        )
     flash(error if error else "Image deleted.", "danger" if error else "success")
 
     return redirect(url_for("employee.product_details", product_id=product_id))
@@ -511,9 +548,25 @@ def deactivate_product(product_id):
     try:
         deactivate_product_service(product_id, employee_id)
     except Exception:
+        logger.exception(
+            "Deactivate product FAILED - user=%s product_id=%s employee_id=%s",
+            session.get("Username"),
+            product_id,
+            employee_id,
+        )
         flash("Could not deactivate this product. Please try again.", "danger")
         return redirect(url_for("employee.product_details", product_id=product_id))
 
+    # Lifecycle changes are logged at INFO even on success: this hides a
+    # product from the customer site, and "when did this stop being visible,
+    # and who did it" is a question the Catalog audit columns alone answer
+    # only for the most recent change.
+    logger.info(
+        "Product deactivated - user=%s product_id=%s employee_id=%s",
+        session.get("Username"),
+        product_id,
+        employee_id,
+    )
     flash(f'Product "{product["product_name"]}" was deactivated.', "success")
     return redirect(url_for("employee.products"))
 
@@ -535,9 +588,17 @@ def restore_product(product_id):
     try:
         restore_product_service(product_id)
     except Exception:
+        logger.exception(
+            "Restore product FAILED - user=%s product_id=%s",
+            session.get("Username"),
+            product_id,
+        )
         flash("Could not restore this product. Please try again.", "danger")
         return redirect(url_for("employee.product_details", product_id=product_id))
 
+    logger.info(
+        "Product restored - user=%s product_id=%s", session.get("Username"), product_id
+    )
     flash(f'Product "{product["product_name"]}" was restored.', "success")
     return redirect(url_for("employee.product_details", product_id=product_id))
 
@@ -665,8 +726,30 @@ def inventory_transaction():
                     employee_id,
                 )
             except ValueError as error:
+                # Deliberate flow control, not a fault: apply_stock_transaction()
+                # raises ValueError with a user-facing message for expected
+                # business-rule refusals (stock would go negative, product is
+                # deactivated). Logged at INFO with no traceback - a refused
+                # transaction is normal, but nothing else records that it was
+                # ever attempted, since StockHistory only gets successes.
+                logger.info(
+                    "Stock transaction REFUSED - user=%s product_id=%s type=%s qty=%s reason=%s",
+                    session.get("Username"),
+                    form_data.get("product_id"),
+                    form_data.get("transaction_type"),
+                    form_data.get("quantity_input"),
+                    error,
+                )
                 errors["form"] = str(error)
             else:
+                logger.info(
+                    "Stock transaction recorded - user=%s employee_id=%s product_id=%s type=%s qty=%s",
+                    session.get("Username"),
+                    employee_id,
+                    form_data["product_id"],
+                    form_data["transaction_type"],
+                    form_data["quantity_input"],
+                )
                 flash("Inventory transaction recorded successfully.", "success")
                 return redirect(url_for("employee.inventory"))
 
@@ -753,6 +836,12 @@ def edit_department(department_name):
                     department["department_name"], form_data["display_order"], is_active, image_file
                 )
             except Exception:
+                logger.exception(
+                    "Save department FAILED - user=%s department=%r new_image=%s",
+                    session.get("Username"),
+                    department["department_name"],
+                    bool(image_file),
+                )
                 errors["form"] = "Could not save this department. Please try again."
             else:
                 flash(f'"{department["department_name"]}" saved successfully.', "success")

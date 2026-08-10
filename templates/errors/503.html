@@ -42,10 +42,22 @@ Author  : Srikar
         <p>We're currently performing scheduled maintenance.</p>
         <p>Please check back shortly.</p>
 
+        {# Contact details come from Config.BUSINESS_* via
+           app.py:inject_business_details() - a context processor rather than route
+           context, because this page is rendered by @app.errorhandler(503) and so
+           never passes through a view function. Deliberately plain text, not tel:/
+           mailto: links: layout/minimal.html exists to make this a dead-end screen
+           with nothing to click (see AI_CONTEXT.md "Maintenance Page Redesign"). #}
+        {% if business.phone or business.email %}
         <div class="maintenance-contact">
-            <p><i class="fas fa-phone" aria-hidden="true"></i> +91 98765 43210</p>
-            <p><i class="fas fa-envelope" aria-hidden="true"></i> info@sridevienterprises.example</p>
+            {% if business.phone %}
+            <p><i class="fas fa-phone" aria-hidden="true"></i> {{ business.phone }}</p>
+            {% endif %}
+            {% if business.email %}
+            <p><i class="fas fa-envelope" aria-hidden="true"></i> {{ business.email }}</p>
+            {% endif %}
         </div>
+        {% endif %}
 
     </div>
 

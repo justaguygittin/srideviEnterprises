@@ -1017,6 +1017,37 @@ Author  : Srikar
 
     }
 
+    /*
+     * v1.0 Sprint 11 (RC-4) - fixes 12px of horizontal page overflow on the
+     * customer Product Details page below 576px.
+     *
+     * Bootstrap's .g-5 sets --bs-gutter-x: 3rem, which gives .row a
+     * margin of 0 -24px. Its parent .container only has 12px of padding,
+     * so the row hangs 12px past the viewport on each side. The row has no
+     * background, so nothing looks wrong - it just silently widens
+     * scrollWidth and the whole page scrolls sideways.
+     *
+     * Only --bs-gutter-x is reset; --bs-gutter-y stays at .g-5's 3rem, so
+     * the vertical gap between the stacked image and info columns is
+     * unchanged. This is scoped to max-width 991.98px because that is the
+     * lg breakpoint at which these .col-lg-6 columns stop sitting side by
+     * side - once they are stacked and full width, the horizontal gutter
+     * has no visual job left to do, so removing the overhang is inert:
+     * the row's negative margin and the columns' padding shrink together,
+     * leaving column content on exactly the same pixel as before.
+     * Desktop (>=992px) never sees this rule and is byte-identical.
+     *
+     * .product-details-page .row.g-5 matches exactly one element in the
+     * app (customer/product_details.html's hero row) - the shared
+     * .product-details-page wrapper on enquiry_form/enquiry_success has no
+     * g-5 row, and employee/product_details.html is a different wrapper.
+     */
+    .product-details-page .row.g-5 {
+
+        --bs-gutter-x: 1.5rem;
+
+    }
+
 }
 
 @media (max-width: 767.98px) {
