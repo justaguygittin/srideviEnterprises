@@ -22,6 +22,7 @@ from services.department_service import (
 )
 from services.enquiry_service import get_customer_count, get_customers, get_enquiries, get_enquiry_count
 from services.image_service import validate_image_file, validate_image_files
+from services.invoice_service import get_invoice_count
 from services.maintenance_service import get_maintenance_config, set_maintenance_enabled
 from services.product_service import (
     apply_stock_transaction,
@@ -158,6 +159,7 @@ def dashboard():
     product_count = get_product_count({})
     enquiry_count = get_enquiry_count({})
     customer_count = get_customer_count({})
+    invoice_count = get_invoice_count({})
     inventory_summary = get_inventory_summary()
     # Reuses the same get_enquiries() the Enquiries page and its search use -
     # no new query, just the existing newest-first list capped to 5 rows.
@@ -203,12 +205,12 @@ def dashboard():
         product_count=product_count,
         enquiry_count=enquiry_count,
         customer_count=customer_count,
+        invoice_count=invoice_count,
         inventory_summary=inventory_summary,
         recent_enquiries=recent_enquiries,
         db_connected=db_connected,
         health_ok=health_ok,
         app_version=Config.APP_VERSION,
-        invoice_generator_configured=bool(Config.INVOICE_GENERATOR_URL),
         # Sprint 8 Review: lets an employee see at a glance, from the page
         # they're already most likely to have open during a deploy, that
         # customers are currently getting HTTP 503 - see the Maintenance
@@ -931,25 +933,6 @@ def customers():
         page=page,
         start_page=start_page,
         end_page=end_page,
-    )
-
-
-@employee_bp.route("/employee/invoices", methods=["GET"])
-def invoices():
-    """Display the Invoice Generator integration page for employees."""
-
-    if not session.get("UserID"):
-        return redirect(url_for("employee.login"))
-
-    if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
-        abort(403)
-
-    return render_template(
-        "employee/invoices.html",
-        username=session.get("Username"),
-        role=session.get("Role"),
-        current_page="invoices",
-        invoice_generator_url=Config.INVOICE_GENERATOR_URL,
     )
 
 

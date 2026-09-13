@@ -1,0 +1,35 @@
+<!--
+==========================================================
+Project : Sridevi Enterprises
+File    : errors/413.html
+Purpose : Branded 413 Payload Too Large page (v1.1 Sprint 12).
+          Reached when an upload exceeds Config.MAX_CONTENT_LENGTH
+          (see config.py) - most likely a product image upload.
+
+Author  : Srikar
+==========================================================
+-->
+{% extends "layout/base.html" %}
+
+{% block title %}File Too Large - Sridevi Enterprises{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/error_page.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="error-page">
+    <div class="container">
+        <div class="error-page-wrapper">
+            <i class="fa-solid fa-file-circle-exclamation error-page-icon error-page-icon--warning" aria-hidden="true"></i>
+            <div class="error-page-code">Error 413</div>
+            <h1>File Too Large</h1>
+            <p>The file you tried to upload is larger than we can accept.</p>
+            <p>Please choose a smaller file and try again.</p>
+            <div class="error-page-actions d-flex justify-content-center gap-3 flex-wrap">
+                <a href="{{ url_for('customer.home') }}" class="btn btn-primary">Return Home</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

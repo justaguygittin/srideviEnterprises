@@ -5,7 +5,6 @@ File    : base.html
 Purpose : Master layout for all pages.
 
 TODO:
-- Add favicon.
 - Add SEO meta tags.
 =========================================================
 -->
@@ -27,6 +26,9 @@ TODO:
         Sridevi Enterprises
         {% endblock %}
     </title>
+
+    <!-- Favicon (v1.1 Sprint 12) -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}">
 
     <!-- Bootstrap -->
 

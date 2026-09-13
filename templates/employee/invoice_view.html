@@ -1,0 +1,251 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : invoice_view.html
+Purpose : Invoice Generator - read-only detail view of one generated
+          invoice, with a link to (re)download its PDF.
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+Invoice #{{ "%05d"|format(invoice.InvoiceID) }} - Employee Portal - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee_nav.css') }}">
+<style>
+    .invoice-view-container {
+        min-height: calc(100vh - 120px);
+        background-color: #f8f9fa;
+        padding: 0;
+    }
+
+    .invoice-view-content {
+        padding: 2rem;
+    }
+
+    .invoice-view-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .invoice-view-header h1 {
+        color: #333;
+        font-size: 1.6rem;
+        font-weight: 600;
+        margin-bottom: 0.3rem;
+    }
+
+    .invoice-view-header p {
+        color: #666;
+        margin: 0;
+    }
+
+    .header-actions a {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1.2rem;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: 500;
+        margin-left: 0.5rem;
+    }
+
+    .btn-back {
+        background: #eee;
+        color: #333;
+    }
+
+    .btn-download {
+        background: #1E4FA3;
+        color: #fff;
+    }
+
+    .card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .card h2 {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #333;
+        margin: 0 0 1rem;
+    }
+
+    .party-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    .party-block dt {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: #888;
+        margin-top: 0.6rem;
+    }
+
+    .party-block dt:first-child { margin-top: 0; }
+
+    .party-block dd {
+        margin: 0.1rem 0 0;
+        color: #333;
+    }
+
+    .items-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .items-table th, .items-table td {
+        border: 1px solid #eee;
+        padding: 0.6rem 0.8rem;
+        font-size: 0.9rem;
+        text-align: left;
+    }
+
+    .items-table th {
+        background: #f8f9fa;
+    }
+
+    .items-table td.num, .items-table th.num { text-align: right; }
+
+    .totals-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.4rem 2rem;
+        max-width: 420px;
+        margin-left: auto;
+        margin-top: 1rem;
+    }
+
+    .totals-grid .label { color: #666; }
+    .totals-grid .value { text-align: right; font-weight: 500; }
+    .totals-grid .grand-total { font-weight: 700; font-size: 1.1rem; border-top: 2px solid #333; padding-top: 0.4rem; }
+
+    .words-line {
+        margin-top: 1rem;
+        font-style: italic;
+        color: #555;
+    }
+
+    @media (max-width: 768px) {
+        .invoice-view-content { padding: 1rem; }
+        .party-grid { grid-template-columns: 1fr; }
+        .totals-grid { max-width: none; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="invoice-view-container">
+    {% include 'components/employee_nav.html' %}
+
+    <div class="invoice-view-content">
+        <div class="container">
+            <div class="invoice-view-header">
+                <div>
+                    <h1><i class="fas fa-file-invoice"></i> Invoice #{{ "%05d"|format(invoice.InvoiceID) }}</h1>
+                    <p>Generated {{ invoice.InvoiceDate.strftime("%d %b %Y, %I:%M %p") }} by {{ invoice.CreatedByName or "Unknown" }}</p>
+                </div>
+                <div class="header-actions">
+                    <a href="{{ url_for('receipts.history') }}" class="btn-back"><i class="fas fa-arrow-left"></i> Back to History</a>
+                    <a href="{{ url_for('receipts.invoice_pdf', invoice_id=invoice.InvoiceID) }}" class="btn-download" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-file-pdf"></i> Download PDF
+                    </a>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Buyer &amp; Consignee</h2>
+                <div class="party-grid">
+                    <dl class="party-block">
+                        <dt>Buyer (Bill To)</dt>
+                        <dd><strong>{{ invoice.BuyerName }}</strong></dd>
+                        <dd>{{ invoice.BuyerAddress | replace('\n', ', ') }}</dd>
+                        <dt>Contact</dt>
+                        <dd>{{ invoice.BuyerContact or "-" }}</dd>
+                        <dt>GSTIN</dt>
+                        <dd>{{ invoice.BuyerGSTIN or "-" }}</dd>
+                        <dt>Contract No</dt>
+                        <dd>{{ invoice.BuyerContract or "-" }}</dd>
+                        <dt>State (Place of Supply)</dt>
+                        <dd>{{ buyer_state_name }} ({{ invoice.BuyerState }})</dd>
+                    </dl>
+                    <dl class="party-block">
+                        <dt>Consignee (Ship To)</dt>
+                        <dd><strong>{{ invoice.ConsigneeName }}</strong></dd>
+                        <dd>{{ invoice.ConsigneeAddress | replace('\n', ', ') }}</dd>
+                        <dt>Contact</dt>
+                        <dd>{{ invoice.ConsigneeContact or "-" }}</dd>
+                        <dt>GSTIN</dt>
+                        <dd>{{ invoice.ConsigneeGSTIN or "-" }}</dd>
+                        <dt>Contract No</dt>
+                        <dd>{{ invoice.ConsigneeContract or "-" }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Line Items ({{ "Intra-state - CGST + SGST" if tax_type == "CGST_SGST" else "Inter-state - IGST" }})</h2>
+                <div style="overflow-x:auto;">
+                    <table class="items-table">
+                        <tr>
+                            <th>#</th>
+                            <th>Product</th>
+                            <th>Model</th>
+                            <th>HSN</th>
+                            <th class="num">Qty</th>
+                            <th class="num">Rate</th>
+                            <th class="num">Taxable Value</th>
+                            <th class="num">GST %</th>
+                            <th class="num">Line Total</th>
+                        </tr>
+                        {% for item in invoice['items'] %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ item.ProductName }}</td>
+                            <td>{{ item.Model or "-" }}</td>
+                            <td>{{ item.HSN }}</td>
+                            <td class="num">{{ item.Quantity }}</td>
+                            <td class="num">{{ "%.2f"|format(item.UnitPrice) }}</td>
+                            <td class="num">{{ "%.2f"|format(item.TaxableValue) }}</td>
+                            <td class="num">{{ item.GSTPercent }}%</td>
+                            <td class="num">{{ "%.2f"|format(item.LineTotal) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+
+                <div class="totals-grid">
+                    <div class="label">Taxable Value</div><div class="value">&#8377;{{ "%.2f"|format(invoice.TaxableTotal) }}</div>
+                    {% if tax_type == "CGST_SGST" %}
+                    <div class="label">CGST</div><div class="value">&#8377;{{ "%.2f"|format(invoice.CGSTTotal) }}</div>
+                    <div class="label">SGST</div><div class="value">&#8377;{{ "%.2f"|format(invoice.SGSTTotal) }}</div>
+                    {% else %}
+                    <div class="label">IGST</div><div class="value">&#8377;{{ "%.2f"|format(invoice.IGSTTotal) }}</div>
+                    {% endif %}
+                    <div class="label">Round Off</div><div class="value">&#8377;{{ "%.2f"|format(invoice.RoundOff) }}</div>
+                    <div class="label grand-total">Grand Total</div><div class="value grand-total">&#8377;{{ "%.2f"|format(invoice.GrandTotal) }}</div>
+                </div>
+
+                <p class="words-line">{{ invoice.AmountInWords }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -17,6 +17,7 @@ collects enquiries. No prices, carts, or payments appear anywhere on it.
 | Deploying and operating in production | [DEPLOYMENT.md](DEPLOYMENT.md) |
 | Release history and known limitations | [CHANGELOG.md](CHANGELOG.md) · [RELEASE_NOTES.md](RELEASE_NOTES.md) |
 | Database tables and schema files | [database/README.md](database/README.md) |
+| Looking up a user-facing error code (e.g. "PDF-02") | [ERROR_CODES.md](ERROR_CODES.md) |
 
 ---
 
@@ -33,7 +34,7 @@ collects enquiries. No prices, carts, or payments appear anywhere on it.
   availability badge, and similar products
 - **Departments** — a browsable department landing page with live client-side search
 - **Enquiries** — per-product enquiry form and a general contact form, both validated
-- **Branded error pages** — 403, 404, and 500
+- **Branded error pages** — 403, 404, 413, and 500
 - **Maintenance Mode screen** — a dedicated, link-free 503 page
 
 ### Employee Portal
@@ -113,12 +114,15 @@ pip install -r requirements.txt
 ### Create the database
 
 Import **every** file in `database/schema/`, in numeric order, from
-`001_create_catalog.sql` through `011_alter_catalog_add_soft_delete.sql`.
+`001_create_catalog.sql` through `014_create_invoiceitems.sql` — the last two
+(`013_create_invoices.sql`, `014_create_invoiceitems.sql`) add the Invoice
+Generator module's `Invoices` and `InvoiceItems` tables.
 
-Order matters — later files add foreign keys and columns to tables the earlier ones
-create. **Do not stop early or skip a file:** a partial import produces a database the
-application cannot run against. Verify with `SHOW TABLES;` (expect 9) and confirm
-`Catalog` has the `IsActive`, `DeletedAt`, and `DeletedBy` columns.
+Order matters — later files add foreign keys, columns, and indexes to tables the
+earlier ones create. **Do not stop early or skip a file:** a partial import produces
+a database the application cannot run against. Verify with `SHOW TABLES;` (expect
+**11**, including `Invoices` and `InvoiceItems`) and confirm `Catalog` has the
+`IsActive`, `DeletedAt`, and `DeletedBy` columns.
 
 ### Configure environment variables
 
@@ -136,7 +140,8 @@ Then edit `.env`:
 | `SESSION_COOKIE_SECURE` | `False` for local HTTP development; **`True` in production** |
 | `LOG_LEVEL` | `DEBUG` / `INFO` / `WARNING` / `ERROR` (default `INFO`) |
 | `BUSINESS_ADDRESS` · `BUSINESS_PHONE` · `BUSINESS_EMAIL` · `BUSINESS_WEBSITE` · `BUSINESS_HOURS` | Public contact details shown in the footer, Contact page, and Maintenance screen |
-| `INVOICE_GENERATOR_URL` | Optional link to the external invoice project |
+| `SELLER_GSTIN` · `SELLER_BANK_ACCOUNT` · `SELLER_BANK_NAME` · `SELLER_IFSC` | Invoice Generator module — seller GSTIN and bank details printed on every generated invoice PDF. Optional (the app still starts without them), but `SELLER_GSTIN` is required before any invoice can actually be generated |
+| ~~`INVOICE_GENERATOR_URL`~~ / ~~`RECEIPT_GENERATOR_URL`~~ | **Deprecated, not read by the application.** Left over from the external Receipt Generator bridge, which has been merged into this application (see `AI_CONTEXT.md` "Invoice Generator Module (Merge)"). Safe to omit from a new `.env`; harmless to leave in an existing one |
 
 The values in `.env.example` are **development placeholders**. Production values are
 supplied in the server's own `.env` — see [DEPLOYMENT.md](DEPLOYMENT.md) § 1.5. Any

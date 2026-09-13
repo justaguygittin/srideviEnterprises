@@ -1,0 +1,288 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : invoice_pdf.html
+Purpose : Printable GST invoice, rendered to PDF by services/pdf_service.py
+          via Playwright's headless Chromium. Ordinary HTML/CSS written for
+          print - no xhtml2pdf/reportlab workarounds (see AI_CONTEXT.md
+          "Invoice Generator Module (Merge)").
+
+          Standalone document (does not extend layout/base.html): this is
+          rendered off-screen by Chromium for page.pdf(), never served as
+          a page a browser navigates to directly.
+
+Author  : Srikar
+=========================================================
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Invoice {{ invoice_number }}</title>
+<style>
+
+/*
+ * Sized in pt, not px. Chromium's print-to-PDF maps CSS px (a 96dpi unit)
+ * onto the PDF's own point-based coordinate system (72pt/inch) - a
+ * fractional border like "1.4px" becomes a fractional-point line that gets
+ * anti-aliased into a soft, slightly doubled hairline instead of a crisp
+ * one. Authoring directly in pt (and keeping every border a whole or
+ * half-point value) sidesteps that conversion entirely. Font sizes are
+ * also deliberately larger than a typical on-screen UI - this is a printed
+ * document, and screen-sized text (7-9px) reads as noticeably undersized
+ * once actually on paper.
+ */
+
+* { box-sizing: border-box; }
+
+html { color-scheme: light; }
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9.5pt;
+    line-height: 1.35;
+    color: #111;
+    background: #fff;
+    margin: 0;
+}
+
+.invoice {
+    border: 1pt solid #000;
+}
+
+.section {
+    border-top: 0.75pt solid #000;
+    padding: 7pt 9pt;
+}
+.section:first-child { border-top: none; }
+
+.banner {
+    text-align: center;
+    font-size: 11.5pt;
+    font-weight: bold;
+    letter-spacing: 2pt;
+}
+
+.row { display: flex; }
+.row > div + div { border-left: 0.75pt solid #000; }
+.row.thin > div + div { border-left: 0.75pt solid #ccc; }
+
+.header-company { flex: 0 0 45%; padding-right: 9pt; display: flex; align-items: flex-start; gap: 9pt; }
+.header-company img { width: 50pt; height: auto; flex-shrink: 0; object-fit: contain; }
+.header-invmeta { flex: 0 0 30%; padding: 0 9pt; }
+.header-datemeta { flex: 0 0 25%; padding-left: 9pt; }
+
+.company-name { font-size: 14.5pt; font-weight: bold; margin: 0 0 4pt; }
+
+.meta-item { border-bottom: 0.75pt solid #ddd; padding: 4pt 0; }
+.meta-item:last-child { border-bottom: none; }
+.meta-label { font-size: 7pt; color: #666; letter-spacing: .5pt; text-transform: uppercase; }
+.meta-value { font-size: 11pt; font-weight: bold; }
+
+.party { flex: 1; padding: 0 9pt; }
+.party:first-child { padding-left: 0; }
+.party:last-child { padding-right: 0; }
+.party-heading { font-size: 8.5pt; letter-spacing: .5pt; font-weight: bold; color: #333; margin-bottom: 4pt; }
+.party-name { font-size: 11pt; font-weight: bold; margin-bottom: 2pt; }
+
+table.items { width: 100%; border-collapse: collapse; }
+table.items th, table.items td { border: 0.75pt solid #000; padding: 5pt 6pt; font-size: 9.5pt; text-align: left; vertical-align: top; }
+table.items th { background: #f0f0f0; font-size: 8pt; text-transform: uppercase; }
+table.items td.num, table.items th.num { text-align: right; }
+table.items td.center, table.items th.center { text-align: center; }
+table.items .filler td { height: 20pt; }
+.item-brand { display: block; }
+.item-product { display: block; font-size: 8.5pt; color: #333; }
+
+.tax-total-row { align-items: stretch; }
+.tax-details { flex: 1; padding-right: 10pt; font-size: 9.5pt; display: flex; align-items: center; gap: 14pt; flex-wrap: wrap; }
+.tax-details b { letter-spacing: .5pt; }
+.total-box { flex: 0 0 34%; background: #1b2b4b; color: #fff; text-align: right; padding: 9pt 12pt; }
+.total-box .meta-label { color: #d9b25a; }
+.total-box .amount { font-size: 16pt; font-weight: bold; }
+
+.words-amount { font-size: 11pt; font-weight: bold; margin-top: 2pt; }
+
+table.summary { width: 100%; border-collapse: collapse; }
+table.summary th, table.summary td { border: 0.75pt solid #000; padding: 5pt 6pt; font-size: 9.5pt; text-align: left; }
+table.summary th { background: #f0f0f0; font-size: 8pt; text-transform: uppercase; }
+
+.declaration { flex: 0 0 65%; padding-right: 10pt; font-size: 8.5pt; line-height: 1.5; }
+.signatory { flex: 0 0 35%; padding-left: 10pt; text-align: right; font-size: 9pt; }
+.signatory-space { height: 42pt; }
+.signature-image { display: block; margin-left: auto; height: 46pt; max-width: 100%; object-fit: contain; }
+
+@media print {
+    @page { size: A4; margin: 0; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="invoice">
+
+    <div class="section banner">
+        {% if tax_type == 'CGST_SGST' %}
+        GST INVOICE &middot; INTRA-STATE SUPPLY (CGST + SGST)
+        {% else %}
+        GST INVOICE &middot; INTER-STATE SUPPLY (IGST)
+        {% endif %}
+    </div>
+
+    <div class="section row">
+        <div class="header-company">
+            {% if logo_data_uri %}<img src="{{ logo_data_uri }}" alt="">{% endif %}
+            <div>
+                <p class="company-name">{{ seller.name }}</p>
+                {% if seller.address %}{{ seller.address }}<br>{% endif %}
+                {% if seller.phone %}Phone: {{ seller.phone }}<br>{% endif %}
+                {% if seller.gstin %}<b>GSTIN: {{ seller.gstin }}</b>{% endif %}
+            </div>
+        </div>
+        <div class="header-invmeta">
+            <div class="meta-item"><div class="meta-label">Invoice No</div><div class="meta-value">{{ invoice_number }}</div></div>
+            <div class="meta-item"><div class="meta-label">Dispatch Doc No</div></div>
+            <div class="meta-item"><div class="meta-label">Dispatched Through</div></div>
+            <div class="meta-item"><div class="meta-label">Terms of Delivery</div></div>
+        </div>
+        <div class="header-datemeta">
+            <div class="meta-item"><div class="meta-label">Date</div><div class="meta-value">{{ invoice_date }}</div></div>
+            <div class="meta-item"><div class="meta-label">Delivery Note Date</div></div>
+            <div class="meta-item"><div class="meta-label">Destination</div></div>
+        </div>
+    </div>
+
+    <div class="section row">
+        <div class="party">
+            <div class="party-heading">BUYER (BILL TO)</div>
+            <div class="party-name">{{ invoice.BuyerName }}</div>
+            {{ invoice.BuyerAddress | replace('\n', '<br>') | safe }}<br>
+            Contact No: {{ invoice.BuyerContact or '' }}<br>
+            GSTIN: {{ invoice.BuyerGSTIN or '' }}<br>
+            Contract No: {{ invoice.BuyerContract or '' }}
+        </div>
+        <div class="party">
+            <div class="party-heading">CONSIGNEE (SHIP TO)</div>
+            <div class="party-name">{{ invoice.ConsigneeName }}</div>
+            {{ invoice.ConsigneeAddress | replace('\n', '<br>') | safe }}<br>
+            Contact No: {{ invoice.ConsigneeContact or '' }}<br>
+            GSTIN: {{ invoice.ConsigneeGSTIN or '' }}<br>
+            Contract No: {{ invoice.ConsigneeContract or '' }}
+        </div>
+    </div>
+
+    <div class="section" style="padding: 0;">
+        <table class="items">
+            <tr>
+                <th style="width:6%" class="center">Sl No</th>
+                <th style="width:39%">Description of Goods</th>
+                <th style="width:11%">HSN</th>
+                <th style="width:11%" class="num">Qty</th>
+                <th style="width:15%" class="num">Rate</th>
+                <th style="width:18%" class="num">Taxable Value</th>
+            </tr>
+            {# invoice['items'] uses bracket notation deliberately: a plain dict's
+               .items attribute always resolves to its built-in items() method,
+               never to a same-named key, so `invoice.items` here would silently
+               iterate nothing useful. #}
+            {% for item in invoice['items'] %}
+            <tr>
+                <td class="center">{{ loop.index }}</td>
+                <td>
+                    {% if item.Model %}<span class="item-brand">{{ item.Model }}</span>{% endif %}
+                    <span class="item-product">{{ item.ProductName }}</span>
+                </td>
+                <td>{{ item.HSN }}</td>
+                <td class="num">{{ "%.2f"|format(item.Quantity) }}</td>
+                <td class="num">{{ "%.2f"|format(item.UnitPrice) }}</td>
+                <td class="num">{{ "%.2f"|format(item.TaxableValue) }}</td>
+            </tr>
+            {% endfor %}
+            {% for _ in range(invoice['items']|length, 6) %}
+            <tr class="filler"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="section row tax-total-row">
+        <div class="tax-details">
+            <b>TAX DETAILS</b>
+            {% if tax_type == 'CGST_SGST' %}
+            <span>CGST {{ (invoice.CGSTTotal / invoice.TaxableTotal * 100) | round | int if invoice.TaxableTotal else 0 }}% {{ "%.2f"|format(invoice.CGSTTotal) }}</span>
+            <span>SGST {{ (invoice.SGSTTotal / invoice.TaxableTotal * 100) | round | int if invoice.TaxableTotal else 0 }}% {{ "%.2f"|format(invoice.SGSTTotal) }}</span>
+            {% else %}
+            <span>IGST {{ (invoice.IGSTTotal / invoice.TaxableTotal * 100) | round | int if invoice.TaxableTotal else 0 }}% {{ "%.2f"|format(invoice.IGSTTotal) }}</span>
+            <span>Place of Supply: {{ buyer_state_name }} ({{ invoice.BuyerState }})</span>
+            {% endif %}
+            <span>Rounding Off {{ "%.2f"|format(invoice.RoundOff) }}</span>
+        </div>
+        <div class="total-box">
+            <div class="meta-label">Total</div>
+            <div class="amount">{{ "%.2f"|format(invoice.GrandTotal) }}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="meta-label">Amount Chargeable in Words</div>
+        <div class="words-amount">{{ invoice.AmountInWords }}</div>
+    </div>
+
+    <div class="section" style="padding: 0;">
+        <table class="summary">
+            {% if tax_type == 'CGST_SGST' %}
+            <tr>
+                <th>Taxable Value</th><th>CGST %</th><th>CGST Amt</th>
+                <th>SGST %</th><th>SGST Amt</th><th>Total Tax</th>
+            </tr>
+            <tr>
+                <td>{{ "%.2f"|format(invoice.TaxableTotal) }}</td>
+                <td>{{ (invoice.CGSTTotal / invoice.TaxableTotal * 100) | round | int if invoice.TaxableTotal else 0 }}%</td>
+                <td>{{ "%.2f"|format(invoice.CGSTTotal) }}</td>
+                <td>{{ (invoice.SGSTTotal / invoice.TaxableTotal * 100) | round | int if invoice.TaxableTotal else 0 }}%</td>
+                <td>{{ "%.2f"|format(invoice.SGSTTotal) }}</td>
+                <td>{{ "%.2f"|format(invoice.CGSTTotal + invoice.SGSTTotal) }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <th>Taxable Value</th><th>IGST %</th><th>IGST Amt</th>
+                <th>&mdash;</th><th>&mdash;</th><th>Total Tax</th>
+            </tr>
+            <tr>
+                <td>{{ "%.2f"|format(invoice.TaxableTotal) }}</td>
+                <td>{{ (invoice.IGSTTotal / invoice.TaxableTotal * 100) | round | int if invoice.TaxableTotal else 0 }}%</td>
+                <td>{{ "%.2f"|format(invoice.IGSTTotal) }}</td>
+                <td>&mdash;</td><td>&mdash;</td>
+                <td>{{ "%.2f"|format(invoice.IGSTTotal) }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+
+    <div class="section row">
+        <div class="declaration">
+            <b>Declaration</b><br>
+            1. Goods once sold will not be taken back.<br>
+            2. Subject to jurisdiction.
+            {% if seller.bank_account or seller.bank_name or seller.ifsc %}
+            <br><br>
+            {% if seller.bank_account %}A/c. No. {{ seller.bank_account }}<br>{% endif %}
+            {% if seller.bank_name %}Bank: {{ seller.bank_name }}<br>{% endif %}
+            {% if seller.ifsc %}IFSC: {{ seller.ifsc }}{% endif %}
+            {% endif %}
+        </div>
+        <div class="signatory">
+            for {{ seller.name }}
+            {% if signature_data_uri %}
+            <img src="{{ signature_data_uri }}" class="signature-image" alt="Authorised signature">
+            {% else %}
+            <div class="signatory-space"></div>
+            {% endif %}
+            Authorised Signatory
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

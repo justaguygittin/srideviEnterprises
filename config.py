@@ -156,20 +156,40 @@ class Config:
     # v1.1.0 for the deferred CSRF/feature work (see CHANGELOG.md).
     APP_VERSION = "v1.0.0"
 
-    # Base URL of the separately-hosted invoice-generation project (its own Flask
-    # app, not part of this codebase - see AI_CONTEXT.md; that project itself is
-    # still named "Receipt Generator" and is NOT being renamed). Left unset until
-    # a deployment URL exists; the Employee Portal shows a graceful "unavailable"
-    # message when this is empty rather than guessing a URL.
-    #
-    # v1.0 Sprint 3: renamed from RECEIPT_GENERATOR_URL to INVOICE_GENERATOR_URL
-    # (display-terminology rename only). The old env var name is still read as a
-    # fallback so existing deployments keep working without an immediate .env
-    # change; prefer INVOICE_GENERATOR_URL in new configuration.
+    # DEPRECATED (Invoice Generator Module merge - see AI_CONTEXT.md "Invoice
+    # Generator Module (Merge)"): used to hold the separately-hosted Receipt
+    # Generator project's URL, which the Employee Portal linked out to. The
+    # Invoice Generator is now a module of this application (routes/receipts.py)
+    # and no longer launches an external app, so nothing reads this value any
+    # more. Left defined (not deleted) only so a server .env that still sets
+    # INVOICE_GENERATOR_URL/RECEIPT_GENERATOR_URL doesn't need an urgent edit;
+    # remove this once every deployment's .env has been cleaned up.
     INVOICE_GENERATOR_URL = (
         os.getenv("INVOICE_GENERATOR_URL", "").strip()
         or os.getenv("RECEIPT_GENERATOR_URL", "").strip()
     )
+
+    # ---------------------------------------------------------------------
+    # Invoice Generator seller details (Invoice Generator Module merge)
+    #
+    # The GSTIN and bank details printed on every generated invoice. Kept
+    # here rather than hardcoded in templates/invoice_pdf.html so they can
+    # be corrected (or set per-deployment) without touching code. The
+    # showroom's address/phone are NOT duplicated here - the invoice reuses
+    # Config.BUSINESS_ADDRESS / Config.BUSINESS_PHONE below, which already
+    # exist as this application's single source of truth for those values.
+    #
+    # Deliberately optional, matching the BUSINESS_* pattern above rather
+    # than SECRET_KEY's hard-fail: a missing SELLER_GSTIN should only ever
+    # break invoice generation (services/gst_service.py refuses to generate
+    # an invoice with a blank seller GSTIN - see there), never the whole
+    # application. Crashing the entire site, customer showroom included,
+    # over an invoice-only value would be a wildly disproportionate failure
+    # mode for a field the customer-facing site never reads.
+    SELLER_GSTIN = os.getenv("SELLER_GSTIN", "").strip()
+    SELLER_BANK_ACCOUNT = os.getenv("SELLER_BANK_ACCOUNT", "").strip()
+    SELLER_BANK_NAME = os.getenv("SELLER_BANK_NAME", "").strip()
+    SELLER_IFSC = os.getenv("SELLER_IFSC", "").strip()
 
     # ---------------------------------------------------------------------
     # Public business details (v1.0 Sprint 11 - Release Candidate)

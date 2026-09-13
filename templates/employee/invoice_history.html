@@ -1,0 +1,388 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : invoice_history.html
+Purpose : Invoice Generator - History page. Lists every generated invoice,
+          newest first, with links to view or download each one.
+
+          Replaces the former external-launch bridge page (see
+          AI_CONTEXT.md "Invoice Generator Module (Merge)") - this is now
+          the module's real landing page, not a launcher for a separate
+          application.
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+Invoices - Employee Portal - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee_nav.css') }}">
+<style>
+    .invoices-container {
+        min-height: calc(100vh - 120px);
+        background-color: #f8f9fa;
+        padding: 0;
+    }
+
+    .invoices-content {
+        padding: 2rem;
+    }
+
+    .invoices-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .invoices-header h1 {
+        color: #333;
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .invoices-count {
+        color: #666;
+        font-size: 0.95rem;
+    }
+
+    .btn-new-invoice {
+        background: #1E4FA3;
+        color: #fff;
+        border: none;
+        padding: 0.7rem 1.4rem;
+        border-radius: 4px;
+        font-weight: 500;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: background 0.2s;
+    }
+
+    .btn-new-invoice:hover {
+        background: #1565A0;
+        color: #fff;
+    }
+
+    .search-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .search-bar-row {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .search-bar-row input {
+        flex: 1;
+        min-width: 200px;
+        padding: 0.6rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+
+    .search-btn {
+        background: #1E4FA3;
+        color: white;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .refresh-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: #ccc;
+        color: #333;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+        text-decoration: none;
+    }
+
+    .invoices-table-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        overflow-x: auto;
+    }
+
+    .invoices-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .invoices-table thead {
+        background: #f8f9fa;
+        border-bottom: 2px solid #1E4FA3;
+    }
+
+    .invoices-table th {
+        padding: 1rem;
+        text-align: left;
+        color: #333;
+        font-weight: 600;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+
+    .invoices-table tbody tr {
+        border-bottom: 1px solid #eee;
+    }
+
+    .invoices-table tbody tr:hover {
+        background: #f0f5ff;
+    }
+
+    .invoices-table td {
+        padding: 1rem;
+        color: #333;
+        font-size: 0.9rem;
+        vertical-align: middle;
+    }
+
+    .invoice-number {
+        font-weight: 600;
+        color: #1E4FA3;
+    }
+
+    .invoice-total {
+        font-weight: 600;
+    }
+
+    .invoice-actions-cell {
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    .btn-sm-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.35rem 0.7rem;
+        border-radius: 4px;
+        font-size: 0.82rem;
+        text-decoration: none;
+        margin: 0 0.15rem;
+    }
+
+    .btn-view {
+        background: #eaf1ff;
+        color: #1E4FA3;
+    }
+
+    .btn-view:hover {
+        background: #d5e4ff;
+        color: #1E4FA3;
+    }
+
+    .btn-pdf {
+        background: #fdecee;
+        color: #c0392b;
+    }
+
+    .btn-pdf:hover {
+        background: #f8d7da;
+        color: #c0392b;
+    }
+
+    .empty-state {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        padding: 3rem 1.5rem;
+        color: #999;
+    }
+
+    .empty-state i {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        color: #ccc;
+    }
+
+    .empty-state p {
+        margin: 0;
+        font-size: 1rem;
+        color: #666;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 2rem;
+    }
+
+    .pagination a,
+    .pagination span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        height: 40px;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-decoration: none;
+        color: #333;
+        font-size: 0.9rem;
+    }
+
+    .pagination a:hover {
+        background: #1E4FA3;
+        color: white;
+        border-color: #1E4FA3;
+    }
+
+    .pagination .current {
+        background: #1E4FA3;
+        color: white;
+        border-color: #1E4FA3;
+        font-weight: 600;
+    }
+
+    .pagination .disabled {
+        color: #ccc;
+        cursor: not-allowed;
+    }
+
+    @media (max-width: 768px) {
+        .invoices-content { padding: 1rem; }
+        .invoices-header h1 { font-size: 1.3rem; }
+        .search-bar-row { flex-direction: column; align-items: stretch; }
+        .invoices-table { font-size: 0.8rem; }
+        .invoices-table th, .invoices-table td { padding: 0.6rem 0.4rem; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="invoices-container">
+    {% include 'components/employee_nav.html' %}
+
+    <div class="invoices-content">
+        <div class="container">
+            <div class="invoices-header">
+                <div>
+                    <h1><i class="fas fa-receipt"></i> Invoices</h1>
+                    {% if search %}
+                    <p class="invoices-count">Found {{ total_invoices }} invoice{% if total_invoices != 1 %}s{% endif %}</p>
+                    {% else %}
+                    <p class="invoices-count">Total Invoices: {{ total_invoices }}</p>
+                    {% endif %}
+                </div>
+                <a href="{{ url_for('receipts.new_invoice') }}" class="btn-new-invoice">
+                    <i class="fas fa-plus-circle"></i> New Invoice
+                </a>
+            </div>
+
+            <div class="search-section">
+                <form method="GET" action="{{ url_for('receipts.history') }}">
+                    <div class="search-bar-row">
+                        <label for="search" class="visually-hidden">Search invoices</label>
+                        <input type="text" id="search" name="search" value="{{ search }}" placeholder="Search by buyer name or invoice number...">
+                        <button type="submit" class="search-btn">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <a href="{{ url_for('receipts.history') }}" class="refresh-btn">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            {% if invoices %}
+            <div class="invoices-table-container">
+                <table class="invoices-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Invoice #</th>
+                            <th scope="col">Date</th>
+                            <th scope="col">Buyer</th>
+                            <th scope="col">Total</th>
+                            <th scope="col">Created By</th>
+                            <th scope="col" class="invoice-actions-cell">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for invoice in invoices %}
+                        <tr>
+                            <td><span class="invoice-number">#{{ "%05d"|format(invoice.InvoiceID) }}</span></td>
+                            <td>{{ invoice.InvoiceDate.strftime("%d %b %Y") }}</td>
+                            <td>{{ invoice.BuyerName }}</td>
+                            <td class="invoice-total">&#8377;{{ "%.2f"|format(invoice.GrandTotal) }}</td>
+                            <td>{{ invoice.CreatedByName or "-" }}</td>
+                            <td class="invoice-actions-cell">
+                                <a href="{{ url_for('receipts.view_invoice', invoice_id=invoice.InvoiceID) }}" class="btn-sm-action btn-view">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                <a href="{{ url_for('receipts.invoice_pdf', invoice_id=invoice.InvoiceID) }}" class="btn-sm-action btn-pdf" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if total_pages > 1 %}
+            <div class="pagination">
+                {% if page > 1 %}
+                <a href="{{ url_for('receipts.history', page=1, search=search) }}"><i class="fas fa-chevron-left"></i> First</a>
+                <a href="{{ url_for('receipts.history', page=page-1, search=search) }}"><i class="fas fa-chevron-left"></i> Previous</a>
+                {% else %}
+                <span class="disabled"><i class="fas fa-chevron-left"></i> First</span>
+                <span class="disabled"><i class="fas fa-chevron-left"></i> Previous</span>
+                {% endif %}
+
+                {% for page_num in range(start_page, end_page + 1) %}
+                {% if page_num == page %}
+                <span class="current" aria-current="page">{{ page_num }}</span>
+                {% else %}
+                <a href="{{ url_for('receipts.history', page=page_num, search=search) }}">{{ page_num }}</a>
+                {% endif %}
+                {% endfor %}
+
+                {% if page < total_pages %}
+                <a href="{{ url_for('receipts.history', page=page+1, search=search) }}">Next <i class="fas fa-chevron-right"></i></a>
+                <a href="{{ url_for('receipts.history', page=total_pages, search=search) }}">Last <i class="fas fa-chevron-right"></i></a>
+                {% else %}
+                <span class="disabled">Next <i class="fas fa-chevron-right"></i></span>
+                <span class="disabled">Last <i class="fas fa-chevron-right"></i></span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-receipt"></i>
+                <p>No invoices found.</p>
+                <p class="empty-state-subtext">Generate your first invoice to see it listed here.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

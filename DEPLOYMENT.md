@@ -43,7 +43,13 @@ cPanel — it's specific to your app and Python version), then install:
 source /home/USER/virtualenv/srideviEnterprises/3.x/bin/activate
 cd ~/SE/srideviEnterprises
 pip install -r requirements.txt
+playwright install chromium
 ```
+
+`playwright install chromium` downloads and installs the actual headless
+Chromium binary Playwright launches (services/pdf_service.py) - `pip install`
+alone only installs the Python package, not the browser. Re-run it after any
+`pip install -r requirements.txt` that changes the pinned `playwright` version.
 
 ### 1.4 Create the Database
 
@@ -51,17 +57,18 @@ pip install -r requirements.txt
    grant that user all privileges on the database.
 2. Open **phpMyAdmin**, select the new database, and import **every** file in
    `database/schema/` **in numeric order**, from `001_create_catalog.sql` through
-   `011_alter_catalog_add_soft_delete.sql`, using phpMyAdmin's Import tab, or run them
+   `014_create_invoiceitems.sql`, using phpMyAdmin's Import tab, or run them
    via the phpMyAdmin SQL tab one at a time in order.
 
    Import the whole directory — do not stop at any particular file. Order is not
    optional: `003` adds a foreign key to `Users`, `009` adds one to `Employees` and
-   alters the table `008` creates, and `011` alters the table `001` creates. As of
-   v1.0 the directory contains these 11 files:
+   alters the table `008` creates, `011` alters the table `001` creates, and `012`
+   indexes columns that `001`, `006`, and `007` create. As of v1.1 the directory
+   contains these 12 files:
 
    | File | Creates / changes |
    |---|---|
-   | `001_create_catalog.sql` | `Catalog` — products (shared with the Receipt Generator project) |
+   | `001_create_catalog.sql` | `Catalog` — products (historically shared with the standalone Receipt Generator project; that project has since been merged into this application - see AI_CONTEXT.md "Invoice Generator Module (Merge)") |
    | `002_create_users.sql` | `Users` — authentication |
    | `003_create_employees.sql` | `Employees` (FK → `Users`) |
    | `004_create_customers.sql` | `Customers` — reserved; no write path yet |
@@ -72,23 +79,45 @@ pip install -r requirements.txt
    | `009_alter_stockhistory_add_transaction_columns.sql` | Adds transaction columns, 3 indexes, FK → `Employees` |
    | `010_create_departmentimages.sql` | `DepartmentImages` — Department Image Management |
    | `011_alter_catalog_add_soft_delete.sql` | Adds `Catalog.IsActive` / `DeletedAt` / `DeletedBy` |
+   | `012_add_performance_indexes.sql` | Adds indexes on `Catalog.Department` / `category` / `brand` and `ProductImages` / `ProductDetails.ProductID` |
+   | `013_create_invoices.sql` | `Invoices` — Invoice Generator module (FK → `Employees`) |
+   | `014_create_invoiceitems.sql` | `InvoiceItems` — invoice line items (FK → `Invoices`, `Catalog`) |
 
-   **Skipping `010` or `011` produces a database the v1.0 application cannot run
-   against** — without `010` the homepage and Departments module fail, and without
-   `011` every product query fails on the missing `IsActive` column. Verify with
-   step 3 below before moving on.
+   **Skipping `010`, `011`, `013`, or `014` produces a database the application
+   cannot run against** — without `010` the homepage and Departments module fail,
+   without `011` every product query fails on the missing `IsActive` column, and
+   without `013`/`014` the Invoice Generator module (`/employee/invoices`) fails
+   outright since `Invoices`/`InvoiceItems` won't exist. `012` is purely additive
+   (indexes only, no new column) — skipping it does not break anything, but it
+   means every product listing/filter query runs unindexed, so it should still
+   always be applied. Verify with step 3 below before moving on.
+
+   **Invoice numbering:** the standalone Receipt Generator was used for
+   testing only — it never issued or stored real Sridevi Enterprises customer
+   invoices, so there is no old production invoice sequence to migrate.
+   `Invoices.InvoiceID` is a plain `AUTO_INCREMENT`, and on a fresh import the
+   table is simply new and empty. Before issuing the first real invoice,
+   confirm that: `Invoices` is actually empty (`SELECT COUNT(*) FROM
+   Invoices;` should return 0), and its `AUTO_INCREMENT` is at a sane starting
+   value (1, unless you have a specific reason to start elsewhere). **Do not**
+   set `AUTO_INCREMENT` to `5090` or any other number seen on a development/
+   reference invoice — that was a test value, not a production sequence to
+   continue from.
 
 3. **Verify the import** before continuing. In phpMyAdmin's SQL tab:
 
    ```sql
-   SHOW TABLES;                  -- expect 9: Catalog, Customers, DepartmentImages,
-                                 -- Employees, Enquiries, ProductDetails,
-                                 -- ProductImages, StockHistory, Users
+   SHOW TABLES;                  -- expect 11: Catalog, Customers, DepartmentImages,
+                                 -- Employees, Enquiries, InvoiceItems, Invoices,
+                                 -- ProductDetails, ProductImages, StockHistory, Users
    SHOW COLUMNS FROM Catalog;    -- must include IsActive, DeletedAt, DeletedBy (011)
+   SHOW INDEX FROM Catalog;      -- must include idx_catalog_department/category/brand (012)
+   SELECT COUNT(*) FROM Invoices; -- expect 0 on a fresh production import (013/014)
    ```
 
-   If either check comes up short, re-run the missing file(s) rather than continuing —
-   the application will not start correctly against a partial schema.
+   If any check comes up short, re-run the missing file(s) rather than continuing —
+   the application will not start correctly against a partial schema (missing tables
+   or columns), or will run unindexed (missing `012`'s indexes).
 
 ### 1.5 Configure Environment Variables
 
@@ -260,6 +289,7 @@ touch tmp/restart.txt            # not strictly required (maintenance.json is re
 git pull
 source /home/USER/virtualenv/srideviEnterprises/3.x/bin/activate
 pip install -r requirements.txt  # only if requirements.txt changed
+playwright install chromium      # only if requirements.txt's playwright version changed
 
 # 4. Run SQL Migration (only if this deploy adds one — see §6)
 # Via phpMyAdmin's Import/SQL tab, one new database/schema/0NN_*.sql file, in order.

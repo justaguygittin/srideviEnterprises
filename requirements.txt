@@ -2,3 +2,7 @@ Flask==3.1.3
 Werkzeug==3.1.8
 mysql-connector-python==9.7.0
 python-dotenv==1.1.1
+
+# Invoice Generator module (services/invoice_service.py, services/pdf_service.py)
+num2words==0.5.14
+playwright==1.49.1

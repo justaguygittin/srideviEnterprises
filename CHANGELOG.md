@@ -8,6 +8,79 @@ version string is `Config.APP_VERSION` in `config.py`, surfaced at runtime via
 
 ---
 
+## [Unreleased] — Invoice Generator Module (Merge)
+
+Reverses the Sprint 12 entry immediately below, which scoped the Invoice
+Generator module out. It is now in: the standalone Receipt Generator project
+has been merged into this application as `routes/receipts.py`, mounted at
+`/employee/invoices`. See `AI_CONTEXT.md` → "Invoice Generator Module (Merge)"
+for the full detail.
+
+### Added
+
+- **Invoice Generator module** — Buyer/Consignee entry, multi-product GST
+  invoices (CGST+SGST for intra-state, IGST for inter-state), PDF generation,
+  and invoice history, generated from and validated against the existing
+  `Catalog` table, behind the existing employee session/auth.
+- `services/gst_service.py`, `services/invoice_service.py`,
+  `services/pdf_service.py`, `routes/receipts.py`.
+- `Invoices` / `InvoiceItems` tables (`database/schema/013_create_invoices.sql`,
+  `014_create_invoiceitems.sql`).
+- `templates/employee/invoice_history.html`, `invoice_form.html`,
+  `invoice_view.html`, `templates/invoice_pdf.html`.
+- `Config.SELLER_GSTIN` / `SELLER_BANK_ACCOUNT` / `SELLER_BANK_NAME` /
+  `SELLER_IFSC` — printed on the generated invoice; reuses the existing
+  `Config.BUSINESS_ADDRESS`/`BUSINESS_PHONE` rather than duplicating them.
+- `num2words` and `playwright` added to `requirements.txt` — PDF generation
+  uses Playwright's headless Chromium, not the standalone project's xhtml2pdf.
+
+### Removed
+
+- The Employee Portal's launch-only external bridge to the standalone Receipt
+  Generator project (`templates/employee/invoices.html`, the old
+  `routes/employee.py:invoices()` view). `Config.INVOICE_GENERATOR_URL` /
+  `RECEIPT_GENERATOR_URL` are left defined but deprecated - nothing reads them
+  any more.
+
+## [Unreleased] — v1.1 Sprint 12: Production Stabilization
+
+First sprint on the `v1.1-development` branch, after the v1.0.0 release. A
+stabilization/hardening pass, not a feature sprint — CSRF implementation and
+Admin Settings remain explicitly out of scope. (The Invoice Generator module
+was scoped out here too, at the time this sprint was written; see the entry
+above this one — that decision was later revisited.)
+See `AI_CONTEXT.md` → "Sprint 12 — Production Stabilization (v1.1)" for full detail.
+
+### Added
+
+- **Branded 413 (Payload Too Large) error page**, matching the existing
+  403/404/500/503 visual language. 400 and 405 remain deferred (unbranded).
+- **Favicon**, reusing the existing brand logo — closes a TODO open since
+  `base.html` was first written.
+- **`database/schema/012_add_performance_indexes.sql`** — indexes on
+  `Catalog.Department`/`category`/`brand` and
+  `ProductImages`/`ProductDetails.ProductID`, the columns behind every product
+  listing/filter/detail query, which had only primary keys before this file.
+
+### Fixed
+
+- **`.env.example` no longer carries real-looking business details.** The
+  v1.0.0 RC commit had replaced the generic placeholder address/phone/email
+  with what read as the actual showroom's contact information, which silently
+  broke DEPLOYMENT.md §7.1's own placeholder-search verification step (it was
+  searching for strings that no longer existed anywhere in the template).
+  Reverted to generic placeholders; the real `.env` was never affected.
+
+### Removed
+
+- Two unreferenced placeholder image variants
+  (`static/images/products/placeholde.webp`, `placeholder.webp.png`) and four
+  0-byte category stub images already superseded by Department Image
+  Management (`static/images/categories/*.jpg`). Confirmed unreferenced by
+  grep before deletion.
+
+---
+
 ## [v1.0.0] — 2026-08-08
 
 First public release. The Release Candidate sprint added no features; it audited,

@@ -9,6 +9,7 @@ from routes.customer import customer_bp
 from routes.employee import employee_bp
 from routes.admin import admin_bp
 from routes.api import api_bp
+from routes.receipts import receipts_bp
 from services.maintenance_service import is_maintenance_enabled, verify_maintenance_key
 
 _LOG_FORMAT = "%(asctime)s %(levelname)-8s [%(name)s:%(process)d] %(message)s"
@@ -83,6 +84,7 @@ app.register_blueprint(customer_bp)
 app.register_blueprint(employee_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(api_bp)
+app.register_blueprint(receipts_bp)
 
 # One line per worker start. After a Passenger restart this is the first thing
 # in the error log, and it answers the same question GET /health answers -
@@ -247,6 +249,17 @@ def not_found(error):
 @app.errorhandler(500)
 def server_error(error):
     return render_template("errors/500.html"), 500
+
+
+@app.errorhandler(413)
+def payload_too_large(error):
+    """
+    Branded page for a request exceeding Config.MAX_CONTENT_LENGTH - most
+    likely a product/department image upload past the configured limit
+    (v1.1 Sprint 12). 400/405 remain unbranded (deferred, see AI_CONTEXT.md).
+    """
+
+    return render_template("errors/413.html"), 413
 
 
 @app.errorhandler(503)

@@ -625,12 +625,8 @@ Dashboard - Employee Portal - Sridevi Enterprises
                 <div class="stat-card">
                     <div class="stat-card-icon"><i class="fas fa-receipt"></i></div>
                     <div class="stat-card-body">
-                        {% if invoice_generator_configured %}
-                        <div class="stat-card-value">Ready</div>
-                        {% else %}
-                        <div class="stat-card-value stat-pending">Not Configured</div>
-                        {% endif %}
-                        <p class="stat-card-label">Invoice Generator</p>
+                        <div class="stat-card-value">{{ invoice_count }}</div>
+                        <p class="stat-card-label">Invoices Generated</p>
                     </div>
                 </div>
             </div>
@@ -730,7 +726,7 @@ Dashboard - Employee Portal - Sridevi Enterprises
                     <p>Browse customer records.</p>
                 </a>
 
-                <a href="{{ url_for('employee.invoices') }}" class="dashboard-card">
+                <a href="{{ url_for('receipts.history') }}" class="dashboard-card">
                     <div class="dashboard-card-icon">
                         <i class="fas fa-receipt"></i>
                     </div>

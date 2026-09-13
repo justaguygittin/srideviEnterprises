@@ -1,0 +1,381 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : invoice_form.html
+Purpose : Invoice Generator - New Invoice form (Buyer/Consignee details,
+          multiple products with quantities). Submits to
+          routes/receipts.py:new_invoice(), which validates, calculates
+          GST (services/gst_service.py), and persists the invoice
+          (services/invoice_service.py) before redirecting to the new
+          invoice's view page.
+
+          Product search reuses the shared searchable-select component
+          (static/js/components/searchable_select.js) - "do not build
+          another product search component" (see that file's docstring).
+          The per-row Model dropdown is a plain <select>, populated via
+          GET /employee/invoices/models/<product_name>, mirroring the
+          standalone Receipt Generator's original /get_models endpoint.
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+New Invoice - Employee Portal - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee_nav.css') }}">
+<style>
+    .invoice-form-container {
+        min-height: calc(100vh - 120px);
+        background-color: #f8f9fa;
+        padding: 0;
+    }
+
+    .invoice-form-content {
+        padding: 2rem;
+    }
+
+    .invoice-form-header h1 {
+        color: #333;
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 0.3rem;
+    }
+
+    .invoice-form-header p {
+        color: #666;
+        margin: 0 0 1.5rem;
+    }
+
+    .card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .card h2 {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #333;
+        margin: 0 0 1rem;
+    }
+
+    /* Searchable-select (shared component) - see product_form.html for the
+       original of this block; each employee page that uses the component
+       carries its own copy of this CSS, matching existing convention. */
+    .searchable-select { position: relative; }
+
+    .searchable-select-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 20;
+        max-height: 220px;
+        overflow-y: auto;
+        margin-top: 2px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .searchable-select-menu .list-group-item {
+        cursor: pointer;
+        font-size: 0.9rem;
+        padding: 0.5rem 0.9rem;
+    }
+
+    .searchable-select-menu .list-group-item.active,
+    .searchable-select-menu .list-group-item:hover {
+        background: #f0f5ff;
+        color: #1E4FA3;
+    }
+
+    .searchable-select-menu .list-group-item-empty {
+        cursor: default;
+        color: #999;
+    }
+
+    .items-table-wrap {
+        overflow-x: auto;
+    }
+
+    #itemsTable {
+        width: 100%;
+        min-width: 780px;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    #itemsTable th {
+        text-align: left;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: #666;
+        padding: 0.5rem;
+        border-bottom: 1px solid #ddd;
+    }
+
+    #itemsTable td {
+        padding: 0.5rem;
+        vertical-align: top;
+    }
+
+    .col-product { width: 26%; }
+    .col-model { width: 20%; }
+    .col-price { width: 12%; }
+    .col-hsn { width: 14%; }
+    .col-qty { width: 10%; }
+    .col-action { width: 8%; text-align: center; }
+
+    .btn-remove-row {
+        background: #fdecee;
+        color: #c0392b;
+        border: none;
+        border-radius: 4px;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.82rem;
+    }
+
+    .btn-add-row {
+        background: #eaf1ff;
+        color: #1E4FA3;
+        border: 1px solid #1E4FA3;
+        border-radius: 4px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        margin-top: 0.75rem;
+    }
+
+    .footer-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .invoice-form-content { padding: 1rem; }
+        .card { padding: 1rem; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="invoice-form-container">
+    {% include 'components/employee_nav.html' %}
+
+    <div class="invoice-form-content">
+        <div class="container">
+            <div class="invoice-form-header">
+                <h1><i class="fas fa-file-invoice"></i> New Invoice</h1>
+                <p>Enter buyer, consignee and product details to generate a GST invoice.</p>
+            </div>
+
+            {% if errors.form %}
+            <div class="alert alert-danger">{{ errors.form }}</div>
+            {% endif %}
+            {% if errors.items %}
+            <div class="alert alert-danger">{{ errors.items }}</div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('receipts.new_invoice') }}" id="invoiceForm">
+
+                <div class="card">
+                    <h2>Buyer Details (Bill To)</h2>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Buyer Name <span class="text-danger">*</span></label>
+                            <input type="text" name="buyer_name" class="form-control" value="{{ request.form.get('buyer_name', '') }}" required>
+                            {% if errors.buyer_name %}<div class="invalid-feedback d-block">{{ errors.buyer_name }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Contact Number</label>
+                            <input type="text" name="buyer_contact" class="form-control" value="{{ request.form.get('buyer_contact', '') }}">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Buyer Address <span class="text-danger">*</span></label>
+                            <textarea name="buyer_address" class="form-control" rows="2" required>{{ request.form.get('buyer_address', '') }}</textarea>
+                            {% if errors.buyer_address %}<div class="invalid-feedback d-block">{{ errors.buyer_address }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Buyer's State (Place of Supply) <span class="text-danger">*</span></label>
+                            <select name="buyer_state" class="form-select" required>
+                                <option value="">Select State</option>
+                                {% for code, name in states.items() | sort(attribute='1') %}
+                                <option value="{{ code }}" {% if request.form.get('buyer_state') == code %}selected{% endif %}>{{ name }} ({{ code }})</option>
+                                {% endfor %}
+                            </select>
+                            {% if errors.buyer_state %}<div class="invalid-feedback d-block">{{ errors.buyer_state }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">GSTIN (optional)</label>
+                            <input type="text" name="buyer_gstin" class="form-control" value="{{ request.form.get('buyer_gstin', '') }}" placeholder="15-digit GSTIN">
+                            {% if errors.buyer_gstin %}<div class="invalid-feedback d-block">{{ errors.buyer_gstin }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Contract Number</label>
+                            <input type="text" name="buyer_contract" class="form-control" value="{{ request.form.get('buyer_contract', '') }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Consignee Details (Ship To)</h2>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Consignee Name <span class="text-danger">*</span></label>
+                            <input type="text" name="consignee_name" class="form-control" value="{{ request.form.get('consignee_name', '') }}" required>
+                            {% if errors.consignee_name %}<div class="invalid-feedback d-block">{{ errors.consignee_name }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Contact Number</label>
+                            <input type="text" name="consignee_contact" class="form-control" value="{{ request.form.get('consignee_contact', '') }}">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Consignee Address <span class="text-danger">*</span></label>
+                            <textarea name="consignee_address" class="form-control" rows="2" required>{{ request.form.get('consignee_address', '') }}</textarea>
+                            {% if errors.consignee_address %}<div class="invalid-feedback d-block">{{ errors.consignee_address }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">GSTIN (optional)</label>
+                            <input type="text" name="consignee_gstin" class="form-control" value="{{ request.form.get('consignee_gstin', '') }}" placeholder="15-digit GSTIN">
+                            {% if errors.consignee_gstin %}<div class="invalid-feedback d-block">{{ errors.consignee_gstin }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Contract Number</label>
+                            <input type="text" name="consignee_contract" class="form-control" value="{{ request.form.get('consignee_contract', '') }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Product Items</h2>
+                    <div class="items-table-wrap">
+                        <table id="itemsTable">
+                            <thead>
+                                <tr>
+                                    <th class="col-product">Product</th>
+                                    <th class="col-model">Model</th>
+                                    <th class="col-price">Price (&#8377;)</th>
+                                    <th class="col-hsn">HSN</th>
+                                    <th class="col-qty">Quantity</th>
+                                    <th class="col-action">Remove</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemsTableBody"></tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn-add-row" id="addRowBtn">
+                        <i class="fas fa-plus-circle"></i> Add Product
+                    </button>
+                </div>
+
+                <div class="footer-actions">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-check-circle"></i> Generate Invoice
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/components/searchable_select.js') }}"></script>
+<script>
+(function () {
+    "use strict";
+
+    var PRODUCT_OPTIONS = [
+        {% for product in products %}
+        { value: {{ product.product_name | tojson }}, label: {{ product.product_name | tojson }} }{{ "," if not loop.last }}
+        {% endfor %}
+    ];
+
+    var tbody = document.getElementById("itemsTableBody");
+    var rowCount = 0;
+
+    function addRow() {
+        var index = rowCount++;
+        var row = document.createElement("tr");
+        row.innerHTML =
+            '<td>' +
+                '<div class="searchable-select">' +
+                    '<input type="text" id="product-search-' + index + '" class="form-control" ' +
+                        'placeholder="Search product" autocomplete="off" role="combobox" ' +
+                        'aria-expanded="false" aria-autocomplete="list" aria-controls="product-options-' + index + '">' +
+                    '<ul class="searchable-select-menu list-group" id="product-options-' + index + '" role="listbox" hidden></ul>' +
+                '</div>' +
+            '</td>' +
+            '<td><select name="product_id[]" class="form-select" id="model-select-' + index + '" required>' +
+                '<option value="">Select model</option></select></td>' +
+            '<td><input type="text" class="form-control" id="price-display-' + index + '" readonly placeholder="0.00"></td>' +
+            '<td><input type="text" name="hsn[]" class="form-control" required></td>' +
+            '<td><input type="number" name="qty[]" class="form-control" min="1" value="1" required></td>' +
+            '<td class="col-action"><button type="button" class="btn-remove-row" aria-label="Remove row"><i class="fas fa-trash"></i></button></td>';
+        tbody.appendChild(row);
+
+        var modelSelect = row.querySelector("#model-select-" + index);
+        var priceDisplay = row.querySelector("#price-display-" + index);
+
+        window.initSearchableSelect(
+            "product-search-" + index,
+            "product-options-" + index,
+            function () { return PRODUCT_OPTIONS; },
+            function (productName) { loadModels(productName, modelSelect, priceDisplay); }
+        );
+
+        modelSelect.addEventListener("change", function () {
+            var selected = modelSelect.options[modelSelect.selectedIndex];
+            priceDisplay.value = selected ? (selected.getAttribute("data-price") || "") : "";
+        });
+
+        row.querySelector(".btn-remove-row").addEventListener("click", function () {
+            row.remove();
+        });
+    }
+
+    function loadModels(productName, modelSelect, priceDisplay) {
+        modelSelect.innerHTML = '<option value="">Loading...</option>';
+        priceDisplay.value = "";
+
+        fetch("/employee/invoices/models/" + encodeURIComponent(productName))
+            .then(function (response) { return response.json(); })
+            .then(function (variants) {
+                modelSelect.innerHTML = '<option value="">Select model</option>';
+                variants.forEach(function (variant) {
+                    var option = document.createElement("option");
+                    option.value = variant.id;
+                    option.setAttribute("data-price", variant.offer_price);
+                    var label = variant.model || "(no model)";
+                    if (variant.brand) label = variant.brand + " - " + label;
+                    option.textContent = label;
+                    modelSelect.appendChild(option);
+                });
+                if (variants.length === 0) {
+                    modelSelect.innerHTML = '<option value="">No active variants found</option>';
+                }
+            })
+            .catch(function () {
+                modelSelect.innerHTML = '<option value="">Could not load models</option>';
+            });
+    }
+
+    document.getElementById("addRowBtn").addEventListener("click", addRow);
+
+    document.getElementById("invoiceForm").addEventListener("submit", function (event) {
+        if (tbody.querySelectorAll("tr").length === 0) {
+            event.preventDefault();
+            alert("Add at least one product.");
+        }
+    });
+
+    addRow();
+})();
+</script>
+{% endblock %}

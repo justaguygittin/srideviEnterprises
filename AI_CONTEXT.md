@@ -37,7 +37,7 @@ The current project is focused solely on the Sridevi Enterprises showroom applic
 
 The application must become a complete, deployable standalone system before any integration with external projects is considered.
 
-**Update:** a launch-only integration bridge to the Invoice Generator now exists (see Employee Invoice Generator Bridge) — the Employee Portal can link out to it, nothing more. Deeper shared-system work (shared authentication, shared invoice/inventory data, an API between the two projects) remains intentionally out of scope until after v1.0.0 — see Planned Roadmap > Future Roadmap for details.
+**Update (Invoice Generator Module merge):** the launch-only bridge described below has been superseded. The standalone Receipt Generator project has been merged into this codebase as `routes/receipts.py` (mounted at `/employee/invoices`) — it is no longer a second, independently-deployed Flask application, and the Employee Portal no longer links out to anything external for invoicing. See "Invoice Generator Module (Merge)" below for what changed and why; the "Employee Invoice Generator Bridge" section further down is kept for history only.
 
 ## Technology Stack
 
@@ -397,7 +397,28 @@ Foundation (read-only) employee-facing customer list, replacing the `/employee/c
 
 **Future extension points**: the table has plain `<th>` columns (Customer, Product, Date, Status, Actions) with no colspan/rowspan tricks, so future columns (Priority, Assigned Employee, Last Updated) can be appended without restructuring. `Status` currently only ever contains `'Pending'` (no UI writes to it yet — this module is read-only); `.status-badge`'s color mapping already handles `Resolved`/`Closed` and an "other" fallback so a future status-update feature can start writing new values without any CSS changes here.
 
+### Invoice Generator Module (Merge)
+
+Supersedes the "Employee Invoice Generator Bridge" section immediately below, which is kept only as a record of the decision this merge reverses.
+
+**What changed**: the standalone Receipt Generator project (a separate Flask app, own `app.py`/`passenger_wsgi.py`/DB connection, sharing only the `Catalog` table) has been folded into this application as `routes/receipts.py`. It is no longer deployed separately, has no auth of its own, and is no longer linked to from an external URL — the Employee Portal's `/employee/invoices` now generates invoices itself, using this application's own session auth, `database/db.py`, and `Catalog` table directly.
+
+**Why the reversal**: the bridge section below explains, correctly at the time, why merging was rejected (two conflicting Flask processes, duplicated business logic, no shared session). Those tradeoffs didn't change — what changed is the decision about which cost to accept: a second deployable process/auth system indefinitely, versus a one-time migration cost to bring the logic in-house. The merge was chosen deliberately, in favor of "one Flask application, one codebase, one database, one authentication system."
+
+**New pieces**:
+- `services/gst_service.py` — pure GST math (Decimal, ROUND_HALF_UP), GSTIN format validation, GST state-code → name lookup. No Flask/DB imports, so it's testable in isolation.
+- `services/invoice_service.py` — form validation and persistence. Validates every submitted product against Catalog *at generation time* (a deactivated/deleted product refuses the invoice, matching `apply_stock_transaction()`'s "don't trust an earlier page load" rule) and writes `Invoices` + `InvoiceItems` inside one `database.db.transaction()` — an invoice number is never consumed by a submission that fails validation.
+- `services/pdf_service.py` — renders `templates/invoice_pdf.html` to PDF using Playwright's headless Chromium, not the old project's xhtml2pdf. xhtml2pdf renders through reportlab, a non-browser layout engine with real limits (nested percentage-width tables inside a table cell reliably miscalculate column widths - this was hit and worked around repeatedly while porting the old invoice template before Chromium replaced it entirely); Chromium is a real browser, so `invoice_pdf.html` is ordinary print HTML/CSS with none of those workarounds. The showroom logo and (if present) a signature/stamp image are embedded as base64 `data:` URIs rather than referenced by a `static/` path, which sidesteps the old project's own asset-path bug under Passenger (a relative path has nothing to resolve against once Chromium loads the page from an in-memory string via `page.set_content()`).
+- `Invoices` / `InvoiceItems` tables (`database/schema/013_create_invoices.sql`, `014_create_invoiceitems.sql` — numbered from 013 since `012_add_performance_indexes.sql` was already the latest file when this merge started). Every InvoiceItems row snapshots `ProductName`/`Model`/`HSN`/`UnitPrice`/`GSTPercent` at generation time — a later Catalog price/model edit must never change what a previously generated invoice shows. `InvoiceItems.ProductID` is Catalog's first-ever inbound foreign key: every other table in this schema (ProductImages, ProductDetails, StockHistory, Enquiries) deliberately avoids one, specifically because Catalog used to be shared with the independently-deployed Receipt Generator project — that reason no longer applies once Catalog is fully internal, so this is a deliberate, new precedent, not an oversight.
+- Buyer/Consignee GSTIN is optional (an unregistered buyer legitimately has none), but the invoice still needs a determinable place of supply — so the New Invoice form has its own required "Buyer's State" field, not derived from slicing the GSTIN string. Tax type (CGST+SGST vs IGST) compares `Config.SELLER_GSTIN`'s state code against this field, never a hardcoded rate.
+
+**Invoice numbering**: `Invoices.InvoiceID` is a plain `AUTO_INCREMENT`. The standalone project's own `invoices` table only ever recorded a bare date (no invoice content was ever persisted there — a prior audit finding) and was used for testing only — it never issued or stored a real Sridevi Enterprises customer invoice, so there is no old production sequence to migrate or continue from. On a fresh import, `Invoices` is simply new and empty. Before the first real invoice is issued, confirm that emptiness (`SELECT COUNT(*) FROM Invoices;` = 0) and that `AUTO_INCREMENT` is at a sane value (1, absent a specific reason otherwise) — see `DEPLOYMENT.md` § 1.4. Any invoice number seen during development (e.g. on a reference invoice) is a test value, not a production sequence to start from.
+
+**Removed**: the `/employee/invoices` external-link bridge route and its `templates/employee/invoices.html`; `Config.INVOICE_GENERATOR_URL`/`RECEIPT_GENERATOR_URL` (left defined, deprecated, read by nothing). Not migrated from the standalone project: `render.yaml`, its own `passenger_wsgi.py`/`app.py`, `import_catalog.py`, `recover/form.html` — none apply once this application's own WSGI entry point and Catalog import are what's live.
+
 ### Employee Invoice Generator Bridge
+
+*(Historical - superseded by "Invoice Generator Module (Merge)" above. Kept for the record of why merging was originally rejected, not as current architecture.)*
 
 **Renamed in v1.0 Sprint 3** (Invoice Terminology Update): this module was originally shipped in v0.9.0 as "Employee Receipt Generator Bridge" — every Employee Portal reference (route, template, config var, nav label, dashboard copy) was renamed from "Receipt Generator"/"Receipts" to "Invoice Generator"/"Invoices". **The external project itself was NOT renamed** — it remains a separate codebase actually named "Receipt Generator" (see below); only how the Employee Portal *displays* it changed. Route: `GET /employee/invoices` (`routes/employee.py:invoices()`, was `receipts()`/`/employee/receipts`). Template: `templates/employee/invoices.html` (was `receipts.html`, including its `.invoices-*` CSS classes, was `.receipts-*`). Config: `Config.INVOICE_GENERATOR_URL` (was `RECEIPT_GENERATOR_URL` — the old env var name is still read as a fallback for backward compatibility, see config.py).
 
@@ -837,6 +858,119 @@ targets below 44px, `_escape_like` deduplication, database connection pooling,
 missing indexes, and removal of `restructure_project.py` and the dead
 `static/images/categories/*.jpg` stubs. All are logged under v1.1 above.
 
+### Sprint 12 — Production Stabilization (v1.1)
+
+First sprint after the v1.0.0 release, on the `v1.1-development` branch.
+**Deliberately not a feature sprint** — no CSRF (see below), no Invoice
+Generator work, no Admin Settings. Preceded by a full read-only audit against
+v1.0.0's actual code (not just its documentation) that classified every
+technical-debt item from RC-11 as HIGH VALUE / LOW VALUE / SAFE TO DEFER /
+SHOULD NOT BE TOUCHED; only the HIGH VALUE items were implemented.
+
+**`.env.example` business-details drift, found and fixed.** The v1.0.0 RC
+commit's `.env.example` had been edited to carry what read as the real
+showroom's address, phone, and email (a specific Puttur/Tirupati-district
+address, a real-looking phone number, an `.in` domain) instead of the
+generic placeholders DEPLOYMENT.md §7.1 already tells an operator to search
+for. Not a secret leak — this is public storefront contact information,
+the same category of data the footer/Contact page/503 screen already
+display to every visitor — but it silently broke §7.1's own verification
+step: searching for `123 Business Road` etc. could never fail, even against
+a genuinely misconfigured deploy, because the "placeholder" already looked
+like real, specific data. Reverted `.env.example` to the generic
+placeholders §7.1 already expects (`123 Business Road`, `+91 98765 43210`,
+`info@sridevienterprises.example`, `www.sridevienterprises.example`) — no
+DEPLOYMENT.md change was needed, since its checklist already named exactly
+those strings; the drift was one-directional. The real `.env` (gitignored,
+never touched by this sprint) is unaffected.
+
+**Favicon added**, closing the `base.html` TODO open since the project's
+early days. Reuses the existing `static/images/logo.png` (1024×1024 RGBA)
+directly as a PNG favicon (`<link rel="icon" type="image/png" ...>`) rather
+than generating a separate `.ico` — modern browsers render a PNG favicon
+natively, and this avoids adding an image-processing step or a new binary
+asset for a single icon. Added to both `layout/base.html` and
+`layout/minimal.html` (the 503 page's standalone layout), so the tab icon
+is consistent even during a maintenance window. The SEO-meta-tags half of
+the original TODO comment is untouched — still explicitly out of scope
+(SAFE TO DEFER per this sprint's classification).
+
+**Branded 413 page added**, matching 403/404/500/503's shared
+`error_page.css` component and copy tone (`templates/errors/413.html`,
+registered via `@app.errorhandler(413)` in `app.py`). Reachable whenever a
+request exceeds `Config.MAX_CONTENT_LENGTH` (100MB) — realistically, an
+employee's product/department image upload. 400 and 405 remain unbranded
+(Werkzeug's default page) — explicitly out of scope this sprint, since
+neither is reachable from a normal user action the way an oversized upload
+is. Verified end-to-end with a real 101MB POST against the running dev
+server (`POST /employee/login HTTP/1.1" 413 -` in the log) and via Flask's
+test client (status 413, body contains the branded copy); confirmed 405
+still returns Werkzeug's default page and 404 is unaffected.
+
+**Confirmed-dead assets removed**: `static/images/products/placeholde.webp`
+(0 bytes, a typo'd filename, unreferenced anywhere) and
+`placeholder.webp.png` (also unreferenced — the real, in-use placeholder is
+`static/images/placeholder.png`, one level up, untouched); and the four
+0-byte `static/images/categories/{electronics,furniture,miscellaneous,utility}.jpg`
+stubs already documented as superseded by Department Image Management (see
+"Category Image Fallback" above) — confirmed via grep across
+`.py`/`.html`/`.css`/`.js` that nothing references any of the six files
+before deleting them. **`.hero-buttons` was not removed** — grepping for it
+found it no longer exists anywhere in `home.css` or any template, so the
+"unused dead CSS" this doc's Customer Experience Audit section flagged has
+already been removed at some point since that note was written; that note
+is now stale but was left as-is rather than rewriting Sprint 5's history.
+`restructure_project.py` and `admin_bp`/`templates/admin/*` were
+deliberately left untouched, per this sprint's explicit scope.
+
+**Migration `012_add_performance_indexes.sql` added** — indexes on
+`Catalog.Department`/`category`/`brand` and
+`ProductImages`/`ProductDetails.ProductID`, the columns behind every
+Products-page filter and every product-detail lookup, which had nothing but
+a primary key before this file (see RELEASE_NOTES.md "Minimal indexing").
+Purely additive: no new table, no column change, no data change. Verified
+two ways against the local development database only (production was never
+touched): applied directly against the existing ~315-row `Catalog` and
+confirmed via `SHOW INDEX`; and via a full fresh-install simulation
+(`DROP`/`CREATE DATABASE`, then all 12 files in order into an empty
+database) confirming a brand-new install ends up with the same 9 tables,
+the same `IsActive`/`DeletedAt`/`DeletedBy` columns, and all five new
+indexes — the same simulation technique Sprint 11 RC-1 introduced.
+README.md, DEPLOYMENT.md §1.4 (table, prose, and the `SHOW INDEX` addition
+to its verification step), and `database/README.md` all updated to say
+`001` through `012`.
+
+**Full regression pass**, in place of a live login-form click-through (per
+this project's standing testing-note — credential entry into a login form
+stays out of scope for automated testing here). Customer pages (Home,
+Products, Product Details, Categories, Contact) verified live via a running
+`flask-dev` instance: 200s, no console errors, no requests to any of the
+six just-deleted files. RBAC, Maintenance Mode's full state machine (anonymous
+blocked with the standalone 503 + no-cache headers, employee-session bypass,
+valid/invalid `?maintenance_key=`, `/health` and static assets unaffected,
+Employee Portal fully usable throughout, Dashboard notice card, Admin-only
+toggle reachable and correctly 403'd for a plain Employee), `/health`,
+and session cookie flags (`Secure`/`HttpOnly`/`SameSite=Lax` all confirmed
+`True`/`True`/`Lax`) were verified with Flask's test client and
+`session_transaction()` — the same technique Sprint 10 established. The
+Maintenance Mode checks used `unittest.mock.patch` on
+`is_maintenance_enabled()`/`get_maintenance_config()` rather than writing
+to the real `config/maintenance.json`, so the live file was never touched
+(confirmed by its unchanged mtime after the run). Mobile widths 320/375/425/768/1024
+checked on Products, Product Details, and Categories via
+`scrollWidth`/`clientWidth` comparison — no horizontal overflow at any
+width. **Screenshots could not be captured this sprint** — the Browser
+pane's screenshot tool could not composite frames in this session
+(environment limitation, not a rendering defect); all of the above was
+verified through status codes, response bodies, and computed layout
+metrics instead.
+
+**Not done, unchanged from v1.1's existing deferral list**: CSRF protection,
+`restructure_project.py` removal, SEO metadata, broad asset optimization,
+`admin_bp`/Admin Settings, Invoice Generator integration. See "v1.1 —
+Deferred From v1.0.0" below, updated to drop the two items this sprint
+completed (branded 413, missing indexes).
+
 ---
 
 # 3. Architecture & Conventions
@@ -1271,49 +1405,51 @@ Carried forward deliberately, each with its reasoning recorded above or in
 RELEASE_NOTES.md:
 
 □ **CSRF Protection** (RC-8 — see the deferral decision under Phase 3 above; the
-  highest-priority item in this list)
+  highest-priority item in this list). A full audit (affected routes/templates,
+  recommended strategy, migration impact) was produced in Sprint 12 and approved
+  in scope, but implementation itself is deliberately a separate task — see
+  Sprint 12 above.
 □ Automated Test Suite
 □ Enquiry status updates (`Enquiries.Status` is displayed but never written)
 □ Employee CRUD and Role Management (see Administration Roadmap below)
-□ Branded 400 / 405 / 413 error pages (403/404/500/503 are branded; these three
-  still fall through to Werkzeug's default page)
+□ Branded 400 / 405 error pages (403/404/413/500/503 are branded as of Sprint 12;
+  these two still fall through to Werkzeug's default page — low value, neither is
+  reachable from a normal user action)
 □ Customer-site touch targets below the project's own 44px standard
 □ Database connection pooling (`database/db.py` opens one connection per query)
-□ Indexes on `Catalog.Department`/`category`/`brand`, `ProductImages.ProductID`,
-  and `ProductDetails.ProductID` (only primary keys exist today; fine at the
-  current ~315-row catalog scale)
+✓ ~~Indexes on `Catalog.Department`/`category`/`brand`, `ProductImages.ProductID`,
+  and `ProductDetails.ProductID`~~ — added in Sprint 12,
+  `database/schema/012_add_performance_indexes.sql`
 
 ## Future Roadmap (Post v1.0.0)
 
-Invoice Generator Integration — remains an independent project until after Sridevi Enterprises reaches a stable v1.0.0 release. (As of v1.0 Sprint 3, "Invoice Generator" is the Employee Portal's display name for this bridge; the external project itself is still actually named "Receipt Generator" — see Employee Invoice Generator Bridge above.)
+**Invoice Generator Integration — DONE, ahead of the plan below.** The SSO/trusted-launch-token roadmap this section originally described (kept just underneath, struck through, for the record) assumed the two systems would stay separate indefinitely. That assumption was revisited and reversed: see "Invoice Generator Module (Merge)" above. The module is not a launch target reached via a token any more - it runs inside this application, behind this application's own session, with no second login step to eliminate because there was never a second login to begin with.
 
-Current state:
+~~Current state:~~
 
-Employee Portal launches the independent invoice-generation project
-through a configurable URL.
+~~Employee Portal launches the independent invoice-generation project
+through a configurable URL.~~
 
-Future state (v1.0+):
+~~Future state (v1.0+):~~
 
-Single Sign-On (SSO)
+~~Single Sign-On (SSO)~~
 
-↓
+~~↓~~
 
-Employee Portal authentication
+~~Employee Portal authentication~~
 
-↓
+~~↓~~
 
-Trusted launch token
+~~Trusted launch token~~
 
-↓
+~~↓~~
 
-Invoice Generator automatically authenticates
-the employee.
+~~Invoice Generator automatically authenticates
+the employee.~~
 
-Goal:
+~~Goal:~~
 
-Employees should never have to log in twice.
-
-Invoice Generator
+~~Employees should never have to log in twice.~~ (Achieved a different way: there is no second system to log into.)
 
 ## Administration Roadmap (Post Sprint 10)
 
@@ -1325,12 +1461,12 @@ Sprint 10 (Administration Tools) deliberately scoped to Maintenance Mode control
 □ Activity Logs (a real audit log — Sprint 10 only made the maintenance toggle audit-log-*ready*, see above)
 □ Notifications
 □ Analytics
-□ Invoice Generator Integration (deeper than the existing launch-only bridge — see Future Roadmap above)
+✓ ~~Invoice Generator Integration (deeper than the existing launch-only bridge)~~ — done, see "Invoice Generator Module (Merge)" above
 □ REST API
 
 ## Product Management Roadmap
 
-✓ **Soft Delete Product** (added during the Department Image Management sprint; implemented in v1.0 Sprint 7 — Product Lifecycle Management, see that section above and "Product Deactivation (Soft Delete)" under Employee Portal). `Catalog.IsActive`/`DeletedAt`/`DeletedBy` replaced `delete_product()`'s hard `DELETE FROM ProductDetails/ProductImages/Catalog`. Confirmed preserved: Product history (the Catalog row itself, never removed), Inventory history (`StockHistory` rows untouched — Inventory Summary's totals are unaffected by deactivation), Customer enquiries (`Enquiries.ProductID` rows untouched). Invoice references remain N/A until the Invoice Generator integration deepens beyond a launch-only bridge (see Employee Invoice Generator Bridge) — nothing to preserve there yet.
+✓ **Soft Delete Product** (added during the Department Image Management sprint; implemented in v1.0 Sprint 7 — Product Lifecycle Management, see that section above and "Product Deactivation (Soft Delete)" under Employee Portal). `Catalog.IsActive`/`DeletedAt`/`DeletedBy` replaced `delete_product()`'s hard `DELETE FROM ProductDetails/ProductImages/Catalog`. Confirmed preserved: Product history (the Catalog row itself, never removed), Inventory history (`StockHistory` rows untouched — Inventory Summary's totals are unaffected by deactivation), Customer enquiries (`Enquiries.ProductID` rows untouched). Invoice references: now real (`InvoiceItems.ProductID`, added by the Invoice Generator Module merge - see above) - deactivating a product does not touch or hide any invoice that already references it, matching every other reference table's behavior here.
 
   No hard `DELETE` operation exists anywhere in this codebase anymore.
 
@@ -1430,9 +1566,10 @@ revisited only if they become maintenance burdens:
 
 - Per-page inline CSS for Employee modules
 - Repeated authentication guards in employee routes
-- Standalone Invoice Generator integration (bridge architecture)
 - Customer module currently derived from Enquiries until the Customers
   table receives a write path
+
+~~Standalone Invoice Generator integration (bridge architecture)~~ — reversed by the Invoice Generator Module merge (see above): the Receipt Generator project no longer exists as a separate deployment, so there is no longer a bridge to list as debt.
 
 ----
 

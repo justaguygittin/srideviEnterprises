@@ -825,6 +825,71 @@ _TRANSACTION_TYPE_DB_VALUES = {
 _MANUAL_REFERENCE_TYPE = "MANUAL"
 
 
+def get_active_product_names() -> list[dict[str, Any]]:
+    """
+    Return every distinct, active catalog product name, for the Invoice
+    Generator's product picker (services/invoice_service.py,
+    routes/receipts.py). IsActive = 1 only - unlike
+    get_all_product_names() above (which powers duplicate-name checks and
+    intentionally sees every product, active or not), a deactivated
+    product must not be billable on a new invoice.
+    """
+
+    rows = fetch_all("""
+        SELECT DISTINCT product_name
+        FROM Catalog
+        WHERE product_name IS NOT NULL AND TRIM(product_name) <> '' AND IsActive = 1
+        ORDER BY product_name;
+    """)
+    for row in rows:
+        row["product_name"] = _normalise_catalog_text(row["product_name"])
+    return rows
+
+
+def get_product_variants(product_name: str) -> list[dict[str, Any]]:
+    """
+    Return the active, billable Catalog rows (id/model/brand/offer_price/
+    gst_percent/HSN placeholder) for one product name - populates the
+    Invoice Generator's model dropdown once a product is chosen
+    (routes/receipts.py). IsActive = 1 only, matching
+    get_active_product_names() above: a deactivated variant must not be
+    selectable on a new invoice even if an older invoice already
+    references it (that invoice's own InvoiceItems row is a snapshot and
+    is never re-read from here).
+    """
+
+    rows = fetch_all("""
+        SELECT id, model, NULLIF(TRIM(brand), '') AS brand, offer_price, gst_percent
+        FROM Catalog
+        WHERE product_name = %s AND IsActive = 1;
+    """, (product_name,))
+
+    for row in rows:
+        row["offer_price"] = float(row["offer_price"]) if row["offer_price"] is not None else 0.0
+        row["gst_percent"] = float(row["gst_percent"]) if row["gst_percent"] is not None else 0.0
+    return rows
+
+
+def get_catalog_product_for_invoice(product_id: int) -> dict[str, Any] | None:
+    """
+    Return one active Catalog product's billing fields (product_name,
+    model, brand, offer_price, gst_percent) for
+    services/invoice_service.py to snapshot onto an InvoiceItems row.
+
+    Returns None for a missing OR deactivated product - invoice_service.py
+    treats that as "this line item can no longer be billed" and refuses to
+    generate the invoice (see AI_CONTEXT.md "Invoice Generator Module
+    (Merge)"), the same rule apply_stock_transaction() above already
+    enforces for inventory transactions.
+    """
+
+    return fetch_one("""
+        SELECT id, product_name, model, NULLIF(TRIM(brand), '') AS brand, offer_price, gst_percent
+        FROM Catalog
+        WHERE id = %s AND IsActive = 1;
+    """, (product_id,))
+
+
 def get_products_for_transaction() -> list[dict[str, Any]]:
     """
     Return every catalog product's id/name/department/category/stock, for

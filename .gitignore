@@ -10,8 +10,17 @@ __pycache__/
 *.pyo
 
 # Virtual Environment
-venv/
+# venv*/ (not just venv/) so an alternate/rebuilt environment - e.g. venv312/,
+# created when a different Python version was needed locally - is never
+# accidentally staged. A venv is machine-specific either way; none of them
+# belong in the repo regardless of what they're named.
+venv*/
 .env
+
+# Local ad-hoc test output - not a project asset. If a real Playwright/PDF
+# smoke-test script becomes a permanent part of the repo, name its output
+# something that doesn't collide with this pattern.
+playwright_test.pdf
 
 # Maintenance Mode - live server state, never committed. See
 # config/maintenance.example.json for the template.
