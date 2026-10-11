@@ -154,7 +154,13 @@ class Config:
     # ("Sprint 8" ... "Sprint 10") to a real semantic version for the first
     # public release. Future releases should follow semver - v1.0.1 for fixes,
     # v1.1.0 for the deferred CSRF/feature work (see CHANGELOG.md).
-    APP_VERSION = "v1.0.0"
+    #
+    # Bumped to v1.1.0: Sprint 12 (Production Stabilization) and the Invoice
+    # Generator Module merge - see CHANGELOG.md "[v1.1.0]". This is the only
+    # place this string is defined; GET /health, the Employee Dashboard's
+    # System Status panel, and the startup log line all read it from here
+    # rather than each carrying their own copy.
+    APP_VERSION = "v1.1.0"
 
     # DEPRECATED (Invoice Generator Module merge - see AI_CONTEXT.md "Invoice
     # Generator Module (Merge)"): used to hold the separately-hosted Receipt

@@ -1,7 +1,7 @@
 # AI_CONTEXT.md
 
 # Sridevi Enterprises
-Current Version: v1.0.0 — Release Candidate complete (v1.0 Sprint 11)
+Current Version: v1.1.0 — Sprint 12 (Production Stabilization) and the Invoice Generator Module merge complete
 
 The single source of truth for the version string is `Config.APP_VERSION`
 (`config.py`), surfaced via `GET /health` and the Employee Dashboard's System

@@ -8,7 +8,12 @@ version string is `Config.APP_VERSION` in `config.py`, surfaced at runtime via
 
 ---
 
-## [Unreleased] — Invoice Generator Module (Merge)
+## [v1.1.0] — 2026-09-13
+
+Two change-sets, released together: a stabilization pass (Sprint 12) and the
+Invoice Generator Module merge. `Config.APP_VERSION` bumped from `v1.0.0`.
+
+### Invoice Generator Module (Merge)
 
 Reverses the Sprint 12 entry immediately below, which scoped the Invoice
 Generator module out. It is now in: the standalone Receipt Generator project
@@ -16,7 +21,7 @@ has been merged into this application as `routes/receipts.py`, mounted at
 `/employee/invoices`. See `AI_CONTEXT.md` → "Invoice Generator Module (Merge)"
 for the full detail.
 
-### Added
+#### Added
 
 - **Invoice Generator module** — Buyer/Consignee entry, multi-product GST
   invoices (CGST+SGST for intra-state, IGST for inter-state), PDF generation,
@@ -34,7 +39,7 @@ for the full detail.
 - `num2words` and `playwright` added to `requirements.txt` — PDF generation
   uses Playwright's headless Chromium, not the standalone project's xhtml2pdf.
 
-### Removed
+#### Removed
 
 - The Employee Portal's launch-only external bridge to the standalone Receipt
   Generator project (`templates/employee/invoices.html`, the old
@@ -42,7 +47,7 @@ for the full detail.
   `RECEIPT_GENERATOR_URL` are left defined but deprecated - nothing reads them
   any more.
 
-## [Unreleased] — v1.1 Sprint 12: Production Stabilization
+### Sprint 12: Production Stabilization
 
 First sprint on the `v1.1-development` branch, after the v1.0.0 release. A
 stabilization/hardening pass, not a feature sprint — CSRF implementation and
@@ -51,7 +56,7 @@ was scoped out here too, at the time this sprint was written; see the entry
 above this one — that decision was later revisited.)
 See `AI_CONTEXT.md` → "Sprint 12 — Production Stabilization (v1.1)" for full detail.
 
-### Added
+#### Added
 
 - **Branded 413 (Payload Too Large) error page**, matching the existing
   403/404/500/503 visual language. 400 and 405 remain deferred (unbranded).
@@ -62,7 +67,7 @@ See `AI_CONTEXT.md` → "Sprint 12 — Production Stabilization (v1.1)" for full
   `ProductImages`/`ProductDetails.ProductID`, the columns behind every product
   listing/filter/detail query, which had only primary keys before this file.
 
-### Fixed
+#### Fixed
 
 - **`.env.example` no longer carries real-looking business details.** The
   v1.0.0 RC commit had replaced the generic placeholder address/phone/email
@@ -71,7 +76,7 @@ See `AI_CONTEXT.md` → "Sprint 12 — Production Stabilization (v1.1)" for full
   searching for strings that no longer existed anywhere in the template).
   Reverted to generic placeholders; the real `.env` was never affected.
 
-### Removed
+#### Removed
 
 - Two unreferenced placeholder image variants
   (`static/images/products/placeholde.webp`, `placeholder.webp.png`) and four

@@ -6,7 +6,7 @@ A Flask + MariaDB showroom management system for Sridevi Enterprises: a customer
 digital showroom, plus an internal employee portal for product, inventory, department,
 customer, and enquiry management.
 
-Current Version: **v1.0.0**
+Current Version: **v1.1.0**
 
 The website is a **digital showroom, not an e-commerce site** — it displays products and
 collects enquiries. No prices, carts, or payments appear anywhere on it.
@@ -191,7 +191,7 @@ See [AI_CONTEXT.md](AI_CONTEXT.md) before making changes.
 
 ---
 
-## Known Limitations (v1.0.0)
+## Known Limitations (v1.1.0)
 
 - **CSRF tokens are not implemented.** `SameSite=Lax` session cookies mitigate the common
   cross-site POST vector; full token-based protection is deferred to v1.1 — see

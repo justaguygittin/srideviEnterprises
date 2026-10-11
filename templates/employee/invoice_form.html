@@ -104,6 +104,21 @@ New Invoice - Employee Portal - Sridevi Enterprises
         overflow-x: auto;
     }
 
+    /* overflow-x: auto forces overflow-y to auto too, which clips the
+       absolutely positioned product dropdown. Wide screens fit the 780px
+       table, so drop the scroll container and let the dropdown overlay. */
+    @media (min-width: 992px) {
+        .items-table-wrap { overflow: visible; }
+    }
+
+    /* Narrow screens keep horizontal scroll; reserve room for an open
+       product dropdown (max-height 220px) so the scroll box doesn't clip it. */
+    @media (max-width: 991.98px) {
+        .items-table-wrap:has(.searchable-select-menu:not([hidden])) {
+            padding-bottom: 230px;
+        }
+    }
+
     #itemsTable {
         width: 100%;
         min-width: 780px;
@@ -180,8 +195,8 @@ New Invoice - Employee Portal - Sridevi Enterprises
             {% if errors.form %}
             <div class="alert alert-danger">{{ errors.form }}</div>
             {% endif %}
-            {% if errors.items %}
-            <div class="alert alert-danger">{{ errors.items }}</div>
+            {% if errors.get('items') %}
+            <div class="alert alert-danger">{{ errors.get('items') }}</div>
             {% endif %}
 
             <form method="POST" action="{{ url_for('receipts.new_invoice') }}" id="invoiceForm">
