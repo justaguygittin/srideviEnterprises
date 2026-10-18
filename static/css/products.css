@@ -1003,6 +1003,9 @@ Author  : Srikar
 
 .product-hero-cta {
 
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
     margin-top: 28px;
     padding-top: 24px;
     border-top: 1px solid #EAECF0;

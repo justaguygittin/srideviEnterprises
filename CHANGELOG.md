@@ -8,6 +8,31 @@ version string is `Config.APP_VERSION` in `config.py`, surfaced at runtime via
 
 ---
 
+## [Unreleased]
+
+`Config.APP_VERSION` unchanged (`v1.1.0`).
+
+### Added
+
+- **WhatsApp click-to-chat** — a floating WhatsApp button on customer-facing
+  pages and an "Enquire on WhatsApp" button on the Product Details page, both
+  plain `wa.me` links. No API, database change, or new dependency. See
+  `AI_CONTEXT.md` → "WhatsApp Click-to-Chat (Stage 1 + Stage 2)".
+- `WHATSAPP_BUSINESS_NUMBER` / `WHATSAPP_DEFAULT_MESSAGE` in `.env`
+  (`config.py`). A missing or invalid number hides every WhatsApp element.
+- `services/whatsapp_service.py`, `templates/components/whatsapp_button.html`,
+  `static/css/components/whatsapp_button.css`.
+- `/whatsapp` and `/products/<id>/whatsapp` redirect routes — the buttons link
+  to these instead of `wa.me`, so the configured number never appears in page
+  HTML; it is revealed only by the redirect when a customer clicks.
+
+### Changed
+
+- `.env.example` — the `SELLER_GSTIN` / `SELLER_BANK_*` / `SELLER_IFSC` lines
+  held real-looking values; replaced with clearly fake placeholders.
+
+---
+
 ## [v1.1.0] — 2026-09-13
 
 Two change-sets, released together: a stabilization pass (Sprint 12) and the

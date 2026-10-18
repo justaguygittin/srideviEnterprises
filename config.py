@@ -68,6 +68,36 @@ def _website_href(website: str) -> str:
     return website if re.match(r"^https?://", website, re.IGNORECASE) else f"https://{website}"
 
 
+def _whatsapp_number(raw: str) -> str:
+    """
+    Normalise WHATSAPP_BUSINESS_NUMBER to the bare digits wa.me expects
+    ("+91 98765 43210" -> "919876543210"), or "" if it is unusable.
+
+    The value must be written in international format with a leading "+".
+    That is required rather than guessed: a 10-digit local number is a
+    perfectly valid-looking string of digits, and without the country code
+    wa.me would open a chat with a stranger in another country. Anything
+    that is not "+", then 8-15 digits (E.164) with ordinary spacing or
+    punctuation between them, is rejected - and "" switches every WhatsApp
+    element off, so a typo hides the button rather than shipping a broken
+    or misdirected link.
+    """
+
+    value = (raw or "").strip()
+    if not value.startswith("+"):
+        return ""
+
+    remainder = value[1:]
+    if re.search(r"[^\d\s().-]", remainder):
+        return ""
+
+    digits = re.sub(r"\D", "", remainder)
+    if not 8 <= len(digits) <= 15 or digits.startswith("0"):
+        return ""
+
+    return digits
+
+
 class Config:
 
     DB_HOST = os.getenv("DB_HOST")
@@ -227,4 +257,35 @@ class Config:
     # deployment only ever configures each detail once.
     BUSINESS_PHONE_HREF = _telephone_href(BUSINESS_PHONE)
     BUSINESS_WEBSITE_HREF = _website_href(BUSINESS_WEBSITE)
+
+    # ---------------------------------------------------------------------
+    # WhatsApp click-to-chat (wa.me)
+    #
+    # The number customers reach through the floating WhatsApp button and
+    # the Product Details "Enquire on WhatsApp" button. Configured only
+    # here, from the server's own .env - never hardcoded in a template -
+    # so it can be replaced (e.g. a personal number swapped for a dedicated
+    # business number) by editing one line and restarting, with no code
+    # change. See services/whatsapp_service.py and DEPLOYMENT.md section 1.5.
+    #
+    # WHATSAPP_NUMBER is the validated, digits-only form, or "" when the
+    # variable is unset or unusable (see _whatsapp_number above). "" means
+    # no WhatsApp element and no wa.me link is rendered anywhere.
+    # WHATSAPP_NUMBER_REJECTED is True only when a value was supplied but
+    # failed validation, so app.py can warn about it at startup. The number
+    # itself is never logged.
+    #
+    # This is plain click-to-chat: no WhatsApp Business API, no token, no
+    # webhook. Nothing here is a secret - a wa.me link is public by nature.
+    # ---------------------------------------------------------------------
+    _WHATSAPP_NUMBER_RAW = os.getenv("WHATSAPP_BUSINESS_NUMBER", "").strip()
+    WHATSAPP_NUMBER = _whatsapp_number(_WHATSAPP_NUMBER_RAW)
+    WHATSAPP_NUMBER_REJECTED = bool(_WHATSAPP_NUMBER_RAW) and not WHATSAPP_NUMBER
+
+    # Prefilled text for the floating button. Optional - falls back to a
+    # generic greeting. The customer can edit it before sending.
+    WHATSAPP_DEFAULT_MESSAGE = (
+        os.getenv("WHATSAPP_DEFAULT_MESSAGE", "").strip()
+        or "Hello Sridevi Enterprises, I would like to know more about your products."
+    )
 

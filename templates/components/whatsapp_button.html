@@ -1,0 +1,21 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : whatsapp_button.html
+Purpose : Floating WhatsApp click-to-chat button.
+
+          Included by layout/base.html only when `whatsapp.show_floating`
+          is true - a valid WHATSAPP_BUSINESS_NUMBER is configured and
+          the page is customer-facing (see app.py:inject_whatsapp()).
+          The link is this site's own /whatsapp route, which redirects
+          to wa.me on click - so the number never appears in the page.
+          nofollow keeps crawlers from following it to the number.
+
+Author  : Srikar
+=========================================================
+-->
+
+<a href="{{ whatsapp.url }}" class="whatsapp-float" target="_blank" rel="nofollow noopener noreferrer"
+    aria-label="Chat with us on WhatsApp" title="Chat with us on WhatsApp">
+    <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+</a>

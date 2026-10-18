@@ -971,6 +971,55 @@ metrics instead.
 Deferred From v1.0.0" below, updated to drop the two items this sprint
 completed (branded 413, missing indexes).
 
+### WhatsApp Click-to-Chat (Stage 1 + Stage 2)
+
+Additive customer-contact feature using plain `wa.me` click-to-chat links.
+**No WhatsApp Business/Cloud API, no token, no webhook, no database table,
+no migration, no new dependency, no JavaScript.** `Config.APP_VERSION` was
+deliberately left at `v1.1.0`.
+
+- **Configuration** — `WHATSAPP_BUSINESS_NUMBER` and optional
+  `WHATSAPP_DEFAULT_MESSAGE` in `.env`, read in `config.py`. The owner sets
+  the number; it is never hardcoded in a template or source file and is never
+  logged. `config.py:_whatsapp_number()` requires international format with a
+  leading `+` (then 8-15 digits) and returns `""` otherwise.
+  `Config.WHATSAPP_NUMBER == ""` is the single off switch: no button and no
+  `wa.me` link is rendered anywhere. A set-but-invalid value logs a startup
+  warning; the startup line reports `whatsapp=enabled|disabled`.
+- **Link building** — `services/whatsapp_service.py` (`build_whatsapp_url`,
+  `build_product_enquiry_url`). Messages are percent-encoded with
+  `urllib.parse.quote(..., safe="")`.
+- **Number kept out of page HTML** — the buttons never link to `wa.me`
+  directly. They link to `customer.whatsapp_chat` (`/whatsapp`) and
+  `customer.product_whatsapp` (`/products/<id>/whatsapp`) in
+  `routes/customer.py`, which 302-redirect to the `wa.me` URL with
+  `X-Robots-Tag: noindex, nofollow` and `Cache-Control: no-store`; anchors
+  carry `rel="nofollow"`. Both routes 404 when unconfigured, and the product
+  route 404s for inactive/unknown products. They are on `customer_bp`, so
+  Maintenance Mode gates them too. A clicking customer still sees the number;
+  this only keeps it out of page source and away from scrapers.
+- **Stage 1, floating button** — `templates/components/whatsapp_button.html`
+  + `static/css/components/whatsapp_button.css`, included by
+  `layout/base.html` only when `whatsapp.show_floating` is true
+  (`app.py:inject_whatsapp()`): a valid number is configured **and**
+  `request.blueprint == "customer"`. The blueprint check is what keeps it off
+  the Employee Portal, Invoice Generator, and login page, which share
+  `base.html`. The 503 screen uses `layout/minimal.html` and never includes it.
+  `z-index: 1030` keeps it under Bootstrap's offcanvas filter drawer and modals.
+- **Stage 2, product enquiries** — `routes/customer.py:product_details()`
+  passes `whatsapp_product_url`; `customer/product_details.html` renders an
+  "Enquire on WhatsApp" button beside the unchanged "Send Enquiry" button.
+  The existing enquiry form and `Enquiries` workflow are untouched, and a
+  WhatsApp enquiry is **not** recorded in the database.
+- **Public-price rule** — the product message contains the public product
+  name and public product-page URL only. `build_product_enquiry_url()` takes
+  two plain strings, not a product dict, so a price, stock count, or GST value
+  cannot be passed in. Keep it that way.
+
+**Out of scope until explicitly approved**: WhatsApp Business Platform /
+Cloud API, automated replies, webhooks, chatbot/AI support, conversation
+tracking, an employee-editable number setting.
+
 ---
 
 # 3. Architecture & Conventions

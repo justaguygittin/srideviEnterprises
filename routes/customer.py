@@ -11,7 +11,7 @@ Author  : Srikar
 import re
 from math import ceil
 
-from flask import Blueprint, abort, render_template, request, url_for
+from flask import Blueprint, abort, redirect, render_template, request, url_for
 from markupsafe import Markup, escape
 from services.customer_service import (
     get_featured_products,
@@ -26,6 +26,12 @@ from services.product_service import (
     get_products,
     get_related_products,
 )
+from services.whatsapp_service import (
+    build_product_enquiry_url,
+    build_whatsapp_url,
+    whatsapp_enabled,
+)
+from config import Config
 
 customer_bp = Blueprint("customer", __name__)
 
@@ -143,7 +149,63 @@ def product_details(product_id):
         "customer/product_details.html",
         product=product,
         related_products=get_related_products(product),
+        # "" when no WhatsApp number is configured - the template then
+        # renders no WhatsApp button. Points at this site's own redirect
+        # route, not wa.me, so the number never appears in the page.
+        whatsapp_product_url=(
+            url_for("customer.product_whatsapp", product_id=product["id"])
+            if whatsapp_enabled() else ""
+        ),
     )
+
+
+def _whatsapp_redirect(target: str):
+    """
+    Redirect to a wa.me URL, or 404 when WhatsApp is not configured.
+
+    The buttons link here instead of to wa.me directly, so the configured
+    number appears only in this redirect's Location header after a click,
+    never in page HTML. noindex/nofollow keeps search engines from
+    recording the destination; no-store means a changed number takes
+    effect on the very next click instead of a cached redirect.
+    """
+
+    if not target:
+        abort(404)
+
+    response = redirect(target, code=302)
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@customer_bp.route("/whatsapp")
+def whatsapp_chat():
+    """Floating WhatsApp button: open a chat prefilled with the default message."""
+
+    return _whatsapp_redirect(build_whatsapp_url(Config.WHATSAPP_DEFAULT_MESSAGE))
+
+
+@customer_bp.route("/products/<int:product_id>/whatsapp")
+def product_whatsapp(product_id):
+    """
+    Product Details WhatsApp button: open a chat prefilled with this
+    product's public name and public page URL only - never price, stock,
+    or GST (see services/whatsapp_service.py). Inactive or unknown
+    products 404, exactly like product_details().
+    """
+
+    if not whatsapp_enabled():
+        abort(404)
+
+    product = get_product(product_id)
+    if product is None:
+        abort(404)
+
+    return _whatsapp_redirect(build_product_enquiry_url(
+        product["product_name"],
+        url_for("customer.product_details", product_id=product["id"], _external=True),
+    ))
 
 
 @customer_bp.route("/products/<int:product_id>/enquiry", methods=["GET", "POST"])

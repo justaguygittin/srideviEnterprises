@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from flask import Flask, abort, jsonify, make_response, render_template, request, session
+from flask import Flask, abort, jsonify, make_response, render_template, request, session, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import Config
@@ -91,14 +91,25 @@ app.register_blueprint(receipts_bp)
 # which version actually came up - without needing to make a request.
 app.logger.info(
     "Sridevi Enterprises starting - version=%s debug=%s log_level=%s "
-    "session_cookie(secure=%s httponly=%s samesite=%s)",
+    "session_cookie(secure=%s httponly=%s samesite=%s) whatsapp=%s",
     Config.APP_VERSION,
     Config.DEBUG,
     Config.LOG_LEVEL,
     Config.SESSION_COOKIE_SECURE,
     Config.SESSION_COOKIE_HTTPONLY,
     Config.SESSION_COOKIE_SAMESITE,
+    "enabled" if Config.WHATSAPP_NUMBER else "disabled",
 )
+
+if Config.WHATSAPP_NUMBER_REJECTED:
+    # A value was supplied but is unusable, so every WhatsApp button is
+    # hidden. Logged so that is visible rather than a silent "why is the
+    # button missing". The value itself is deliberately not logged.
+    app.logger.warning(
+        "WHATSAPP_BUSINESS_NUMBER is set but is not a valid international number - "
+        "WhatsApp buttons are disabled. Write it with a leading + and country code, "
+        "e.g. +91 followed by the 10-digit number."
+    )
 
 if not Config.SESSION_COOKIE_SECURE:
     # Expected and required for local HTTP development; wrong in production.
@@ -213,6 +224,32 @@ def inject_business_details():
             "website": Config.BUSINESS_WEBSITE,
             "website_href": Config.BUSINESS_WEBSITE_HREF,
             "hours": Config.BUSINESS_HOURS,
+        }
+    }
+
+
+@app.context_processor
+def inject_whatsapp():
+    """
+    Expose the floating WhatsApp button's state to every template as a
+    `whatsapp` dict, mirroring inject_business_details() above.
+
+    `show_floating` is True only when a valid number is configured AND the
+    request is for a customer-facing page. The blueprint check matters
+    because layout/base.html is shared with the Employee Portal, the
+    Invoice Generator, and the login page - none of which should carry a
+    customer contact button. `url` is "" whenever `show_floating` is False.
+
+    `url` is this site's own /whatsapp redirect route, not wa.me itself,
+    so the configured number never appears in any page's HTML - it is
+    only revealed by the redirect when a customer actually clicks.
+    """
+
+    show_floating = bool(Config.WHATSAPP_NUMBER) and request.blueprint == "customer"
+    return {
+        "whatsapp": {
+            "show_floating": show_floating,
+            "url": url_for("customer.whatsapp_chat") if show_floating else "",
         }
     }
 

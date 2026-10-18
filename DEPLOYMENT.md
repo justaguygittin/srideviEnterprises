@@ -180,6 +180,32 @@ BUSINESS_HOURS=<opening hours, free text>
 - Changing any of these requires a Passenger restart (§2), since `.env` is read at
   process start — unlike `config/maintenance.json`, which is read fresh per request.
 
+#### WhatsApp number
+
+The floating WhatsApp button and the "Enquire on WhatsApp" button on product pages
+both use one number, set only here:
+
+```env
+WHATSAPP_BUSINESS_NUMBER=+91 XXXXX XXXXX
+WHATSAPP_DEFAULT_MESSAGE=<optional prefilled greeting; blank uses the built-in one>
+```
+
+- Write the number in **international format with the leading `+` and country code**.
+  Spaces, dashes and brackets are fine. A number without the `+` is rejected.
+- **Blank or invalid is safe.** No WhatsApp button and no `wa.me` link is rendered
+  anywhere. An invalid value also logs a `WHATSAPP_BUSINESS_NUMBER is set but is not a
+  valid international number` warning at startup (§4.1).
+- **To replace the number** (e.g. a personal number with a dedicated business number),
+  edit this one line and restart Passenger (§2). No code change or redeploy is needed.
+  To turn the feature off, blank the line and restart.
+- After a restart, the startup log line ends with `whatsapp=enabled` or
+  `whatsapp=disabled`. The number itself is never written to the log.
+- The number is **not in the page HTML**. Both buttons link to this site's own
+  `/whatsapp` and `/products/<id>/whatsapp` routes, which redirect to `wa.me` only when
+  clicked (with `X-Robots-Tag: noindex, nofollow`). Anyone who clicks still sees the
+  number — in the redirect and in WhatsApp itself — so this keeps it away from page-source
+  readers and scrapers, not from a customer who starts a chat.
+
 ### 1.6 Configure Maintenance Mode
 
 Copy the template and set a real bypass key (never leave the example's
@@ -334,6 +360,10 @@ Run this after every deploy or restart.
 - [ ] Footer and Contact page show the **real** business address, phone, email,
       website, and hours — not `.env.example`'s placeholders (`123 Business Road`,
       `info@sridevienterprises.example`). See §1.5 "Public business details".
+- [ ] If `WHATSAPP_BUSINESS_NUMBER` is set: the floating WhatsApp button appears on
+      customer pages and opens a chat with the **correct** number; a product page's
+      "Enquire on WhatsApp" message contains the product name and its page URL only.
+      It must **not** appear on `/employee/...` pages. See §1.5 "WhatsApp number".
 
 ### Employee Portal
 
@@ -585,6 +615,7 @@ not the development placeholder shipped in `.env.example`:
 □ BUSINESS_EMAIL configured
 □ BUSINESS_WEBSITE configured
 □ BUSINESS_HOURS configured
+□ WHATSAPP_BUSINESS_NUMBER configured with leading + and country code (optional)
 ```
 
 Also confirm the session cookie is hardened (§1.5). In the browser's dev tools,

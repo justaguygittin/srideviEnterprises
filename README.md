@@ -141,6 +141,7 @@ Then edit `.env`:
 | `LOG_LEVEL` | `DEBUG` / `INFO` / `WARNING` / `ERROR` (default `INFO`) |
 | `BUSINESS_ADDRESS` · `BUSINESS_PHONE` · `BUSINESS_EMAIL` · `BUSINESS_WEBSITE` · `BUSINESS_HOURS` | Public contact details shown in the footer, Contact page, and Maintenance screen |
 | `SELLER_GSTIN` · `SELLER_BANK_ACCOUNT` · `SELLER_BANK_NAME` · `SELLER_IFSC` | Invoice Generator module — seller GSTIN and bank details printed on every generated invoice PDF. Optional (the app still starts without them), but `SELLER_GSTIN` is required before any invoice can actually be generated |
+| `WHATSAPP_BUSINESS_NUMBER` · `WHATSAPP_DEFAULT_MESSAGE` | WhatsApp click-to-chat buttons on the customer site. The number must be in international format with a leading `+` (e.g. `+91 …`). Optional — blank or invalid hides every WhatsApp button |
 | ~~`INVOICE_GENERATOR_URL`~~ / ~~`RECEIPT_GENERATOR_URL`~~ | **Deprecated, not read by the application.** Left over from the external Receipt Generator bridge, which has been merged into this application (see `AI_CONTEXT.md` "Invoice Generator Module (Merge)"). Safe to omit from a new `.env`; harmless to leave in an existing one |
 
 The values in `.env.example` are **development placeholders**. Production values are

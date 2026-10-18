@@ -59,6 +59,7 @@ TODO:
     <!-- Shared Components (used by the navbar on every page) -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/search.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/maintenance_banner.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/whatsapp_button.css') }}">
 
     <!-- Page Specific CSS -->
     {% block page_css %}
@@ -84,6 +85,10 @@ TODO:
     </main>
 
     {% include 'components/footer.html' %}
+
+    {% if whatsapp.show_floating %}
+    {% include 'components/whatsapp_button.html' %}
+    {% endif %}
 
     <!-- Bootstrap JS -->
 

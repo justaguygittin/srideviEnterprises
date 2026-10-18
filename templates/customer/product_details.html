@@ -48,6 +48,9 @@ Author  : Srikar
                 </dl>
                 <div class="product-hero-cta">
                     <a href="{{ url_for('customer.product_enquiry', product_id=product.id) }}" class="btn btn-primary btn-lg">Send Enquiry</a>
+                    {% if whatsapp_product_url %}
+                    <a href="{{ whatsapp_product_url }}" class="btn btn-whatsapp btn-lg" target="_blank" rel="nofollow noopener noreferrer"><i class="fa-brands fa-whatsapp me-2" aria-hidden="true"></i>Enquire on WhatsApp</a>
+                    {% endif %}
                 </div>
             </div>
         </div>

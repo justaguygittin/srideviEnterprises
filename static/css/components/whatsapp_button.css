@@ -1,0 +1,148 @@
+/* ======================================================
+Project : Sridevi Enterprises
+File    : components/whatsapp_button.css
+Purpose : WhatsApp click-to-chat styling - the floating button
+          (components/whatsapp_button.html) and the .btn-whatsapp
+          variant used on the Product Details page. Loaded globally
+          (layout/base.html) since the floating button can appear on
+          any customer page, same reasoning as components/search.css.
+
+Author  : Srikar
+====================================================== */
+
+.whatsapp-float {
+
+    position: fixed;
+    right: calc(20px + env(safe-area-inset-right, 0px));
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+
+    /* Above page content and the sticky navbar (Bootstrap 1020), below
+       Bootstrap's offcanvas (1045) and modals (1055) - so the mobile
+       filter drawer covers the button instead of sitting under it. */
+    z-index: 1030;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+
+    /* A darker shade of WhatsApp green (#25D366, same hue): white on the
+       brand green itself is only ~2:1. These pass WCAG AA with white -
+       #188641 4.64:1, #15783A (hover/focus) 5.56:1, #136C34 (pressed)
+       6.52:1 - so they also hold for the product button's text. */
+    background: #188641;
+    color: #FFFFFF;
+    font-size: 30px;
+    text-decoration: none;
+
+    box-shadow: 0 6px 18px rgba(16, 24, 40, .25);
+    transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
+
+}
+
+.whatsapp-float:hover,
+.whatsapp-float:focus-visible {
+
+    background: #15783A;
+    color: #FFFFFF;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(16, 24, 40, .3);
+
+}
+
+.whatsapp-float:focus-visible {
+
+    outline: 3px solid #1E4FA3;
+    outline-offset: 3px;
+
+    /* White ring filling the outline-offset gap, so the focus indicator
+       stays visible when the button floats over the blue (#1E4FA3) footer. */
+    box-shadow: 0 0 0 3px #FFFFFF, 0 10px 24px rgba(16, 24, 40, .3);
+
+}
+
+.whatsapp-float:active {
+
+    background: #136C34;
+
+}
+
+/* Bootstrap 5.3 drives every .btn state from these variables (the same
+   pattern as .btn-primary), so its own :hover, :focus-visible, :active and
+   .disabled rules all resolve to these colours. Overriding background per
+   state instead loses to Bootstrap's higher-specificity :active selectors,
+   and the base .btn defines no active colours - a pressed button turned
+   transparent with dark text. */
+.btn-whatsapp {
+
+    --bs-btn-color: #FFFFFF;
+    --bs-btn-bg: #188641;
+    --bs-btn-border-color: #188641;
+    --bs-btn-hover-color: #FFFFFF;
+    --bs-btn-hover-bg: #15783A;
+    --bs-btn-hover-border-color: #15783A;
+    --bs-btn-active-color: #FFFFFF;
+    --bs-btn-active-bg: #136C34;
+    --bs-btn-active-border-color: #136C34;
+    --bs-btn-disabled-color: #FFFFFF;
+    --bs-btn-disabled-bg: #188641;
+    --bs-btn-disabled-border-color: #188641;
+
+    /* Bootstrap's ring needs --bs-btn-focus-shadow-rgb, which is not set
+       for a custom variant; the outline below replaces it. */
+    --bs-btn-focus-box-shadow: none;
+
+}
+
+/* Bootstrap's .btn:focus-visible sets outline: 0. Same specificity, loaded
+   later, so this restores the site's standard focus outline. */
+.btn-whatsapp:focus-visible {
+
+    outline: 3px solid #1E4FA3;
+    outline-offset: 3px;
+
+}
+
+@media (max-width: 575.98px) {
+
+    .whatsapp-float {
+
+        right: calc(14px + env(safe-area-inset-right, 0px));
+        bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+        width: 50px;
+        height: 50px;
+        font-size: 27px;
+
+    }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .whatsapp-float {
+
+        transition: none;
+
+    }
+
+    .whatsapp-float:hover,
+    .whatsapp-float:focus-visible {
+
+        transform: none;
+
+    }
+
+}
+
+@media print {
+
+    .whatsapp-float {
+
+        display: none;
+
+    }
+
+}
