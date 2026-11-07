@@ -167,6 +167,21 @@ New Invoice - Employee Portal - Sridevi Enterprises
         margin-top: 0.75rem;
     }
 
+    /* Consignee fields linked to the buyer ("same as buyer" checked):
+       read-only - not disabled, so they are still submitted - and greyed
+       so it is obvious they can't be edited here. */
+    .linked-field[readonly] {
+        background-color: #e9ecef;
+        color: #495057;
+        cursor: not-allowed;
+    }
+
+    .items-hint {
+        font-size: 0.82rem;
+        color: #666;
+        margin: 0.5rem 0 0;
+    }
+
     .footer-actions {
         display: flex;
         justify-content: flex-end;
@@ -242,6 +257,11 @@ New Invoice - Employee Portal - Sridevi Enterprises
 
                 <div class="card">
                     <h2>Consignee Details (Ship To)</h2>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="consigneeSameAsBuyer" name="consignee_same_as_buyer" value="1" aria-describedby="consigneeLinkedHint" {% if request.form.get('consignee_same_as_buyer') %}checked{% endif %}>
+                        <label class="form-check-label" for="consigneeSameAsBuyer">Consignee details same as buyer</label>
+                        <div class="form-text" id="consigneeLinkedHint" hidden>Name, contact number, address and GSTIN are copied from Buyer Details. Uncheck to edit them separately.</div>
+                    </div>
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Consignee Name <span class="text-danger">*</span></label>
@@ -286,6 +306,7 @@ New Invoice - Employee Portal - Sridevi Enterprises
                             <tbody id="itemsTableBody"></tbody>
                         </table>
                     </div>
+                    <p class="items-hint">Price (incl. GST) is filled in from the catalog when you choose a model. You can change it for this invoice only; the catalog price is not changed.</p>
                     <button type="button" class="btn-add-row" id="addRowBtn">
                         <i class="fas fa-plus-circle"></i> Add Product
                     </button>
@@ -329,25 +350,30 @@ New Invoice - Employee Portal - Sridevi Enterprises
             '</td>' +
             '<td><select name="product_id[]" class="form-select" id="model-select-' + index + '" required>' +
                 '<option value="">Select model</option></select></td>' +
-            '<td><input type="text" class="form-control" id="price-display-' + index + '" readonly placeholder="0.00"></td>' +
+            '<td><input type="number" name="price[]" class="form-control" id="price-input-' + index + '" ' +
+                'min="0" max="99999999.99" step="0.01" inputmode="decimal" placeholder="0.00" required ' +
+                'aria-label="Price in rupees, including GST"></td>' +
             '<td><input type="text" name="hsn[]" class="form-control" required></td>' +
             '<td><input type="number" name="qty[]" class="form-control" min="1" value="1" required></td>' +
             '<td class="col-action"><button type="button" class="btn-remove-row" aria-label="Remove row"><i class="fas fa-trash"></i></button></td>';
         tbody.appendChild(row);
 
         var modelSelect = row.querySelector("#model-select-" + index);
-        var priceDisplay = row.querySelector("#price-display-" + index);
+        var priceInput = row.querySelector("#price-input-" + index);
 
         window.initSearchableSelect(
             "product-search-" + index,
             "product-options-" + index,
             function () { return PRODUCT_OPTIONS; },
-            function (productName) { loadModels(productName, modelSelect, priceDisplay); }
+            function (productName) { loadModels(productName, modelSelect, priceInput); }
         );
 
+        // Only choosing a (different) model refills this row's price with
+        // that model's catalog price. Quantity, HSN and other rows never
+        // touch it, so a manual override stays put until the model changes.
         modelSelect.addEventListener("change", function () {
             var selected = modelSelect.options[modelSelect.selectedIndex];
-            priceDisplay.value = selected ? (selected.getAttribute("data-price") || "") : "";
+            priceInput.value = selected ? (selected.getAttribute("data-price") || "") : "";
         });
 
         row.querySelector(".btn-remove-row").addEventListener("click", function () {
@@ -355,9 +381,9 @@ New Invoice - Employee Portal - Sridevi Enterprises
         });
     }
 
-    function loadModels(productName, modelSelect, priceDisplay) {
+    function loadModels(productName, modelSelect, priceInput) {
         modelSelect.innerHTML = '<option value="">Loading...</option>';
-        priceDisplay.value = "";
+        priceInput.value = "";
 
         fetch("/employee/invoices/models/" + encodeURIComponent(productName))
             .then(function (response) { return response.json(); })
@@ -366,7 +392,9 @@ New Invoice - Employee Portal - Sridevi Enterprises
                 variants.forEach(function (variant) {
                     var option = document.createElement("option");
                     option.value = variant.id;
-                    option.setAttribute("data-price", variant.offer_price);
+                    // A variant with no catalog price (null) leaves Price empty
+                    // for the employee to fill in, rather than pre-filling 0.
+                    option.setAttribute("data-price", variant.offer_price === null ? "" : variant.offer_price.toFixed(2));
                     var label = variant.model || "(no model)";
                     if (variant.brand) label = variant.brand + " - " + label;
                     option.textContent = label;
@@ -380,6 +408,42 @@ New Invoice - Employee Portal - Sridevi Enterprises
                 modelSelect.innerHTML = '<option value="">Could not load models</option>';
             });
     }
+
+    // "Consignee details same as buyer": while checked, the linked consignee
+    // fields mirror the buyer fields on every edit and are read-only (not
+    // disabled - disabled fields aren't submitted). Unchecking keeps the
+    // copied values and just makes them editable again. The server
+    // re-copies from the buyer values too (invoice_service.py), so this
+    // script is a convenience, not the source of truth.
+    var invoiceForm = document.getElementById("invoiceForm");
+    var sameAsBuyer = document.getElementById("consigneeSameAsBuyer");
+    var linkedHint = document.getElementById("consigneeLinkedHint");
+    var LINKED_FIELDS = ["name", "contact", "address", "gstin"];
+
+    function copyBuyerToConsignee() {
+        LINKED_FIELDS.forEach(function (field) {
+            invoiceForm.elements["consignee_" + field].value = invoiceForm.elements["buyer_" + field].value;
+        });
+    }
+
+    function applyConsigneeLink() {
+        var linked = sameAsBuyer.checked;
+        if (linked) copyBuyerToConsignee();
+        LINKED_FIELDS.forEach(function (field) {
+            var input = invoiceForm.elements["consignee_" + field];
+            input.readOnly = linked;
+            input.classList.toggle("linked-field", linked);
+        });
+        linkedHint.hidden = !linked;
+    }
+
+    sameAsBuyer.addEventListener("change", applyConsigneeLink);
+    LINKED_FIELDS.forEach(function (field) {
+        invoiceForm.elements["buyer_" + field].addEventListener("input", function () {
+            if (sameAsBuyer.checked) copyBuyerToConsignee();
+        });
+    });
+    applyConsigneeLink();
 
     document.getElementById("addRowBtn").addEventListener("click", addRow);
 

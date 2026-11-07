@@ -29,8 +29,8 @@ from services.product_service import (
     create_product,
     deactivate_product as deactivate_product_service,
     delete_product_image,
-    find_duplicate_product_name,
-    find_similar_product,
+    find_duplicate_product,
+    find_same_name_product,
     get_all_product_names,
     get_inventory_by_category,
     get_inventory_by_department,
@@ -47,6 +47,7 @@ from services.product_service import (
     get_related_products,
     get_stock_status_count,
     restore_product as restore_product_service,
+    product_identity,
     update_product,
     validate_product_form,
     validate_specifications,
@@ -66,6 +67,15 @@ _STATUS_BADGE_CLASSES = {
     "resolved": "status-resolved",
     "closed": "status-closed",
 }
+
+
+def _duplicate_product_message(form_data: dict, duplicate: dict) -> str:
+    """Error shown when another Catalog row already has this exact name + brand + model."""
+
+    return (
+        f'Product #{duplicate["id"]} already has this name, brand ({form_data["brand"] or "none"}) '
+        f'and model ({form_data["model"] or "none"}). Use a different model, or edit #{duplicate["id"]} instead.'
+    )
 
 
 def _pad_spec_rows(pairs) -> list[dict[str, str]]:
@@ -344,17 +354,14 @@ def add_product():
             errors["images"] = image_error
 
         if not errors:
-            name_duplicate = find_duplicate_product_name(form_data["product_name"])
-            if name_duplicate:
-                errors["product_name"] = (
-                    f'A product named "{form_data["product_name"]}" already exists '
-                    f'(#{name_duplicate["id"]}).'
-                )
+            duplicate = find_duplicate_product(form_data["product_name"], form_data["brand"], form_data["model"])
+            if duplicate:
+                errors["product_name"] = _duplicate_product_message(form_data, duplicate)
 
         if not errors:
-            duplicate = find_similar_product(
-                form_data["product_name"], form_data["brand"], form_data["model"]
-            )
+            # Same name but a different brand/model is a legitimate new model
+            # row - allowed, with a note so a typo'd model can be spotted.
+            same_name = find_same_name_product(form_data["product_name"])
 
             try:
                 product_id = create_product(form_data, images, specifications)
@@ -368,10 +375,11 @@ def add_product():
                 )
                 errors["form"] = "Could not save this product. Please try again."
             else:
-                if duplicate:
+                if same_name:
                     flash(
-                        f"Note: product #{duplicate['id']} (\"{duplicate['product_name']}\") "
-                        "looks similar to this one.",
+                        f"Note: product #{same_name['id']} has the same name "
+                        f"(brand: {same_name['brand'] or 'none'}, model: {same_name['model'] or 'none'}). "
+                        "Check this is a different model.",
                         "warning",
                     )
                 flash("Product created successfully.", "success")
@@ -413,6 +421,8 @@ def edit_product(product_id):
         "brand": product["brand"] or "",
         "model": product["model"] or "",
         "stock_quantity": product["stock_quantity"],
+        "price": product["price"],
+        "gst_percent": product["gst_percent"],
     }
     errors: dict = {}
     spec_rows = _pad_spec_rows(
@@ -445,13 +455,20 @@ def edit_product(product_id):
                 else:
                     replacement_images[image["id"]] = file
 
-        if not errors:
-            name_duplicate = find_duplicate_product_name(form_data["product_name"], exclude_id=product_id)
-            if name_duplicate:
-                errors["product_name"] = (
-                    f'A product named "{form_data["product_name"]}" already exists '
-                    f'(#{name_duplicate["id"]}).'
-                )
+        # Saving a product without changing its name/brand/model can never
+        # create a new duplicate, so it is not checked - this also keeps the
+        # few rows that were already exact duplicates before this check
+        # existed editable. Only an identity change is checked.
+        identity_changed = product_identity(
+            form_data["product_name"], form_data["brand"], form_data["model"]
+        ) != product_identity(product["product_name"], product["brand"], product["model"])
+
+        if not errors and identity_changed:
+            duplicate = find_duplicate_product(
+                form_data["product_name"], form_data["brand"], form_data["model"], exclude_id=product_id
+            )
+            if duplicate:
+                errors["product_name"] = _duplicate_product_message(form_data, duplicate)
 
         if not errors:
             try:

@@ -223,6 +223,18 @@ Author  : Srikar
                             <input id="stock_quantity" name="stock_quantity" type="number" min="0" step="1" class="form-control {% if errors.stock_quantity %}is-invalid{% endif %}" value="{{ form_data.stock_quantity if form_data.stock_quantity is not none else '' }}">
                             {% if errors.stock_quantity %}<div class="invalid-feedback">{{ errors.stock_quantity }}</div>{% endif %}
                         </div>
+                        <div class="col-md-6">
+                            <label for="price" class="form-label">Price (&#8377;, incl. GST) <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input id="price" name="price" type="number" min="0.01" max="99999999.99" step="0.01" inputmode="decimal" class="form-control {% if errors.price %}is-invalid{% endif %}" value="{{ form_data.price if form_data.price is not none else '' }}" required aria-describedby="price-hint">
+                            {% if errors.price %}<div class="invalid-feedback">{{ errors.price }}</div>{% endif %}
+                            <p class="product-form-hint mb-0" id="price-hint">Price for this model only. Pre-filled on new invoices; never shown on the public website.</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="gst_percent" class="form-label">GST Rate (%) <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input id="gst_percent" name="gst_percent" type="number" min="0" max="100" step="0.01" inputmode="decimal" class="form-control {% if errors.gst_percent %}is-invalid{% endif %}" value="{{ form_data.gst_percent if form_data.gst_percent is not none else '' }}" required aria-describedby="gst-percent-hint">
+                            {% if errors.gst_percent %}<div class="invalid-feedback">{{ errors.gst_percent }}</div>{% endif %}
+                            <p class="product-form-hint mb-0" id="gst-percent-hint">GST included in the price above, used on invoices for this model. Enter 0 for GST-exempt items.</p>
+                        </div>
                     </div>
 
                     <div class="product-form-section-title">Product Images</div>
@@ -284,13 +296,23 @@ Author  : Srikar
     var existingProductNames = {{ existing_product_names | tojson }};
 
     function normaliseName(value) {
-        return value.trim().replace(/\s+/g, " ").toLowerCase();
+        return (value || "").trim().replace(/\s+/g, " ").toLowerCase();
     }
 
-    var existingNameSet = {};
+    // Mirrors product_service.product_identity(): a duplicate is the same
+    // name AND brand AND model. The same name on another model is allowed.
+    function identityKey(name, brand, model) {
+        return [normaliseName(name), normaliseName(brand), normaliseName(model)].join("\u0000");
+    }
+
+    var existingIdentitySet = {};
     existingProductNames.forEach(function (p) {
-        existingNameSet[normaliseName(p.product_name)] = true;
+        existingIdentitySet[identityKey(p.product_name, p.brand, p.model)] = true;
     });
+
+    // Edit page: saving without changing name/brand/model is never a new
+    // duplicate (matches the server, which skips the check in that case).
+    var originalIdentity = {% if product %}identityKey({{ product.product_name | tojson }}, {{ product.brand | tojson }}, {{ product.model | tojson }}){% else %}null{% endif %};
 
     // ---- Searchable Select (Department / Category) ----
     // Shared component (static/js/components/searchable_select.js, loaded
@@ -325,15 +347,19 @@ Author  : Srikar
 
     // ---- Live duplicate Product Name check (Phase 2) ----
     var nameInput = document.getElementById("product_name");
+    var brandInput = document.getElementById("brand");
+    var modelInput = document.getElementById("model");
     var nameFeedback = document.getElementById("product-name-live-feedback");
 
     function checkDuplicateName() {
-        var normalised = normaliseName(nameInput.value);
-        var isDuplicate = normalised.length > 0 && existingNameSet.hasOwnProperty(normalised);
+        var key = identityKey(nameInput.value, brandInput.value, modelInput.value);
+        var isDuplicate = normaliseName(nameInput.value).length > 0 &&
+            key !== originalIdentity &&
+            existingIdentitySet.hasOwnProperty(key);
         nameInput.classList.toggle("is-invalid", isDuplicate);
-        nameInput.setCustomValidity(isDuplicate ? "Duplicate product name" : "");
+        nameInput.setCustomValidity(isDuplicate ? "Duplicate product" : "");
         if (nameFeedback) {
-            nameFeedback.textContent = isDuplicate ? "A product with this name already exists." : "";
+            nameFeedback.textContent = isDuplicate ? "A product with this name, brand and model already exists." : "";
             nameFeedback.classList.toggle("d-block", isDuplicate);
         }
         return !isDuplicate;

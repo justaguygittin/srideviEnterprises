@@ -20,7 +20,7 @@ from num2words import num2words
 
 from database.db import fetch_all, fetch_one, transaction
 from services import gst_service
-from services.product_service import get_catalog_product_for_invoice
+from services.product_service import get_catalog_product_for_invoice, parse_price
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ def validate_invoice_form(form) -> tuple[dict[str, Any], dict[str, str]]:
     validation only - no database access and no GST calculation happens
     here (see create_invoice() below for both), matching this codebase's
     existing split between field validation and DB-backed checks
-    (product_service.validate_product_form / find_similar_product).
+    (product_service.validate_product_form / find_duplicate_product).
 
     Buyer/Place-of-Supply state (`buyer_state`) is its own required field,
     not derived from the Buyer GSTIN's first two digits: GSTIN is optional
@@ -104,10 +104,19 @@ def validate_invoice_form(form) -> tuple[dict[str, Any], dict[str, str]]:
     """
 
     errors: dict[str, str] = {}
-    cleaned: dict[str, Any] = {
-        "buyer": _clean_party_fields(form, "buyer", errors),
-        "consignee": _clean_party_fields(form, "consignee", errors),
-    }
+    cleaned: dict[str, Any] = {"buyer": _clean_party_fields(form, "buyer", errors)}
+
+    # "Consignee details same as buyer": the form mirrors the buyer's
+    # name/address/contact/GSTIN into read-only consignee fields, but those
+    # submitted copies are not trusted - the server re-copies them from the
+    # buyer values it just validated, so a disabled/blocked script or an
+    # edited read-only field can never produce a mismatched Ship To. The
+    # consignee's contract number is not part of the link.
+    if form.get("consignee_same_as_buyer"):
+        cleaned["consignee"] = {key: cleaned["buyer"][key] for key in ("name", "address", "contact", "gstin")}
+        cleaned["consignee"]["contract"] = form.get("consignee_contract", "").strip()
+    else:
+        cleaned["consignee"] = _clean_party_fields(form, "consignee", errors)
 
     buyer_state = form.get("buyer_state", "").strip()
     if buyer_state not in gst_service.STATE_NAMES:
@@ -117,16 +126,18 @@ def validate_invoice_form(form) -> tuple[dict[str, Any], dict[str, str]]:
     product_ids = form.getlist("product_id[]")
     quantities = form.getlist("qty[]")
     hsn_codes = form.getlist("hsn[]")
+    prices = form.getlist("price[]")
 
     if not product_ids:
         errors["items"] = "Add at least one product."
-    elif not (len(product_ids) == len(quantities) == len(hsn_codes)):
+    elif not (len(product_ids) == len(quantities) == len(hsn_codes) == len(prices)):
         # Previously a mismatched zip() silently truncated to the shortest
         # list instead of rejecting the submission - see AI_CONTEXT.md.
         errors["items"] = "Product rows are inconsistent. Please re-add the product rows and try again."
     else:
         items: list[dict[str, Any]] = []
-        for index, (product_id, quantity, hsn) in enumerate(zip(product_ids, quantities, hsn_codes), start=1):
+        rows = zip(product_ids, quantities, hsn_codes, prices)
+        for index, (product_id, quantity, hsn, price) in enumerate(rows, start=1):
             if not product_id.isdigit():
                 errors["items"] = f"Row {index}: please select a product model."
                 break
@@ -137,7 +148,16 @@ def validate_invoice_form(form) -> tuple[dict[str, Any], dict[str, str]]:
             if not hsn:
                 errors["items"] = f"Row {index}: HSN code is required."
                 break
-            items.append({"product_id": int(product_id), "quantity": int(quantity), "hsn": hsn})
+            # Per-row price: pre-filled from the catalog in the browser but
+            # editable for this invoice only, so it is validated here like
+            # any other submitted value. Zero stays allowed, as before.
+            unit_price, price_error = parse_price(price, allow_zero=True)
+            if price_error:
+                errors["items"] = f"Row {index}: {price_error}"
+                break
+            items.append({
+                "product_id": int(product_id), "quantity": int(quantity), "hsn": hsn, "unit_price": unit_price,
+            })
         else:
             cleaned["items"] = items
 
@@ -146,8 +166,9 @@ def validate_invoice_form(form) -> tuple[dict[str, Any], dict[str, str]]:
 
 def create_invoice(cleaned: dict[str, Any], employee_id: int) -> int:
     """
-    Calculate and persist one invoice: looks up each line item's current
-    Catalog price/GST rate, computes the full tax breakdown
+    Calculate and persist one invoice: uses each line item's submitted unit
+    price (pre-filled from Catalog.offer_price, but overridable per row) and
+    the current Catalog GST rate, computes the full tax breakdown
     (services/gst_service.py), then inserts the Invoices row and every
     InvoiceItems row inside one transaction.
 
@@ -180,8 +201,19 @@ def create_invoice(cleaned: dict[str, Any], employee_id: int) -> int:
                 "Please remove it and try again."
             )
 
+        # The employee's (possibly overridden) row price, not the catalog's -
+        # the catalog only supplied the default. GST rate still comes from
+        # the catalog. Nothing here writes back to Catalog.
+        unit_price = item["unit_price"]
+        catalog_price = Decimal(str(catalog_row["offer_price"] or 0))
+        if unit_price != catalog_price:
+            logger.info(
+                "Invoice price override - product_id=%s catalog_price=%s invoice_price=%s",
+                catalog_row["id"], catalog_price, unit_price,
+            )
+
         calc = gst_service.calculate_line_item(
-            item["quantity"], catalog_row["offer_price"], catalog_row["gst_percent"] or 0, tax_type
+            item["quantity"], unit_price, catalog_row["gst_percent"] or 0, tax_type
         )
         line_items.append({
             **calc,
@@ -190,7 +222,7 @@ def create_invoice(cleaned: dict[str, Any], employee_id: int) -> int:
             "model": catalog_row["model"],
             "hsn": item["hsn"],
             "quantity": item["quantity"],
-            "unit_price": Decimal(str(catalog_row["offer_price"] or 0)),
+            "unit_price": unit_price,
             "gst_percent": Decimal(str(catalog_row["gst_percent"] or 0)),
         })
 

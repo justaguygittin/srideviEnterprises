@@ -9,10 +9,70 @@ Author  : Srikar
 """
 
 import re
+from decimal import Decimal
 from typing import Any
 
 from database.db import execute, fetch_all, fetch_one, transaction
 from services.image_service import delete_image_file, delete_product_folder, save_product_images
+
+
+# Prices are stored in DECIMAL(10, 2) columns (Catalog.offer_price,
+# InvoiceItems.UnitPrice), so a valid price is at most 8 whole digits and 2
+# decimal places. More decimals are rejected rather than silently rounded -
+# an employee should see exactly the amount that will be saved or billed.
+_PRICE_PATTERN = re.compile(r"^\d{1,8}(\.\d{1,2})?$")
+
+
+def parse_price(raw: str, allow_zero: bool) -> tuple[Decimal | None, str | None]:
+    """
+    Parse a submitted rupee price into a Decimal, or return a user-facing error.
+
+    Shared by the Add/Edit Product form (allow_zero=False - a catalog price
+    of 0 is exactly the "new product bills at ₹0" problem this field exists
+    to prevent) and the Invoice Generator's per-row price override
+    (allow_zero=True - the Invoice Generator has always accepted a ₹0 line,
+    and that existing behaviour is preserved). Commas and surrounding spaces
+    are tolerated ("1,25,000.50"); negatives, letters, and a third decimal
+    place are not.
+    """
+
+    value = (raw or "").strip().replace(",", "")
+    if not value:
+        return None, "Please enter a price."
+    if not _PRICE_PATTERN.match(value):
+        return None, "Price must be a number with at most 2 decimal places (no negative values)."
+
+    price = Decimal(value)
+    if price == 0 and not allow_zero:
+        return None, "Price must be greater than ₹0."
+    return price, None
+
+
+# Catalog.gst_percent is DECIMAL(5, 2): a rate from 0 to 100 with at most 2
+# decimal places. No list of "allowed" slabs is enforced - GST slabs are set
+# by the GST Council and change over time, so the rate is whatever the
+# employee enters for this model, within the column's range.
+_GST_PERCENT_PATTERN = re.compile(r"^\d{1,3}(\.\d{1,2})?$")
+
+
+def parse_gst_percent(raw: str) -> tuple[Decimal | None, str | None]:
+    """
+    Parse a submitted GST rate (e.g. "18" or "18.00") into a Decimal, or
+    return a user-facing error. Required, with no default: a missing rate is
+    what made portal-created products bill at 0% GST. 0 is valid (GST-exempt
+    goods) but has to be entered deliberately. A trailing "%" is tolerated.
+    """
+
+    value = (raw or "").strip().rstrip("%").strip()
+    if not value:
+        return None, "Please enter the GST rate (%). Enter 0 for GST-exempt items."
+    if not _GST_PERCENT_PATTERN.match(value):
+        return None, "GST rate must be a number with at most 2 decimal places (no negative values)."
+
+    gst_percent = Decimal(value)
+    if gst_percent > 100:
+        return None, "GST rate cannot be more than 100%."
+    return gst_percent, None
 
 
 _PLACEHOLDER_IMAGE = "images/placeholder.png"
@@ -437,7 +497,8 @@ def get_product_for_edit(product_id: int):
 
     product = fetch_one("""
         SELECT id, product_name, Department AS department, category,
-               NULLIF(TRIM(brand), '') AS brand, model, stock_quantity
+               NULLIF(TRIM(brand), '') AS brand, model, stock_quantity,
+               offer_price AS price, gst_percent
         FROM Catalog
         WHERE id = %s;
     """, (product_id,))
@@ -460,6 +521,8 @@ def validate_product_form(form_data: dict[str, str]) -> tuple[dict[str, Any], di
         "brand": form_data.get("brand", "").strip() or None,
         "model": form_data.get("model", "").strip() or None,
         "stock_quantity": form_data.get("stock_quantity", "").strip(),
+        "price": form_data.get("price", "").strip(),
+        "gst_percent": form_data.get("gst_percent", "").strip(),
     }
     errors: dict[str, str] = {}
 
@@ -492,6 +555,25 @@ def validate_product_form(form_data: dict[str, str]) -> tuple[dict[str, Any], di
     else:
         cleaned_data["stock_quantity"] = int(stock_quantity_raw)
 
+    # Saved to Catalog.offer_price - the GST-inclusive price the Invoice
+    # Generator autofills (get_product_variants / get_catalog_product_for_invoice).
+    # Each Catalog row is one model, so this only ever sets this one model's
+    # price. Never shown on the public site, which shows "Contact for Pricing".
+    # On error the raw string is kept so the form re-displays what was typed.
+    price, price_error = parse_price(cleaned_data["price"], allow_zero=False)
+    if price_error:
+        errors["price"] = price_error
+    else:
+        cleaned_data["price"] = price
+
+    # Saved to Catalog.gst_percent - the rate the Invoice Generator applies to
+    # this model (price above is GST-inclusive). Same raw-string-on-error rule.
+    gst_percent, gst_error = parse_gst_percent(cleaned_data["gst_percent"])
+    if gst_error:
+        errors["gst_percent"] = gst_error
+    else:
+        cleaned_data["gst_percent"] = gst_percent
+
     return cleaned_data, errors
 
 
@@ -518,46 +600,42 @@ def validate_specifications(
     return specifications, None
 
 
-def find_similar_product(
-    product_name: str, brand: str | None, model: str | None, exclude_id: int | None = None
-) -> dict[str, Any] | None:
-    """Return an existing catalog product with a matching name, brand, and model, if any."""
-
-    where_clauses = [
-        "LOWER(TRIM(product_name)) = LOWER(%s)",
-        "LOWER(TRIM(COALESCE(brand, ''))) = LOWER(%s)",
-        "LOWER(TRIM(COALESCE(model, ''))) = LOWER(%s)",
-    ]
-    params: list[Any] = [product_name, brand or "", model or ""]
-
-    if exclude_id is not None:
-        where_clauses.append("id <> %s")
-        params.append(exclude_id)
-
-    return fetch_one(f"""
-        SELECT id, product_name FROM Catalog WHERE {" AND ".join(where_clauses)} LIMIT 1;
-    """, tuple(params))
-
-
 _MULTI_SPACE_PATTERN = re.compile(r"\s+")
 
 
-def _normalise_name_for_comparison(name: str) -> str:
+def _normalise_name_for_comparison(name: str | None) -> str:
     """
-    Case-insensitive, whitespace-collapsed comparison key for product names
-    (v1.0 Sprint 4) - shared logic mirrored by the Add/Edit Product form's
-    client-side live duplicate check, so both agree on what counts as "the
-    same name".
+    Case-insensitive, whitespace-collapsed comparison key for product
+    names, brands and models (v1.0 Sprint 4) - shared logic mirrored by the
+    Add/Edit Product form's client-side live duplicate check, so both agree
+    on what counts as "the same". A missing value compares as "".
     """
 
-    return _MULTI_SPACE_PATTERN.sub(" ", name.strip()).lower()
+    return _MULTI_SPACE_PATTERN.sub(" ", (name or "").strip()).lower()
+
+
+def product_identity(product_name: str | None, brand: str | None, model: str | None) -> tuple[str, str, str]:
+    """
+    The comparison key that identifies one Catalog row: name + brand + model.
+
+    Each Catalog row is one model with its own price and GST, and the same
+    product name legitimately appears on several rows (one per model, and in
+    one existing case per brand) - so a name alone is not a duplicate. Only
+    the same name AND brand AND model is.
+    """
+
+    return (
+        _normalise_name_for_comparison(product_name),
+        _normalise_name_for_comparison(brand),
+        _normalise_name_for_comparison(model),
+    )
 
 
 def get_all_product_names(exclude_id: int | None = None) -> list[dict[str, Any]]:
     """
-    Return every catalog product's id/name (v1.0 Sprint 4). Powers both the
-    Add/Edit Product form's client-side live duplicate-name hint and the
-    authoritative server-side check below, from one shared query.
+    Return every catalog product's id/name/brand/model (v1.0 Sprint 4).
+    Powers both the Add/Edit Product form's client-side live duplicate hint
+    and the authoritative server-side checks below, from one shared query.
     """
 
     where_clause = "product_name IS NOT NULL AND TRIM(product_name) <> ''"
@@ -566,20 +644,35 @@ def get_all_product_names(exclude_id: int | None = None) -> list[dict[str, Any]]
         where_clause += " AND id <> %s"
         params.append(exclude_id)
 
-    return fetch_all(f"SELECT id, product_name FROM Catalog WHERE {where_clause};", tuple(params))
+    return fetch_all(f"SELECT id, product_name, brand, model FROM Catalog WHERE {where_clause};", tuple(params))
 
 
-def find_duplicate_product_name(product_name: str, exclude_id: int | None = None) -> dict[str, Any] | None:
+def find_duplicate_product(
+    product_name: str, brand: str | None, model: str | None, exclude_id: int | None = None
+) -> dict[str, Any] | None:
     """
-    Return an existing catalog product whose name matches product_name once
-    both are case-insensitively compared with whitespace collapsed
-    (v1.0 Sprint 4). This is the authoritative, final duplicate-name check
-    enforced on every submit - the client-side live check is a hint only and
+    Return an existing catalog product with the same name, brand AND model
+    (see product_identity()), or None. This is the authoritative duplicate
+    check that blocks a save - the client-side live check is a hint only and
     can never be trusted on its own.
 
-    Distinct from find_similar_product() above: that function compares
-    name+brand+model together and only produces a soft "looks similar"
-    warning: this function compares name alone and blocks the save.
+    Previously this compared the name alone, which also blocked editing any
+    product whose name is shared with another model's row.
+    """
+
+    target = product_identity(product_name, brand, model)
+    for candidate in get_all_product_names(exclude_id):
+        if product_identity(candidate["product_name"], candidate["brand"], candidate["model"]) == target:
+            return candidate
+    return None
+
+
+def find_same_name_product(product_name: str, exclude_id: int | None = None) -> dict[str, Any] | None:
+    """
+    Return another catalog product with the same name (but, once
+    find_duplicate_product() has passed, a different brand or model), or
+    None. Used only for a soft "check this really is a different model"
+    note after saving - never to block it.
     """
 
     target = _normalise_name_for_comparison(product_name)
@@ -609,8 +702,10 @@ def create_product(
             cursor = conn.cursor()
             try:
                 cursor.execute("""
-                    INSERT INTO Catalog (product_name, Department, category, brand, model, stock_quantity)
-                    VALUES (%s, %s, %s, %s, %s, %s);
+                    INSERT INTO Catalog (
+                        product_name, Department, category, brand, model, stock_quantity, offer_price, gst_percent
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
                 """, (
                     product_data["product_name"],
                     product_data["department"],
@@ -618,6 +713,8 @@ def create_product(
                     product_data["brand"],
                     product_data["model"],
                     product_data["stock_quantity"],
+                    product_data["price"],
+                    product_data["gst_percent"],
                 ))
                 product_id = cursor.lastrowid
 
@@ -671,7 +768,7 @@ def update_product(
                 cursor.execute("""
                     UPDATE Catalog
                     SET product_name = %s, Department = %s, category = %s,
-                        brand = %s, model = %s, stock_quantity = %s
+                        brand = %s, model = %s, stock_quantity = %s, offer_price = %s, gst_percent = %s
                     WHERE id = %s;
                 """, (
                     product_data["product_name"],
@@ -680,6 +777,8 @@ def update_product(
                     product_data["brand"],
                     product_data["model"],
                     product_data["stock_quantity"],
+                    product_data["price"],
+                    product_data["gst_percent"],
                     product_id,
                 ))
 
@@ -865,7 +964,10 @@ def get_product_variants(product_name: str) -> list[dict[str, Any]]:
     """, (product_name,))
 
     for row in rows:
-        row["offer_price"] = float(row["offer_price"]) if row["offer_price"] is not None else 0.0
+        # None (not 0.0) for a variant with no catalog price, so the invoice
+        # form leaves its Price box empty for the employee to fill in rather
+        # than silently pre-filling ₹0.
+        row["offer_price"] = float(row["offer_price"]) if row["offer_price"] is not None else None
         row["gst_percent"] = float(row["gst_percent"]) if row["gst_percent"] is not None else 0.0
     return rows
 
@@ -931,8 +1033,8 @@ def validate_stock_transaction_form(form_data: dict[str, str]) -> tuple[dict[str
     into an actual OldStock/NewStock/QuantityChanged triple. This function
     only checks shape (present, numeric, in-range) - it does not touch the
     database, matching validate_product_form()'s existing split between pure
-    field validation and the separate DB-backed checks (find_similar_product,
-    find_duplicate_product_name) called from the route.
+    field validation and the separate DB-backed checks (find_duplicate_product,
+    find_same_name_product) called from the route.
     """
 
     cleaned_data: dict[str, Any] = {

@@ -26,6 +26,24 @@ version string is `Config.APP_VERSION` in `config.py`, surfaced at runtime via
   to these instead of `wa.me`, so the configured number never appears in page
   HTML; it is revealed only by the redirect when a customer clicks.
 
+- **Product price on Add/Edit Product** — required "Price (₹, incl. GST)" field
+  saved to the existing `Catalog.offer_price` (per model), so newly created
+  products no longer bill at ₹0. Never shown on the public site.
+- **GST rate on Add/Edit Product** — required "GST Rate (%)" field saved to the
+  existing `Catalog.gst_percent` (0–100, no default), so new products no
+  longer bill at 0% GST. Existing rates are preloaded when editing.
+- **Editable invoice row prices** — the Invoice Generator's Price column is
+  pre-filled from the catalog but can be overridden per row; totals, GST and
+  amount in words use the row price. The catalog price is never changed.
+- **"Consignee details same as buyer"** checkbox on the Invoice Generator.
+
+### Fixed
+
+- **Multi-model products can be edited again** — the Add/Edit Product duplicate
+  check compared the product name alone, so the 32 rows that share a name with
+  another model could not be saved. A duplicate is now the same name + brand +
+  model; editing without changing those is never blocked.
+
 ### Changed
 
 - `.env.example` — the `SELLER_GSTIN` / `SELLER_BANK_*` / `SELLER_IFSC` lines
