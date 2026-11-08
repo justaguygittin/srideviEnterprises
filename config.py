@@ -289,3 +289,37 @@ class Config:
         or "Hello Sridevi Enterprises, I would like to know more about your products."
     )
 
+    # ---------------------------------------------------------------------
+    # Password Management (password reset email)
+    #
+    # PUBLIC_BASE_URL is the site's own address, e.g.
+    # https://www.sridevienterprises.in - every password-reset link is
+    # built from it. It is deliberately NOT derived from the incoming
+    # request's Host header: a forged Host would otherwise make the app
+    # email a reset link pointing at an attacker's domain (reset-link
+    # poisoning). Outside DEBUG it must start with https://, or reset emails
+    # are refused (services/email_service.py).
+    #
+    # SMTP_* configure outgoing mail. On HostyCare/cPanel this is normally a
+    # mailbox created under Email Accounts: host mail.<your-domain>, port 465
+    # with SMTP_USE_SSL=True, or port 587 with SMTP_USE_TLS=True. When
+    # SMTP_HOST, SMTP_SENDER or PUBLIC_BASE_URL is unset, password recovery
+    # by email is reported as unavailable - nothing else is affected, and no
+    # reset token is ever shown on screen as a fallback.
+    # ---------------------------------------------------------------------
+    PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
+    SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
+    try:
+        SMTP_PORT = int(os.getenv("SMTP_PORT", "587").strip() or "587")
+    except ValueError:
+        SMTP_PORT = 587
+    SMTP_USERNAME = os.getenv("SMTP_USERNAME", "").strip()
+    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+    SMTP_SENDER = os.getenv("SMTP_SENDER", "").strip()
+    SMTP_USE_TLS = _env_bool("SMTP_USE_TLS", True)
+    SMTP_USE_SSL = _env_bool("SMTP_USE_SSL", False)
+    SMTP_TIMEOUT_SECONDS = 15
+
+    # Reset links expire after this many minutes (required: 30).
+    PASSWORD_RESET_TOKEN_MINUTES = 30
+

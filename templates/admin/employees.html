@@ -1,0 +1,113 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : employees.html
+Purpose : Admin - Employee accounts, with a "Send reset link" action.
+          Admins never see or set passwords here; the action only emails a
+          single-use reset link to the employee's registered address, and
+          is refused (with the reason) when that address is missing,
+          invalid or shared with another account.
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+Employees - Admin - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee_nav.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/account_password.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="portal-container">
+    {% include 'components/employee_nav.html' %}
+
+    <div class="portal-content">
+        <div class="container">
+            <div class="portal-card portal-card-wide">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                    <h1>Employees</h1>
+                    <a href="{{ url_for('admin.add_employee') }}" class="btn btn-primary" id="add-employee-btn">
+                        <i class="fa-solid fa-user-plus me-1" aria-hidden="true"></i>Add Employee
+                    </a>
+                </div>
+                <p class="portal-subtitle">
+                    "Send reset link" emails the employee a single-use link, valid for {{ token_minutes }} minutes,
+                    to choose their own new password. Passwords are never shown or set here.
+                </p>
+
+                {% if not email_available %}
+                <div class="alert alert-warning" role="alert">
+                    Outgoing email is not configured on this server, so reset links cannot be sent.
+                </div>
+                {% endif %}
+
+                <div class="table-responsive">
+                    <table class="table align-middle employees-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Username</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Role</th>
+                                <th scope="col">Registered email</th>
+                                <th scope="col" class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for account in accounts %}
+                            <tr>
+                                <td data-label="Username">{{ account.Username }}</td>
+                                <td data-label="Name">{{ account.Name or '—' }}{% if account.Designation %}<div class="text-muted small">{{ account.Designation }}</div>{% endif %}</td>
+                                <td data-label="Role">{{ account.Role }}</td>
+                                <td data-label="Email">
+                                    {{ account.Email or '—' }}
+                                    {% if account.email_issue %}
+                                    <div class="text-danger small"><i class="fa-solid fa-triangle-exclamation me-1" aria-hidden="true"></i>This account {{ email_issue_messages[account.email_issue] }}.</div>
+                                    {% endif %}
+                                </td>
+                                <td data-label="Action" class="text-end">
+                                    {% if account.UserID == current_user_id %}
+                                    <a href="{{ url_for('employee.change_password') }}" class="btn btn-sm btn-outline-secondary">Change my password</a>
+                                    {% elif account.Role != 'Employee' %}
+                                    <span class="text-muted small">Admin accounts use Forgot Password</span>
+                                    {% else %}
+                                    <form method="POST" action="{{ url_for('admin.reset_employee_password', user_id=account.UserID) }}" class="d-inline reset-form"
+                                        data-username="{{ account.Username }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary"
+                                            {% if account.email_issue or not email_available %}disabled aria-disabled="true"{% endif %}>
+                                            <i class="fa-solid fa-envelope me-1" aria-hidden="true"></i>Send reset link
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-muted">No employee accounts found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    document.querySelectorAll(".reset-form").forEach(function (form) {
+        form.addEventListener("submit", function (event) {
+            if (!window.confirm('Email a password reset link to "' + form.dataset.username + '"?')) {
+                event.preventDefault();
+            }
+        });
+    });
+})();
+</script>
+{% endblock %}

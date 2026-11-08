@@ -12,7 +12,33 @@ version string is `Config.APP_VERSION` in `config.py`, surfaced at runtime via
 
 `Config.APP_VERSION` unchanged (`v1.1.0`).
 
+### Fixed
+
+- **Invoice PDF printed every character as an empty box on HostyCare.** The
+  Linux host has no Arial/Helvetica font Chromium can use, so it fell back to
+  `DroidSansFallback`, which has no Latin glyphs. The invoice now embeds
+  Liberation Sans (SIL OFL 1.1, metric-compatible with Arial, so the layout is
+  unchanged) from `static/fonts/` as base64 `@font-face` data URIs - no server
+  font installation needed. `services/pdf_service.py`, `templates/invoice_pdf.html`.
+
 ### Added
+
+- **Admin "Add Employee"** (`/admin/employees/add`) — creates an Employee
+  account and emails the new employee a single-use link to set their own
+  password; the Admin never sets or sees it. No schema change.
+- Employee Portal nav: items are now content-sized and wrap to a second row
+  between 769px and ~1050px, so the longer Admin menu never overflows.
+
+- **Login by username or registered email** (case-insensitive; an email shared
+  by several accounts matches none).
+
+- **Password Management** — Change Password (Employee + Admin), email-based
+  Forgot/Reset Password (30-minute, single-use, hashed tokens), Admin
+  "Employees" page with "Send reset link", session invalidation after any
+  password change/reset, DB-backed rate limiting of login and recovery, and
+  CSRF tokens on login and all password forms. Migrations `015`–`017`; new
+  `.env` keys `PUBLIC_BASE_URL` and `SMTP_*`. No new dependency. See
+  `AI_CONTEXT.md` → "Password Management".
 
 - **WhatsApp click-to-chat** — a floating WhatsApp button on customer-facing
   pages and an "Enquire on WhatsApp" button on the Product Details page, both

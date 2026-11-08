@@ -33,12 +33,19 @@ Author  : Srikar
  * once actually on paper.
  */
 
+/*
+ * Bundled font (services/pdf_service.py _font_face_css): Liberation Sans,
+ * embedded as data: URIs so the PDF never depends on fonts installed on the
+ * server. "Invoice Sans" must stay first - Arial etc. are only a safety net.
+ */
+{{ font_face_css | safe }}
+
 * { box-sizing: border-box; }
 
 html { color-scheme: light; }
 
 body {
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Invoice Sans', Arial, Helvetica, sans-serif;
     font-size: 9.5pt;
     line-height: 1.35;
     color: #111;

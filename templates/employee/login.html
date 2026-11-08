@@ -83,10 +83,11 @@ Employee Login - Sridevi Enterprises
         {% endif %}
 
         <form method="POST" action="{{ url_for('employee.login') }}" id="login-form" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
-                <label for="username" class="form-label">Username</label>
+                <label for="username" class="form-label">Username or email</label>
                 <input type="text" class="form-control" id="username" name="username" required autofocus
-                    placeholder="Enter your username">
+                    autocomplete="username" maxlength="254" placeholder="Enter your username or email">
             </div>
 
             <div class="form-group">
@@ -97,6 +98,10 @@ Employee Login - Sridevi Enterprises
 
             <button type="submit" class="btn btn-primary w-100" id="login-submit-btn">Login</button>
         </form>
+
+        <p class="text-center mt-3 mb-0">
+            <a href="{{ url_for('employee.forgot_password') }}" id="forgot-password-link">Forgot password?</a>
+        </p>
     </div>
 </div>
 

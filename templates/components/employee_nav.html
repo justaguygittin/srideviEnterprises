@@ -28,6 +28,8 @@ Author  : Srikar
                 {% elif current_page == 'enquiries' %}<i class="fas fa-envelope"></i> Enquiries
                 {% elif current_page == 'customers' %}<i class="fas fa-users"></i> Customers
                 {% elif current_page == 'invoices' %}<i class="fas fa-receipt"></i> Invoices
+                {% elif current_page == 'employees' %}<i class="fas fa-user-shield"></i> Employees
+                {% elif current_page == 'account' %}<i class="fas fa-key"></i> Change Password
                 {% else %}<i class="fas fa-bars"></i> Menu
                 {% endif %}
             </span>
@@ -70,6 +72,18 @@ Author  : Srikar
             <li class="employee-nav-item">
                 <a href="{{ url_for('receipts.history') }}" class="employee-nav-link {% if current_page == 'invoices' %}active{% endif %}" {% if current_page == 'invoices' %}aria-current="page"{% endif %}>
                     <i class="fas fa-receipt"></i> Invoices
+                </a>
+            </li>
+            {% if role == 'Admin' %}
+            <li class="employee-nav-item">
+                <a href="{{ url_for('admin.employees') }}" class="employee-nav-link {% if current_page == 'employees' %}active{% endif %}" {% if current_page == 'employees' %}aria-current="page"{% endif %}>
+                    <i class="fas fa-user-shield"></i> Employees
+                </a>
+            </li>
+            {% endif %}
+            <li class="employee-nav-item">
+                <a href="{{ url_for('employee.change_password') }}" class="employee-nav-link {% if current_page == 'account' %}active{% endif %}" {% if current_page == 'account' %}aria-current="page"{% endif %}>
+                    <i class="fas fa-key"></i> Password
                 </a>
             </li>
             <li class="employee-nav-item employee-nav-item-logout">

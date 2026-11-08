@@ -69,6 +69,19 @@ _LOGO_RELATIVE_PATH = os.path.join("static", "images", "invoice_logo_badge.png")
 # it did before this image was ever added.
 _SIGNATURE_RELATIVE_PATH = os.path.join("static", "images", "signature.png")
 
+# Bundled invoice font: Liberation Sans (SIL Open Font License 1.1, see
+# static/fonts/LiberationSans-LICENSE.txt), metric-compatible with Arial so
+# the invoice layout is unchanged. Embedded as base64 data: URIs, exactly
+# like the logo, so rendering never depends on fonts installed on the
+# server. Without this, HostyCare's Linux host (which has no Arial/
+# Helvetica/sans-serif font Chromium can use) fell back to
+# DroidSansFallback and every character printed as an empty box.
+_INVOICE_FONT_FILES = (
+    ("400", os.path.join("static", "fonts", "LiberationSans-Regular.ttf")),
+    ("700", os.path.join("static", "fonts", "LiberationSans-Bold.ttf")),
+)
+_font_face_css_cache: str | None = None
+
 _playwright = None
 _browser = None
 _browser_lock = threading.Lock()
@@ -116,6 +129,37 @@ def _signature_data_uri() -> str:
         return f"data:image/png;base64,{encoded}"
     except OSError:
         return ""
+
+
+def _font_face_css() -> str:
+    """
+    @font-face rules for the bundled "Invoice Sans" family (regular + bold),
+    base64-embedded. Built once per worker process and cached - the files
+    never change at runtime. A missing font file is logged and skipped, so
+    the invoice still renders (with whatever fallback font the server has)
+    rather than failing outright.
+    """
+
+    global _font_face_css_cache
+    if _font_face_css_cache is not None:
+        return _font_face_css_cache
+
+    rules = []
+    for weight, relative_path in _INVOICE_FONT_FILES:
+        font_path = os.path.join(current_app.root_path, relative_path)
+        try:
+            with open(font_path, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode("ascii")
+        except OSError:
+            logger.warning("Invoice font not found at %s - invoice text may render incorrectly.", font_path)
+            continue
+        rules.append(
+            "@font-face { font-family: 'Invoice Sans'; font-style: normal; "
+            f"font-weight: {weight}; src: url(data:font/ttf;base64,{encoded}) format('truetype'); }}"
+        )
+
+    _font_face_css_cache = "\n".join(rules)
+    return _font_face_css_cache
 
 
 def _get_browser():
@@ -177,6 +221,7 @@ def _build_context(invoice: dict) -> dict:
         },
         "logo_data_uri": _logo_data_uri(),
         "signature_data_uri": _signature_data_uri(),
+        "font_face_css": _font_face_css(),
     }
 
 

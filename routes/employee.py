@@ -14,7 +14,9 @@ from math import ceil
 
 from flask import Blueprint, abort, flash, render_template, request, session, redirect, url_for
 from config import Config
-from services.auth_service import authenticate_employee, get_employee_id_for_user
+from services import email_service, password_service
+from services.auth_service import authenticate_employee, get_employee_id_for_user, login_throttle_subject
+from services.csrf_service import csrf_protect
 from services.department_service import (
     get_department_for_edit,
     get_departments_for_management,
@@ -117,31 +119,192 @@ def status_class_filter(status: str | None) -> str:
 
 
 @employee_bp.route("/employee/login", methods=["GET", "POST"])
+@csrf_protect
 def login():
-    """Handle employee login page and authentication."""
+    """
+    Handle employee login page and authentication.
+
+    Password Management cycle: CSRF-protected, rate limited per username and
+    per client IP (failed attempts only, stored in AuthThrottle), clears any
+    previous session before logging in, and records Users.SessionEpoch so a
+    later password change/reset invalidates this session (app.py).
+    """
 
     error = None
 
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
+        client_ip = request.remote_addr or ""
+
+        throttle_subject = login_throttle_subject(username) if username else ""
 
         if not username or not password:
-            error = "Username and password are required."
+            error = "Username (or email) and password are required."
+        elif password_service.is_rate_limited("login_user", throttle_subject) or password_service.is_rate_limited(
+            "login_ip", client_ip
+        ):
+            logger.warning("Login rate limit reached - ip=%s", client_ip)
+            error = "Too many failed login attempts. Please wait 15 minutes and try again."
         else:
             user = authenticate_employee(username, password)
 
             if user:
+                password_service.clear_attempts("login_user", throttle_subject)
+                session.clear()
                 session["UserID"] = user["UserID"]
                 session["Username"] = user["Username"]
                 session["Role"] = user["Role"]
                 session["Designation"] = user["Designation"]
+                session["SessionEpoch"] = int(user["SessionEpoch"])
 
                 return redirect(url_for("employee.dashboard"))
             else:
-                error = "Invalid username or password."
+                password_service.record_attempt("login_user", throttle_subject)
+                password_service.record_attempt("login_ip", client_ip)
+                error = "Invalid username/email or password."
 
     return render_template("employee/login.html", error=error)
+
+
+def _reset_path_for_token(raw_token: str) -> str:
+    """Site-relative reset link path for an emailed token."""
+
+    return url_for("employee.reset_password_link", token=raw_token)
+
+
+@employee_bp.route("/employee/account/password", methods=["GET", "POST"])
+@csrf_protect
+def change_password():
+    """
+    Change Password for a logged-in Employee or Admin. On success every
+    session for the account (including this one) is invalidated and the
+    user must log in again with the new password.
+    """
+
+    if not session.get("UserID"):
+        return redirect(url_for("employee.login"))
+
+    if session.get("Role") not in EMPLOYEE_PORTAL_ROLES:
+        abort(403)
+
+    errors: list[str] = []
+
+    if request.method == "POST":
+        errors = password_service.change_password(
+            session["UserID"],
+            request.form.get("current_password", ""),
+            request.form.get("new_password", ""),
+            request.form.get("confirm_password", ""),
+        )
+        if not errors:
+            session.clear()
+            flash("Your password was changed. Please log in with your new password.", "success")
+            return redirect(url_for("employee.login"))
+
+    return render_template(
+        "employee/change_password.html",
+        username=session.get("Username"),
+        role=session.get("Role"),
+        current_page="account",
+        errors=errors,
+        min_length=password_service.PASSWORD_MIN_LENGTH,
+    )
+
+
+@employee_bp.route("/employee/forgot-password", methods=["GET", "POST"])
+@csrf_protect
+def forgot_password():
+    """
+    Public "Forgot password" page for Employees and Admins. Always answers
+    with the same message whether or not the email is registered.
+    """
+
+    email_available = email_service.is_email_configured()
+    submitted = False
+    error = None
+
+    if request.method == "POST" and email_available:
+        email = password_service.normalise_email(request.form.get("email", ""))
+        client_ip = request.remote_addr or ""
+
+        if not password_service.is_valid_email(email):
+            error = "Enter a valid email address."
+        elif password_service.is_rate_limited("reset_request_ip", client_ip) or password_service.is_rate_limited(
+            "reset_request_email", email
+        ):
+            error = "Too many reset requests. Please wait an hour and try again."
+        else:
+            password_service.record_attempt("reset_request_ip", client_ip)
+            password_service.record_attempt("reset_request_email", email)
+            try:
+                password_service.request_self_service_reset(email, _reset_path_for_token)
+            except Exception as failure:
+                # Logged by type only; the user still gets the generic answer so
+                # a failure for a real account cannot reveal that it exists.
+                logger.error("Forgot-password request FAILED - %s", type(failure).__name__)
+            submitted = True
+
+    return render_template(
+        "employee/forgot_password.html",
+        email_available=email_available,
+        submitted=submitted,
+        error=error,
+        token_minutes=Config.PASSWORD_RESET_TOKEN_MINUTES,
+    )
+
+
+@employee_bp.route("/employee/reset-password/<token>", methods=["GET"])
+def reset_password_link(token):
+    """
+    Landing URL from the reset email. Moves the token into the session and
+    redirects to a token-free URL, so the token does not linger in browser
+    history or leak through the Referer header.
+    """
+
+    session["password_reset_token"] = token
+    return redirect(url_for("employee.reset_password"))
+
+
+@employee_bp.route("/employee/reset-password", methods=["GET", "POST"])
+@csrf_protect
+def reset_password():
+    """Choose a new password using a valid, unused, unexpired reset token."""
+
+    raw_token = session.get("password_reset_token", "")
+    token = password_service.get_valid_reset_token(raw_token)
+
+    if token is None:
+        session.pop("password_reset_token", None)
+        return render_template("employee/reset_password.html", invalid=True, errors=[])
+
+    errors: list[str] = []
+
+    if request.method == "POST":
+        client_ip = request.remote_addr or ""
+        if password_service.is_rate_limited("reset_submit_ip", client_ip):
+            errors = ["Too many attempts. Please wait 15 minutes and try again."]
+        else:
+            password_service.record_attempt("reset_submit_ip", client_ip)
+            new_password = request.form.get("new_password", "")
+            errors = password_service.validate_new_password(
+                new_password, request.form.get("confirm_password", ""), token["Username"]
+            )
+            if not errors:
+                redeemed = password_service.redeem_reset_token(raw_token, new_password)
+                session.clear()
+                if redeemed is None:
+                    return render_template("employee/reset_password.html", invalid=True, errors=[])
+                flash("Your password has been reset. Please log in with your new password.", "success")
+                return redirect(url_for("employee.login"))
+
+    return render_template(
+        "employee/reset_password.html",
+        invalid=False,
+        errors=errors,
+        username=token["Username"],
+        min_length=password_service.PASSWORD_MIN_LENGTH,
+    )
 
 
 @employee_bp.route("/employee/dashboard", methods=["GET"])

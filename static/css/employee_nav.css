@@ -58,16 +58,25 @@ Author  : Srikar
    the real closed state on mobile using the same id. */
 #employeeNavMenu {
     display: flex;
+    /* Medium widths (769px up to ~1050px for the full Admin menu): wrap
+       onto a second row instead of overflowing the page sideways. */
+    flex-wrap: wrap;
 }
 
 .employee-nav-item {
-    flex: 1;
+    /* Content-sized (not equal-width) so longer labels like "Departments"
+       never wrap under their icon now that the Admin menu has ten items. */
+    flex: 1 1 auto;
     text-align: center;
 }
 
 .employee-nav-link {
     display: block;
-    padding: 1rem;
+    /* Horizontal padding kept tight: items are flex: 1, so extra width is
+       shared out anyway, and with the Password/Employees links added the
+       full Admin menu must still fit at 1024px without overflowing. */
+    padding: 1rem 0.5rem;
+    white-space: nowrap;
     color: #333;
     text-decoration: none;
     font-weight: 500;

@@ -51,13 +51,19 @@ Chromium binary Playwright launches (services/pdf_service.py) - `pip install`
 alone only installs the Python package, not the browser. Re-run it after any
 `pip install -r requirements.txt` that changes the pinned `playwright` version.
 
+**Fonts:** no system font installation is needed. The invoice embeds its own
+font from `static/fonts/` (Liberation Sans, SIL OFL - licence file alongside).
+Make sure `static/fonts/LiberationSans-Regular.ttf` and
+`LiberationSans-Bold.ttf` are uploaded; if they are missing, invoice text falls
+back to whatever the server has, which on HostyCare prints as empty boxes.
+
 ### 1.4 Create the Database
 
 1. In cPanel, use **MySQL® Databases** to create a new database and a database user, and
    grant that user all privileges on the database.
 2. Open **phpMyAdmin**, select the new database, and import **every** file in
    `database/schema/` **in numeric order**, from `001_create_catalog.sql` through
-   `014_create_invoiceitems.sql`, using phpMyAdmin's Import tab, or run them
+   `017_create_auththrottle.sql`, using phpMyAdmin's Import tab, or run them
    via the phpMyAdmin SQL tab one at a time in order.
 
    Import the whole directory — do not stop at any particular file. Order is not
@@ -82,6 +88,9 @@ alone only installs the Python package, not the browser. Re-run it after any
    | `012_add_performance_indexes.sql` | Adds indexes on `Catalog.Department` / `category` / `brand` and `ProductImages` / `ProductDetails.ProductID` |
    | `013_create_invoices.sql` | `Invoices` — Invoice Generator module (FK → `Employees`) |
    | `014_create_invoiceitems.sql` | `InvoiceItems` — invoice line items (FK → `Invoices`, `Catalog`) |
+   | `015_alter_users_add_session_epoch.sql` | Adds `Users.SessionEpoch` (Password Management — session invalidation) |
+   | `016_create_passwordresettokens.sql` | `PasswordResetTokens` — hashed, single-use reset tokens (FK → `Users`) |
+   | `017_create_auththrottle.sql` | `AuthThrottle` — login/recovery rate limiting |
 
    **Skipping `010`, `011`, `013`, or `014` produces a database the application
    cannot run against** — without `010` the homepage and Departments module fail,
@@ -107,9 +116,11 @@ alone only installs the Python package, not the browser. Re-run it after any
 3. **Verify the import** before continuing. In phpMyAdmin's SQL tab:
 
    ```sql
-   SHOW TABLES;                  -- expect 11: Catalog, Customers, DepartmentImages,
-                                 -- Employees, Enquiries, InvoiceItems, Invoices,
-                                 -- ProductDetails, ProductImages, StockHistory, Users
+   SHOW TABLES;                  -- expect 13: AuthThrottle, Catalog, Customers,
+                                 -- DepartmentImages, Employees, Enquiries, InvoiceItems,
+                                 -- Invoices, PasswordResetTokens, ProductDetails,
+                                 -- ProductImages, StockHistory, Users
+   SHOW COLUMNS FROM Users;      -- must include SessionEpoch (015)
    SHOW COLUMNS FROM Catalog;    -- must include IsActive, DeletedAt, DeletedBy (011)
    SHOW INDEX FROM Catalog;      -- must include idx_catalog_department/category/brand (012)
    SELECT COUNT(*) FROM Invoices; -- expect 0 on a fresh production import (013/014)

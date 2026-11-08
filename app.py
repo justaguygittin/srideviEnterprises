@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from flask import Flask, abort, jsonify, make_response, render_template, request, session, url_for
+from flask import Flask, abort, flash, jsonify, make_response, render_template, request, session, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import Config
@@ -10,7 +10,10 @@ from routes.employee import employee_bp
 from routes.admin import admin_bp
 from routes.api import api_bp
 from routes.receipts import receipts_bp
+from services.csrf_service import get_csrf_token
+from services.email_service import is_email_configured
 from services.maintenance_service import is_maintenance_enabled, verify_maintenance_key
+from services.password_service import get_session_epoch
 
 _LOG_FORMAT = "%(asctime)s %(levelname)-8s [%(name)s:%(process)d] %(message)s"
 
@@ -111,6 +114,15 @@ if Config.WHATSAPP_NUMBER_REJECTED:
         "e.g. +91 followed by the 10-digit number."
     )
 
+if not is_email_configured():
+    # Password Management: recovery by email needs SMTP_HOST, SMTP_SENDER and
+    # an https:// PUBLIC_BASE_URL. Without them the Forgot Password page says
+    # recovery is unavailable; everything else works normally.
+    app.logger.warning(
+        "Password reset email is NOT configured (SMTP_HOST / SMTP_SENDER / PUBLIC_BASE_URL) - "
+        "the Forgot Password page will report recovery as unavailable."
+    )
+
 if not Config.SESSION_COOKIE_SECURE:
     # Expected and required for local HTTP development; wrong in production.
     # Logged every worker start so an accidental opt-out on the server shows
@@ -120,6 +132,40 @@ if not Config.SESSION_COOKIE_SECURE:
         "This is expected in local development only. Set SESSION_COOKIE_SECURE=True (or "
         "remove it from .env) on any HTTPS deployment."
     )
+
+
+# Password Management: {{ csrf_token() }} in any template (see
+# services/csrf_service.py - available app-wide so CSRF can later be
+# extended to every form without further wiring).
+app.jinja_env.globals["csrf_token"] = get_csrf_token
+
+
+@app.before_request
+def enforce_session_epoch():
+    """
+    Password Management: end a logged-in session whose account changed its
+    password (or was reset) after this session was issued.
+
+    Flask sessions live in a signed cookie, so the server cannot delete
+    them. Login stores Users.SessionEpoch in the session; a password change
+    or reset increments it in the database. A mismatch here means the
+    session predates that change, so it is cleared - the route then
+    redirects to the login page exactly as for any anonymous visitor.
+
+    Registered BEFORE enforce_maintenance_mode() so a stale session can no
+    longer bypass Maintenance Mode either. Sessions issued before this
+    feature existed carry no SessionEpoch and count as 0, matching the
+    column's default, so deploying this logs nobody out.
+    """
+
+    if request.endpoint == "static" or not session.get("UserID"):
+        return None
+
+    current_epoch = get_session_epoch(session["UserID"])
+    if current_epoch is None or current_epoch != session.get("SessionEpoch", 0):
+        session.clear()
+        flash("Your session has ended because your password was changed. Please log in again.", "warning")
+    return None
 
 
 @app.before_request
