@@ -328,7 +328,7 @@ Invoices - Employee Portal - Sridevi Enterprises
                     <tbody>
                         {% for invoice in invoices %}
                         <tr>
-                            <td><span class="invoice-number">#{{ "%05d"|format(invoice.InvoiceID) }}</span></td>
+                            <td><span class="invoice-number">#{{ "%05d"|format(invoice.InvoiceNumber) }}</span></td>
                             <td>{{ invoice.InvoiceDate.strftime("%d %b %Y") }}</td>
                             <td>{{ invoice.BuyerName }}</td>
                             <td class="invoice-total">&#8377;{{ "%.2f"|format(invoice.GrandTotal) }}</td>

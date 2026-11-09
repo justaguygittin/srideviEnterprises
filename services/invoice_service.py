@@ -20,6 +20,7 @@ from num2words import num2words
 
 from database.db import fetch_all, fetch_one, transaction
 from services import gst_service
+from services.invoice_number_service import allocate_invoice_number
 from services.product_service import get_catalog_product_for_invoice, parse_price
 
 logger = logging.getLogger(__name__)
@@ -164,7 +165,7 @@ def validate_invoice_form(form) -> tuple[dict[str, Any], dict[str, str]]:
     return cleaned, errors
 
 
-def create_invoice(cleaned: dict[str, Any], employee_id: int) -> int:
+def create_invoice(cleaned: dict[str, Any], employee_id: int) -> tuple[int, int]:
     """
     Calculate and persist one invoice: uses each line item's submitted unit
     price (pre-filled from Catalog.offer_price, but overridable per row) and
@@ -179,12 +180,16 @@ def create_invoice(cleaned: dict[str, Any], employee_id: int) -> int:
         same "don't trust an earlier page load" principle
         product_service.apply_stock_transaction() already applies to stock).
 
-    Invoice numbering: InvoiceID is a plain AUTO_INCREMENT, only consumed
-    once every validation and Catalog lookup above has already succeeded -
-    a failed submission never reserves a number (see
-    database/schema/012_create_invoices.sql for the one-time numbering
-    -continuity check this relies on against the standalone Receipt
-    Generator's own prior invoices).
+    Returns (invoice_id, invoice_number): InvoiceID is the internal primary
+    key (URLs, InvoiceItems FK); InvoiceNumber is the customer-visible
+    number printed everywhere.
+
+    Invoice numbering: InvoiceNumber is allocated from the locked
+    InvoiceNumberSequence row (services/invoice_number_service.py) inside
+    the same transaction as the inserts below, after every validation and
+    Catalog lookup has already succeeded - so concurrent invoices can never
+    share a number, and a failed or rolled-back invoice never consumes one.
+    UNIQUE uq_invoices_invoicenumber (018) is the hard backstop.
     """
 
     seller_gstin = _require_seller_gstin()
@@ -235,14 +240,18 @@ def create_invoice(cleaned: dict[str, Any], employee_id: int) -> int:
     with transaction() as conn:
         cursor = conn.cursor()
         try:
+            invoice_number = allocate_invoice_number(cursor)
+
             cursor.execute("""
                 INSERT INTO Invoices (
+                    InvoiceNumber,
                     BuyerName, BuyerAddress, BuyerContact, BuyerGSTIN, BuyerContract,
                     ConsigneeName, ConsigneeAddress, ConsigneeContact, ConsigneeGSTIN, ConsigneeContract,
                     SellerState, BuyerState,
                     TaxableTotal, CGSTTotal, SGSTTotal, IGSTTotal, RoundOff, GrandTotal, AmountInWords,
                     CreatedBy
                 ) VALUES (
+                    %s,
                     %s, %s, %s, %s, %s,
                     %s, %s, %s, %s, %s,
                     %s, %s,
@@ -250,6 +259,7 @@ def create_invoice(cleaned: dict[str, Any], employee_id: int) -> int:
                     %s
                 );
             """, (
+                invoice_number,
                 buyer["name"], buyer["address"], buyer["contact"] or None, buyer["gstin"] or None, buyer["contract"] or None,
                 consignee["name"], consignee["address"], consignee["contact"] or None,
                 consignee["gstin"] or None, consignee["contract"] or None,
@@ -275,10 +285,10 @@ def create_invoice(cleaned: dict[str, Any], employee_id: int) -> int:
             cursor.close()
 
     logger.info(
-        "Invoice created - invoice_id=%s employee_id=%s buyer=%r items=%d grand_total=%s",
-        invoice_id, employee_id, buyer["name"], len(line_items), totals["grand_total"],
+        "Invoice created - invoice_id=%s invoice_number=%s employee_id=%s buyer=%r items=%d grand_total=%s",
+        invoice_id, invoice_number, employee_id, buyer["name"], len(line_items), totals["grand_total"],
     )
-    return invoice_id
+    return invoice_id, invoice_number
 
 
 def _require_seller_gstin() -> str:
@@ -308,7 +318,7 @@ def get_invoices(filters: dict[str, Any], page: int, per_page: int) -> list[dict
     where_clause, params = _build_invoice_filters(filters)
     return fetch_all(f"""
         SELECT
-            Invoices.InvoiceID, Invoices.InvoiceDate, Invoices.BuyerName,
+            Invoices.InvoiceID, Invoices.InvoiceNumber, Invoices.InvoiceDate, Invoices.BuyerName,
             Invoices.GrandTotal, Employees.Name AS CreatedByName
         FROM Invoices
         LEFT JOIN Employees ON Employees.EmployeeID = Invoices.CreatedBy
@@ -324,11 +334,13 @@ def _build_invoice_filters(filters: dict[str, Any]) -> tuple[str, list[Any]]:
     where_clauses = ["1 = 1"]
     params: list[Any] = []
 
+    # Number search matches the customer-visible InvoiceNumber ("00042" and
+    # "42" both find invoice 00042), never the internal InvoiceID.
     search = (filters.get("search") or "").strip()
     if search:
-        where_clauses.append("(BuyerName LIKE %s OR InvoiceID = %s)")
+        where_clauses.append("(BuyerName LIKE %s OR InvoiceNumber = %s)")
         like_value = f"%{search}%"
-        params.extend([like_value, search if search.isdigit() else -1])
+        params.extend([like_value, int(search) if search.isdigit() and search.isascii() else -1])
 
     return " AND ".join(where_clauses), params
 

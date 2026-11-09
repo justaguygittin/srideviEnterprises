@@ -10,16 +10,20 @@ Purpose : Admin routes.
           never see, set, or retrieve any password, and never see the
           reset/set-password link itself.
 
+          Invoice Number Settings (/admin/invoice-numbering): Admin-only
+          control of the next customer-visible invoice number.
+
 Author  : Srikar
 =========================================================
 """
 
 import logging
+from functools import wraps
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
 from config import Config
-from services import email_service, password_service
+from services import email_service, invoice_number_service, password_service
 from services.employee_account_service import create_employee_account, validate_new_employee_form
 from services.csrf_service import csrf_protect
 
@@ -98,6 +102,64 @@ def add_employee():
         errors=errors,
         email_available=email_available,
         token_minutes=Config.PASSWORD_RESET_TOKEN_MINUTES,
+    )
+
+
+def _admin_only(view):
+    """
+    Run _require_admin() BEFORE any other decorator (notably @csrf_protect),
+    so a non-Admin always gets 403 - even on a POST without a CSRF token,
+    which @csrf_protect alone would answer with a redirect.
+    """
+
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        denied = _require_admin()
+        if denied:
+            return denied
+        return view(*args, **kwargs)
+
+    return wrapper
+
+
+@admin_bp.route("/admin/invoice-numbering", methods=["GET", "POST"])
+@_admin_only
+@csrf_protect
+def invoice_numbering():
+    """
+    Invoice Number Settings (Admin only): show the highest issued and next
+    invoice number, and let an Admin move the next number UP after an
+    explicit confirmation and re-entering their own password. Existing
+    invoices are never changed - see services/invoice_number_service.py.
+    """
+
+    errors: dict = {}
+    form_message = None
+    submitted_value = ""
+
+    if request.method == "POST":
+        submitted_value = request.form.get("next_number", "").strip()
+        success, message, errors = invoice_number_service.set_next_number(
+            session["UserID"],
+            submitted_value,
+            request.form.get("password", ""),
+            request.form.get("confirm") == "yes",
+        )
+        if success:
+            flash(message, "success")
+            return redirect(url_for("admin.invoice_numbering"))
+        form_message = message
+
+    return render_template(
+        "admin/invoice_numbering.html",
+        username=session.get("Username"),
+        role=session.get("Role"),
+        current_page="invoice_numbering",
+        status=invoice_number_service.get_numbering_status(),
+        recent_changes=invoice_number_service.get_recent_changes(),
+        errors=errors,
+        form_message=form_message,
+        submitted_value=submitted_value,
     )
 
 

@@ -12,7 +12,7 @@ Author  : Srikar
 {% extends "layout/base.html" %}
 
 {% block title %}
-Invoice #{{ "%05d"|format(invoice.InvoiceID) }} - Employee Portal - Sridevi Enterprises
+Invoice #{{ "%05d"|format(invoice.InvoiceNumber) }} - Employee Portal - Sridevi Enterprises
 {% endblock %}
 
 {% block page_css %}
@@ -159,7 +159,7 @@ Invoice #{{ "%05d"|format(invoice.InvoiceID) }} - Employee Portal - Sridevi Ente
         <div class="container">
             <div class="invoice-view-header">
                 <div>
-                    <h1><i class="fas fa-file-invoice"></i> Invoice #{{ "%05d"|format(invoice.InvoiceID) }}</h1>
+                    <h1><i class="fas fa-file-invoice"></i> Invoice #{{ "%05d"|format(invoice.InvoiceNumber) }}</h1>
                     <p>Generated {{ invoice.InvoiceDate.strftime("%d %b %Y, %I:%M %p") }} by {{ invoice.CreatedByName or "Unknown" }}</p>
                 </div>
                 <div class="header-actions">

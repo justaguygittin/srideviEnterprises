@@ -95,7 +95,7 @@ def new_invoice():
 
         if not errors:
             try:
-                invoice_id = create_invoice(cleaned, employee_id)
+                invoice_id, invoice_number = create_invoice(cleaned, employee_id)
             except ValueError as error:
                 # Deliberate flow control, not a fault: create_invoice() raises
                 # ValueError with a user-facing message for expected refusals
@@ -112,7 +112,7 @@ def new_invoice():
                 logger.exception("Invoice creation FAILED [INV-99, unexpected] - user=%s", session.get("Username"))
                 errors["form"] = "(Error INV-99) Could not generate this invoice. Please try again."
             else:
-                flash(f"Invoice #{invoice_id:05d} generated successfully.", "success")
+                flash(f"Invoice #{invoice_number:05d} generated successfully.", "success")
                 return redirect(url_for("receipts.view_invoice", invoice_id=invoice_id))
 
     return render_template(
@@ -205,5 +205,5 @@ def invoice_pdf(invoice_id):
         return redirect(url_for("receipts.view_invoice", invoice_id=invoice_id))
 
     response = Response(pdf_bytes, mimetype="application/pdf")
-    response.headers["Content-Disposition"] = f'inline; filename="Invoice_{invoice_id:05d}.pdf"'
+    response.headers["Content-Disposition"] = f'inline; filename="Invoice_{invoice["InvoiceNumber"]:05d}.pdf"'
     return response

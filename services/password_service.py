@@ -65,6 +65,9 @@ RATE_LIMITS = {
     "reset_submit_ip": (10, 15),
     "change_password_user": (5, 15),
     "admin_reset_target": (3, 60),
+    # Admin password re-entry on /admin/invoice-numbering
+    # (services/invoice_number_service.py).
+    "invoice_number_reauth": (5, 15),
 }
 
 

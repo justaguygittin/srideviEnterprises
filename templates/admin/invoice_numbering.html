@@ -1,0 +1,165 @@
+<!--
+=========================================================
+Project : Sridevi Enterprises
+File    : invoice_numbering.html
+Purpose : Admin - Invoice Number Settings. Shows the highest issued and
+          next invoice number and lets an Admin move the next number UP,
+          after ticking a confirmation and re-entering their own password.
+          Existing invoices are never changed. See
+          services/invoice_number_service.py.
+
+Author  : Srikar
+=========================================================
+-->
+
+{% extends "layout/base.html" %}
+
+{% block title %}
+Invoice Number Settings - Admin - Sridevi Enterprises
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee_nav.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/account_password.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="portal-container">
+    {% include 'components/employee_nav.html' %}
+
+    <div class="portal-content">
+        <div class="container">
+            <div class="portal-card portal-card-wide">
+                <h1>Invoice Number Settings</h1>
+                <p class="portal-subtitle">
+                    Choose the number the next invoice will receive. Invoices after it continue in order
+                    (e.g. 01001, 01002, ...). This affects future invoices only.
+                </p>
+
+                {% if status.next_number is none %}
+                <div class="alert alert-danger" role="alert">
+                    Invoice numbering is not set up on this database (InvoiceNumberSequence is missing).
+                    Apply migrations 018-020 - see DEPLOYMENT.md.
+                </div>
+                {% else %}
+
+                <div class="row g-3 mb-4">
+                    <div class="col-sm-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="text-muted small">Highest issued invoice number</div>
+                            <div class="fs-4 fw-bold" id="highest-issued">
+                                {% if status.highest_issued is not none %}{{ "%05d"|format(status.highest_issued) }}{% else %}None yet{% endif %}
+                            </div>
+                            <div class="text-muted small">{{ status.invoice_count }} invoice(s) issued</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="text-muted small">Next invoice number</div>
+                            <div class="fs-4 fw-bold" id="next-number">{{ "%05d"|format(status.next_number) }}</div>
+                            {% if status.updated_at %}<div class="text-muted small">Last changed {{ status.updated_at.strftime("%d %b %Y, %H:%M") }} UTC</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning" role="alert">
+                    <strong>Before you change this:</strong>
+                    <ul class="mb-0">
+                        <li>Existing invoices, their numbers and their PDFs are never changed.</li>
+                        <li>The number can only be <strong>increased</strong>. It must be greater than the current next number
+                            and greater than every number already issued - numbers are never reused, so this cannot be undone.</li>
+                        <li>Skipped numbers (e.g. jumping from {{ "%05d"|format(status.next_number) }} to 01001) leave a permanent gap in
+                            your invoice history. Make sure your accountant expects it.</li>
+                        <li>Allowed range: 1 to {{ "{:,}".format(status.max_number) }}.</li>
+                    </ul>
+                </div>
+
+                {% if form_message %}<div class="alert alert-danger" role="alert">{{ form_message }}</div>{% endif %}
+
+                <form method="POST" action="{{ url_for('admin.invoice_numbering') }}" id="invoice-numbering-form" novalidate>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label for="next_number" class="form-label">New next invoice number <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input type="text" id="next_number" name="next_number" required inputmode="numeric" pattern="[0-9]*"
+                            maxlength="10" autocomplete="off"
+                            class="form-control {% if errors.next_number %}is-invalid{% endif %}"
+                            value="{{ submitted_value }}" aria-describedby="next-number-help">
+                        <div id="next-number-help" class="form-text">
+                            Must be greater than {{ "%05d"|format([status.next_number - 1, status.highest_issued or 0]|max) }}.
+                        </div>
+                        {% if errors.next_number %}<div class="invalid-feedback d-block">{{ errors.next_number }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Your password <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input type="password" id="password" name="password" required autocomplete="current-password"
+                            class="form-control {% if errors.password %}is-invalid{% endif %}">
+                        {% if errors.password %}<div class="invalid-feedback d-block">{{ errors.password }}</div>{% endif %}
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input {% if errors.confirm %}is-invalid{% endif %}" type="checkbox" value="yes" id="confirm" name="confirm">
+                        <label class="form-check-label" for="confirm">
+                            I understand this changes the number of every future invoice and cannot be lowered again.
+                        </label>
+                        {% if errors.confirm %}<div class="invalid-feedback d-block">{{ errors.confirm }}</div>{% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4 portal-actions">
+                        <button type="submit" class="btn btn-danger" id="invoice-numbering-save-btn">Change next invoice number</button>
+                    </div>
+                </form>
+                {% endif %}
+
+                {% if recent_changes %}
+                <h2 class="h5 mt-5">Recent changes</h2>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th scope="col">When (UTC)</th>
+                                <th scope="col">Admin</th>
+                                <th scope="col">Old next</th>
+                                <th scope="col">New next</th>
+                                <th scope="col">Highest issued then</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for change in recent_changes %}
+                            <tr>
+                                <td>{{ change.ChangedAt.strftime("%d %b %Y, %H:%M") }}</td>
+                                <td>{{ change.AdminUsername or ("User #" ~ change.AdminUserID) }}</td>
+                                <td>{{ "%05d"|format(change.OldNextNumber) }}</td>
+                                <td>{{ "%05d"|format(change.NewNextNumber) }}</td>
+                                <td>{{ "%05d"|format(change.HighestIssued) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var form = document.getElementById("invoice-numbering-form");
+    if (!form) { return; }
+    var saveButton = document.getElementById("invoice-numbering-save-btn");
+
+    form.addEventListener("submit", function (event) {
+        var value = document.getElementById("next_number").value.trim();
+        if (!window.confirm("Set the next invoice number to " + value + "? This cannot be lowered later.")) {
+            event.preventDefault();
+            return;
+        }
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Saving...';
+    });
+})();
+</script>
+{% endblock %}

@@ -80,6 +80,11 @@ Author  : Srikar
                     <i class="fas fa-user-shield"></i> Employees
                 </a>
             </li>
+            <li class="employee-nav-item">
+                <a href="{{ url_for('admin.invoice_numbering') }}" class="employee-nav-link {% if current_page == 'invoice_numbering' %}active{% endif %}" {% if current_page == 'invoice_numbering' %}aria-current="page"{% endif %}>
+                    <i class="fas fa-hashtag"></i> Invoice Numbers
+                </a>
+            </li>
             {% endif %}
             <li class="employee-nav-item">
                 <a href="{{ url_for('employee.change_password') }}" class="employee-nav-link {% if current_page == 'account' %}active{% endif %}" {% if current_page == 'account' %}aria-current="page"{% endif %}>

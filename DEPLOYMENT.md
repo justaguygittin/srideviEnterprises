@@ -63,14 +63,15 @@ back to whatever the server has, which on HostyCare prints as empty boxes.
    grant that user all privileges on the database.
 2. Open **phpMyAdmin**, select the new database, and import **every** file in
    `database/schema/` **in numeric order**, from `001_create_catalog.sql` through
-   `017_create_auththrottle.sql`, using phpMyAdmin's Import tab, or run them
+   `020_create_invoicenumberaudit.sql`, using phpMyAdmin's Import tab, or run them
    via the phpMyAdmin SQL tab one at a time in order.
 
    Import the whole directory — do not stop at any particular file. Order is not
    optional: `003` adds a foreign key to `Users`, `009` adds one to `Employees` and
    alters the table `008` creates, `011` alters the table `001` creates, and `012`
-   indexes columns that `001`, `006`, and `007` create. As of v1.1 the directory
-   contains these 12 files:
+   indexes columns that `001`, `006`, and `007` create; `018` alters the table `013`
+   creates and `019` reads it. The directory currently contains these 20 files
+   (`database/rollback/` is **not** part of an install — never import it):
 
    | File | Creates / changes |
    |---|---|
@@ -91,6 +92,13 @@ back to whatever the server has, which on HostyCare prints as empty boxes.
    | `015_alter_users_add_session_epoch.sql` | Adds `Users.SessionEpoch` (Password Management — session invalidation) |
    | `016_create_passwordresettokens.sql` | `PasswordResetTokens` — hashed, single-use reset tokens (FK → `Users`) |
    | `017_create_auththrottle.sql` | `AuthThrottle` — login/recovery rate limiting |
+   | `018_alter_invoices_add_invoicenumber.sql` | Adds `Invoices.InvoiceNumber` (UNIQUE, customer-visible number; backfilled = `InvoiceID`) |
+   | `019_create_invoicenumbersequence.sql` | `InvoiceNumberSequence` — one-row invoice number sequence, seeded from `MAX(InvoiceNumber) + 1` |
+   | `020_create_invoicenumberaudit.sql` | `InvoiceNumberAudit` — Admin changes to the next invoice number (FK → `Users`) |
+
+   `018`–`020` use MariaDB syntax (`ADD COLUMN IF NOT EXISTS`, enforced `CHECK`):
+   confirm `SELECT VERSION();` reports MariaDB 10.2 or later. Without them, invoices
+   cannot be created or listed.
 
    **Skipping `010`, `011`, `013`, or `014` produces a database the application
    cannot run against** — without `010` the homepage and Departments module fail,
@@ -103,24 +111,26 @@ back to whatever the server has, which on HostyCare prints as empty boxes.
 
    **Invoice numbering:** the standalone Receipt Generator was used for
    testing only — it never issued or stored real Sridevi Enterprises customer
-   invoices, so there is no old production invoice sequence to migrate.
-   `Invoices.InvoiceID` is a plain `AUTO_INCREMENT`, and on a fresh import the
-   table is simply new and empty. Before issuing the first real invoice,
-   confirm that: `Invoices` is actually empty (`SELECT COUNT(*) FROM
-   Invoices;` should return 0), and its `AUTO_INCREMENT` is at a sane starting
-   value (1, unless you have a specific reason to start elsewhere). **Do not**
-   set `AUTO_INCREMENT` to `5090` or any other number seen on a development/
-   reference invoice — that was a test value, not a production sequence to
-   continue from.
+   invoices, so there is no old production invoice sequence to migrate. On a
+   fresh import `Invoices` is empty and `InvoiceNumberSequence.NextNumber` is 1.
+   The printed number is `Invoices.InvoiceNumber`; `InvoiceID` is internal only.
+   To start real invoices at a different number, use the Admin-only **Invoice
+   Numbers** page (`/admin/invoice-numbering`) — **never** edit
+   `AUTO_INCREMENT` or the sequence row by hand. **Do not** start at `5090` or
+   any other number seen on a development/reference invoice — that was a test
+   value, not a production sequence to continue from.
 
 3. **Verify the import** before continuing. In phpMyAdmin's SQL tab:
 
    ```sql
-   SHOW TABLES;                  -- expect 13: AuthThrottle, Catalog, Customers,
+   SHOW TABLES;                  -- expect 15: AuthThrottle, Catalog, Customers,
                                  -- DepartmentImages, Employees, Enquiries, InvoiceItems,
-                                 -- Invoices, PasswordResetTokens, ProductDetails,
-                                 -- ProductImages, StockHistory, Users
+                                 -- InvoiceNumberAudit, InvoiceNumberSequence, Invoices,
+                                 -- PasswordResetTokens, ProductDetails, ProductImages,
+                                 -- StockHistory, Users
    SHOW COLUMNS FROM Users;      -- must include SessionEpoch (015)
+   SHOW COLUMNS FROM Invoices;   -- must include InvoiceNumber (018)
+   SELECT * FROM InvoiceNumberSequence; -- exactly one row; NextNumber 1 on a fresh import (019)
    SHOW COLUMNS FROM Catalog;    -- must include IsActive, DeletedAt, DeletedBy (011)
    SHOW INDEX FROM Catalog;      -- must include idx_catalog_department/category/brand (012)
    SELECT COUNT(*) FROM Invoices; -- expect 0 on a fresh production import (013/014)
@@ -351,6 +361,63 @@ Never skip the Employee Smoke Test even for a customer-facing change — the Emp
 Portal is never gated by Maintenance Mode (see §5), so it is reachable, and breakable,
 throughout the entire deploy window.
 
+### 3.3 Upgrade: Invoice Number Configuration (migrations 018–020)
+
+For an **existing** server that already has `001`–`017`. SSH is not available on
+HostyCare, so every step uses cPanel screens. Allow ~10 minutes.
+
+**Why the order differs from §3.1:** new code needs the new column/tables, and old
+code cannot insert an invoice once `InvoiceNumber` is NOT NULL. Running the SQL
+**before** the new code is loaded is the safer side: until the restart, the old code
+still shows every invoice correctly and only *creating* an invoice fails cleanly
+(INV-99, nothing written). The reverse order could let a freshly spawned Passenger
+worker load new code against the old schema and break the Invoice History page.
+Maintenance Mode does **not** gate the Employee Portal, so pause invoicing manually.
+
+1. **Tell staff to stop generating invoices** until you confirm step 8.
+2. **Enable Maintenance** (cPanel File Manager → `config/maintenance.json` →
+   `"enabled": true`).
+3. **Back up** the database: phpMyAdmin → select the database → **Export** → Quick → SQL.
+   Keep the file until the upgrade is verified.
+4. **Pre-check** in phpMyAdmin → **SQL** tab:
+   ```sql
+   SELECT VERSION();                               -- MariaDB 10.2+
+   SELECT COUNT(*), MAX(InvoiceID) FROM Invoices;  -- note both values
+   SHOW TABLES LIKE 'InvoiceNumber%';              -- expect none
+   ```
+5. **Apply the migrations** — phpMyAdmin → SQL tab, paste and **Go** for each file's
+   full contents, one at a time, in order: `018_alter_invoices_add_invoicenumber.sql`,
+   `019_create_invoicenumbersequence.sql`, `020_create_invoicenumberaudit.sql`. (Copy
+   them from the repository on GitHub, or upload with File Manager and use **Import**.)
+   Each is safe to re-run if one is interrupted.
+6. **Verify the data** (SQL tab):
+   ```sql
+   SELECT COUNT(*) FROM Invoices WHERE InvoiceNumber <> InvoiceID;  -- must be 0
+   SELECT COUNT(*), MAX(InvoiceNumber) FROM Invoices;  -- same values as step 4
+   SELECT NextNumber FROM InvoiceNumberSequence;        -- MAX(InvoiceNumber) + 1 (1 if empty)
+   SHOW INDEX FROM Invoices WHERE Key_name = 'uq_invoices_invoicenumber';  -- 1 row
+   ```
+7. **Deploy the code** — cPanel **Git Version Control** → Manage → **Pull or Deploy** →
+   *Update from Remote* (then *Deploy HEAD Commit* if the repository uses a
+   `.cpanel.yml` deploy). No new dependency, so no `pip install`. Then cPanel **Setup
+   Python App** → the application → **Restart**.
+8. **Verify the application**: `GET /health` shows the expected version; log in as
+   Admin → **Invoice Numbers** shows the same highest issued number as step 4 and the
+   next number from step 6; Invoice History shows the old invoices with their old
+   numbers; generate one real or test-buyer invoice and confirm it gets the next number
+   (or, if the business wants a new starting number such as 1001, set it on the
+   **Invoice Numbers** page **first** — it can only go up, never back down).
+   Log in as an Employee and confirm `/admin/invoice-numbering` returns 403.
+9. **Disable Maintenance**, restart in Setup Python App, tell staff invoicing is back.
+
+**Rollback** (only if step 8 fails and cannot be fixed forward): first check
+`SELECT COUNT(*) FROM Invoices WHERE InvoiceNumber <> InvoiceID;` — **only if it is 0**,
+run `database/rollback/018_020_invoice_numbering_rollback.sql` in the SQL tab, redeploy
+the previous commit via Git Version Control, and restart. If it is not 0 (an Admin
+changed the number and invoices were issued), do **not** roll back the schema: the old
+code would print the wrong numbers. Restore the step-3 backup instead (this discards any
+invoices created since), or fix forward.
+
 ---
 
 ## 4. Smoke-Test Checklist
@@ -569,7 +636,8 @@ the WSGI process is up) and returns:
    this is what prevents a customer from hitting a page mid-migration that expects a
    column/table the migration hasn't added yet.
 2. **Backup the database** (cPanel phpMyAdmin Export, or `mysqldump`) before running
-   any new schema file.
+   any new schema file. (Migrations `018`–`020` have their own ordered procedure —
+   SQL before code — in §3.3.)
 3. **Apply the new file(s)** from `database/schema/` **in numeric order**, via
    phpMyAdmin's Import or SQL tab — the same process already used for the original
    schema (§1.4). Never hand-edit a table directly without also adding/updating the

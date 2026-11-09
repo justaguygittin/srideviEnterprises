@@ -23,6 +23,20 @@ version string is `Config.APP_VERSION` in `config.py`, surfaced at runtime via
 
 ### Added
 
+- **Admin Invoice Number Settings** (`/admin/invoice-numbering`) — an Admin can
+  set the number the next invoice receives (e.g. 1001 → 1001, 1002, …). Increase
+  only: the new value must be above the current next number and every issued
+  number (1–99,999,999), and needs a confirmation tick plus the Admin's own
+  password (CSRF-protected, rate limited). Every change is audited (UTC).
+  Existing invoices, numbers and PDFs never change. Employees get 403.
+- **Separate customer-visible invoice number** — new `Invoices.InvoiceNumber`
+  (UNIQUE) is printed on the PDF, view page, History, search, success message
+  and PDF filename; `InvoiceID` stays the internal key (URLs, `InvoiceItems`).
+  Numbers come from a locked sequence row inside the invoice transaction, so
+  concurrent invoices never collide and a failed invoice never consumes a
+  number. Migrations `018`–`020` (existing numbers backfilled unchanged);
+  rollback script in `database/rollback/`. No new dependency. See
+  `AI_CONTEXT.md` → "Admin Invoice Number Configuration".
 - **Admin "Add Employee"** (`/admin/employees/add`) — creates an Employee
   account and emails the new employee a single-use link to set their own
   password; the Admin never sets or sees it. No schema change.

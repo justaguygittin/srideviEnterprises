@@ -208,7 +208,7 @@ def _build_context(invoice: dict) -> dict:
         "tax_type": gst_service.determine_tax_type(invoice["SellerState"], invoice["BuyerState"]),
         "buyer_state_name": gst_service.state_name(invoice["BuyerState"]),
         "seller_state_name": gst_service.state_name(invoice["SellerState"]),
-        "invoice_number": f"{invoice['InvoiceID']:05d}",
+        "invoice_number": f"{invoice['InvoiceNumber']:05d}",
         "invoice_date": invoice["InvoiceDate"].strftime("%d-%m-%Y"),
         "seller": {
             "name": "SRIDEVI ENTERPRISES",
